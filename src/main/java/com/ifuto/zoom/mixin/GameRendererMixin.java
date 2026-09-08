@@ -15,6 +15,12 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 public class GameRendererMixin {
 	@Inject(method = "getFov(Lnet/minecraft/client/render/Camera;FZ)D", at = @At("RETURN"), cancellable = true)
 	private void ifutoZoom$applyZoom(Camera camera, float tickDelta, boolean changingFov, CallbackInfoReturnable<Double> cir) {
+		// Vanilla asks for the "changing" fov for the world projection and for the plain one for the
+		// held item / overlays, so only touching the former keeps the hand at its normal size.
+		if (!changingFov) {
+			return;
+		}
+
 		double zoom = ZoomState.getRenderZoom();
 
 		if (Math.abs(zoom - 1.0D) < 1.0E-4D) {
