@@ -118,8 +118,7 @@ public final class ZoomState {
 				}
 
 				EasingType easing = ZoomConfig.get().easing;
-				boolean zoomingIn = animTo >= animFrom;
-				double eased = easing.apply(progress, zoomingIn);
+				double eased = easing.apply(progress);
 				animCurrent = animFrom + (animTo - animFrom) * eased;
 			}
 		}

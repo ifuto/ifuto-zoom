@@ -43,9 +43,8 @@ public class ZoomConfigScreen extends Screen {
 		int y = 40;
 
 		// Row 1: mode + easing
-		this.addDrawableChild(CyclingButtonWidget.<ZoomMode>builder(ZoomMode::getText)
+		this.addDrawableChild(CyclingButtonWidget.<ZoomMode>builder(ZoomMode::getText, this.config.mode)
 				.values(ZoomMode.values())
-				.initially(this.config.mode)
 				.tooltip(value -> Tooltip.of(Text.translatable("ifuto-zoom.config.mode.tooltip")))
 				.build(left, y, WIDGET_WIDTH, WIDGET_HEIGHT, Text.translatable("ifuto-zoom.config.mode"),
 						(button, value) -> {
@@ -53,9 +52,8 @@ public class ZoomConfigScreen extends Screen {
 							ZoomState.setActive(false);
 						}));
 
-		this.addDrawableChild(CyclingButtonWidget.<EasingType>builder(EasingType::getText)
+		this.addDrawableChild(CyclingButtonWidget.<EasingType>builder(EasingType::getText, this.config.easing)
 				.values(EasingType.values())
-				.initially(this.config.easing)
 				.tooltip(value -> Tooltip.of(Text.translatable("ifuto-zoom.config.easing.tooltip")))
 				.build(right, y, WIDGET_WIDTH, WIDGET_HEIGHT, Text.translatable("ifuto-zoom.config.easing"),
 						(button, value) -> this.config.easing = value));
@@ -134,9 +132,9 @@ public class ZoomConfigScreen extends Screen {
 	@Override
 	public void render(DrawContext context, int mouseX, int mouseY, float delta) {
 		super.render(context, mouseX, mouseY, delta);
-		context.drawCenteredTextWithShadow(this.textRenderer, this.title, this.width / 2, 16, 0xFFFFFF);
+		context.drawCenteredTextWithShadow(this.textRenderer, this.title, this.width / 2, 16, 0xFFFFFFFF);
 		context.drawCenteredTextWithShadow(this.textRenderer, Text.translatable("ifuto-zoom.config.hint"),
-				this.width / 2, 26, 0xA0A0A0);
+				this.width / 2, 26, 0xFFA0A0A0);
 	}
 
 	@Override

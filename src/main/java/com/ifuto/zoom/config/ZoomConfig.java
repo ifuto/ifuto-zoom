@@ -46,7 +46,7 @@ public class ZoomConfig {
 	public boolean keepZoomLevel = false;
 
 	/** Easing curve of the zoom animation. */
-	public EasingType easing = EasingType.EASE_IN;
+	public EasingType easing = EasingType.EASE_OUT;
 
 	/** Duration of the zoom animation in milliseconds. */
 	public int easeDurationMs = 250;
@@ -129,7 +129,7 @@ public class ZoomConfig {
 		}
 
 		if (this.easing == null) {
-			this.easing = EasingType.EASE_IN;
+			this.easing = EasingType.EASE_OUT;
 		}
 
 		this.minZoom = clamp(this.minZoom, HARD_MIN_ZOOM, 10.0D, 1.0D);

@@ -1,5 +1,5 @@
 {
-	"key.categories.ifuto-zoom": "Ifuto Zoom",
+	"key.category.ifuto-zoom.zoom": "Ifuto Zoom",
 	"key.ifuto-zoom.zoom": "ズーム",
 
 	"ifuto-zoom.config.title": "Ifuto Zoom 設定",
@@ -13,10 +13,11 @@
 	"ifuto-zoom.config.easing": "アニメーション",
 	"ifuto-zoom.config.easing.instant": "なし",
 	"ifuto-zoom.config.easing.linear": "リニア",
-	"ifuto-zoom.config.easing.ease_in": "イーズイン",
-	"ifuto-zoom.config.easing.ease_in_strong": "イーズイン（強）",
-	"ifuto-zoom.config.easing.ease_in_out": "イーズインアウト",
-	"ifuto-zoom.config.easing.tooltip": "拡大時のイージングカーブです。元に戻るときは反転したカーブを使います。",
+	"ifuto-zoom.config.easing.ease_out": "最初は速く、どんどん遅く",
+	"ifuto-zoom.config.easing.ease_out_strong": "最初は速く、どんどん遅く（強）",
+	"ifuto-zoom.config.easing.ease_in": "最初は遅く、どんどん速く",
+	"ifuto-zoom.config.easing.ease_in_out": "両端なめらか",
+	"ifuto-zoom.config.easing.tooltip": "ズームの速度カーブです。既定では拡大・縮小のどちらも「最初は速く、どんどん遅く」動きます。",
 
 	"ifuto-zoom.config.default_zoom": "拡大倍率: %s",
 	"ifuto-zoom.config.ease_duration": "アニメーション時間: %s",

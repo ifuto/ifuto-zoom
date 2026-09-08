@@ -1,5 +1,5 @@
 {
-	"key.categories.ifuto-zoom": "Ifuto Zoom",
+	"key.category.ifuto-zoom.zoom": "Ifuto Zoom",
 	"key.ifuto-zoom.zoom": "Zoom",
 
 	"ifuto-zoom.config.title": "Ifuto Zoom Settings",
@@ -13,10 +13,11 @@
 	"ifuto-zoom.config.easing": "Animation",
 	"ifuto-zoom.config.easing.instant": "Instant",
 	"ifuto-zoom.config.easing.linear": "Linear",
-	"ifuto-zoom.config.easing.ease_in": "Ease In",
-	"ifuto-zoom.config.easing.ease_in_strong": "Ease In (Strong)",
-	"ifuto-zoom.config.easing.ease_in_out": "Ease In / Out",
-	"ifuto-zoom.config.easing.tooltip": "Curve used while the zoom moves in. The way back uses the mirrored curve.",
+	"ifuto-zoom.config.easing.ease_out": "Fast to Slow",
+	"ifuto-zoom.config.easing.ease_out_strong": "Fast to Slow (Strong)",
+	"ifuto-zoom.config.easing.ease_in": "Slow to Fast",
+	"ifuto-zoom.config.easing.ease_in_out": "Smooth Both Ends",
+	"ifuto-zoom.config.easing.tooltip": "Speed curve of the zoom. The default starts fast and keeps slowing down, both when zooming in and when zooming back out.",
 
 	"ifuto-zoom.config.default_zoom": "Zoom Factor: %s",
 	"ifuto-zoom.config.ease_duration": "Animation Time: %s",

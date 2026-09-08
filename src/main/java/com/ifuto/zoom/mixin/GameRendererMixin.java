@@ -13,8 +13,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
  */
 @Mixin(GameRenderer.class)
 public class GameRendererMixin {
-	@Inject(method = "getFov(Lnet/minecraft/client/render/Camera;FZ)D", at = @At("RETURN"), cancellable = true)
-	private void ifutoZoom$applyZoom(Camera camera, float tickDelta, boolean changingFov, CallbackInfoReturnable<Double> cir) {
+	@Inject(method = "getFov(Lnet/minecraft/client/render/Camera;FZ)F", at = @At("RETURN"), cancellable = true)
+	private void ifutoZoom$applyZoom(Camera camera, float tickProgress, boolean changingFov, CallbackInfoReturnable<Float> cir) {
 		// Vanilla asks for the "changing" fov for the world projection and for the plain one for the
 		// held item / overlays, so only touching the former keeps the hand at its normal size.
 		if (!changingFov) {
@@ -27,6 +27,6 @@ public class GameRendererMixin {
 			return;
 		}
 
-		cir.setReturnValue(cir.getReturnValueD() / zoom);
+		cir.setReturnValue((float) (cir.getReturnValueF() / zoom));
 	}
 }

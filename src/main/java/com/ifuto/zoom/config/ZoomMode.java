@@ -3,13 +3,12 @@ package com.ifuto.zoom.config;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.minecraft.text.Text;
-import net.minecraft.util.StringIdentifiable;
 
 /**
  * How the zoom key behaves.
  */
 @Environment(EnvType.CLIENT)
-public enum ZoomMode implements StringIdentifiable {
+public enum ZoomMode {
 	/** Zoom only while the key is held down (default). */
 	HOLD("hold"),
 	/** Press once to zoom in, press again to zoom out. */
@@ -21,7 +20,6 @@ public enum ZoomMode implements StringIdentifiable {
 		this.name = name;
 	}
 
-	@Override
 	public String asString() {
 		return this.name;
 	}

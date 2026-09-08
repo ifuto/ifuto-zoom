@@ -3,16 +3,15 @@ package com.ifuto.zoom.config;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.minecraft.text.Text;
-import net.minecraft.util.StringIdentifiable;
 
 /**
  * Easing curves used for the zoom animation.
  *
- * <p>"Zooming in" uses the curve itself (slow start, fast finish = ease-in), while zooming back out
- * uses the mirrored curve so the whole movement feels symmetrical.</p>
+ * <p>The same curve is used for zooming in and for zooming back out, so both directions feel
+ * identical. The default {@link #EASE_OUT} starts fast and keeps slowing down.</p>
  */
 @Environment(EnvType.CLIENT)
-public enum EasingType implements StringIdentifiable {
+public enum EasingType {
 	/** No animation at all. */
 	INSTANT("instant") {
 		@Override
@@ -27,18 +26,27 @@ public enum EasingType implements StringIdentifiable {
 			return t;
 		}
 	},
-	/** Quadratic ease-in (default). */
+	/** Quadratic ease-out: fast start, slow finish (default). */
+	EASE_OUT("ease_out") {
+		@Override
+		protected double curve(double t) {
+			double inv = 1.0D - t;
+			return 1.0D - inv * inv;
+		}
+	},
+	/** Cubic ease-out: even snappier start, longer glide. */
+	EASE_OUT_STRONG("ease_out_strong") {
+		@Override
+		protected double curve(double t) {
+			double inv = 1.0D - t;
+			return 1.0D - inv * inv * inv;
+		}
+	},
+	/** Quadratic ease-in: slow start, fast finish. */
 	EASE_IN("ease_in") {
 		@Override
 		protected double curve(double t) {
 			return t * t;
-		}
-	},
-	/** Cubic ease-in, a more pronounced "pull". */
-	EASE_IN_STRONG("ease_in_strong") {
-		@Override
-		protected double curve(double t) {
-			return t * t * t;
 		}
 	},
 	/** Smooth on both ends. */
@@ -58,22 +66,14 @@ public enum EasingType implements StringIdentifiable {
 	protected abstract double curve(double t);
 
 	/**
-	 * @param progress  linear progress in [0, 1]
-	 * @param zoomingIn true when the zoom factor is increasing
+	 * @param progress linear progress in [0, 1]
 	 * @return eased progress in [0, 1]
 	 */
-	public double apply(double progress, boolean zoomingIn) {
+	public double apply(double progress) {
 		double t = Math.min(1.0D, Math.max(0.0D, progress));
-
-		if (zoomingIn || this == LINEAR || this == INSTANT || this == EASE_IN_OUT) {
-			return this.curve(t);
-		}
-
-		// Mirror the ease-in curve for the way back (= ease-out).
-		return 1.0D - this.curve(1.0D - t);
+		return this.curve(t);
 	}
 
-	@Override
 	public String asString() {
 		return this.name;
 	}
