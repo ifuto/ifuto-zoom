@@ -1,0 +1,38 @@
+{
+	"key.categories.ifuto-zoom": "Ifuto Zoom",
+	"key.ifuto-zoom.zoom": "Zoom",
+
+	"ifuto-zoom.config.title": "Ifuto Zoom Settings",
+	"ifuto-zoom.config.hint": "Default key: C — scroll while zooming to change the zoom level",
+
+	"ifuto-zoom.config.mode": "Zoom Mode",
+	"ifuto-zoom.config.mode.hold": "Hold",
+	"ifuto-zoom.config.mode.toggle": "Toggle",
+	"ifuto-zoom.config.mode.tooltip": "Hold: zoom only while the key is held down. Toggle: press once to zoom in, press again to zoom out.",
+
+	"ifuto-zoom.config.easing": "Animation",
+	"ifuto-zoom.config.easing.instant": "Instant",
+	"ifuto-zoom.config.easing.linear": "Linear",
+	"ifuto-zoom.config.easing.ease_in": "Ease In",
+	"ifuto-zoom.config.easing.ease_in_strong": "Ease In (Strong)",
+	"ifuto-zoom.config.easing.ease_in_out": "Ease In / Out",
+	"ifuto-zoom.config.easing.tooltip": "Curve used while the zoom moves in. The way back uses the mirrored curve.",
+
+	"ifuto-zoom.config.default_zoom": "Zoom Factor: %s",
+	"ifuto-zoom.config.ease_duration": "Animation Time: %s",
+	"ifuto-zoom.config.ease_duration.off": "Off",
+	"ifuto-zoom.config.min_zoom": "Minimum Zoom: %s",
+	"ifuto-zoom.config.scroll_step": "Scroll Step: %s",
+
+	"ifuto-zoom.config.scroll_to_zoom": "Scroll To Zoom",
+	"ifuto-zoom.config.scroll_to_zoom.tooltip": "Use the scroll wheel while zooming to zoom in (unlimited) or out (down to the minimum zoom).",
+
+	"ifuto-zoom.config.keep_zoom_level": "Keep Zoom Level",
+	"ifuto-zoom.config.keep_zoom_level.tooltip": "Keep the scrolled zoom level after the zoom ends instead of resetting it to the zoom factor.",
+
+	"ifuto-zoom.config.reduce_sensitivity": "Reduce Sensitivity",
+	"ifuto-zoom.config.reduce_sensitivity.tooltip": "Slow the mouse down while zoomed in so aiming stays precise.",
+	"ifuto-zoom.config.sensitivity_strength": "Sensitivity Amount: %s",
+
+	"ifuto-zoom.config.reset": "Reset to Defaults"
+}

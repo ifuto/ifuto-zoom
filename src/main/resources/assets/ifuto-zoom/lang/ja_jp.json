@@ -1,0 +1,38 @@
+{
+	"key.categories.ifuto-zoom": "Ifuto Zoom",
+	"key.ifuto-zoom.zoom": "ズーム",
+
+	"ifuto-zoom.config.title": "Ifuto Zoom 設定",
+	"ifuto-zoom.config.hint": "デフォルトキー: C — ズーム中にスクロールで倍率を変更",
+
+	"ifuto-zoom.config.mode": "ズーム方式",
+	"ifuto-zoom.config.mode.hold": "押している間",
+	"ifuto-zoom.config.mode.toggle": "切り替え",
+	"ifuto-zoom.config.mode.tooltip": "押している間: キーを押している間だけ拡大します。切り替え: 押すたびに拡大／通常を切り替えます。",
+
+	"ifuto-zoom.config.easing": "アニメーション",
+	"ifuto-zoom.config.easing.instant": "なし",
+	"ifuto-zoom.config.easing.linear": "リニア",
+	"ifuto-zoom.config.easing.ease_in": "イーズイン",
+	"ifuto-zoom.config.easing.ease_in_strong": "イーズイン（強）",
+	"ifuto-zoom.config.easing.ease_in_out": "イーズインアウト",
+	"ifuto-zoom.config.easing.tooltip": "拡大時のイージングカーブです。元に戻るときは反転したカーブを使います。",
+
+	"ifuto-zoom.config.default_zoom": "拡大倍率: %s",
+	"ifuto-zoom.config.ease_duration": "アニメーション時間: %s",
+	"ifuto-zoom.config.ease_duration.off": "オフ",
+	"ifuto-zoom.config.min_zoom": "縮小の限度: %s",
+	"ifuto-zoom.config.scroll_step": "スクロール刻み: %s",
+
+	"ifuto-zoom.config.scroll_to_zoom": "スクロールで倍率変更",
+	"ifuto-zoom.config.scroll_to_zoom.tooltip": "ズーム中のスクロールで、拡大は無制限に、縮小は「縮小の限度」まで倍率を変更します。",
+
+	"ifuto-zoom.config.keep_zoom_level": "倍率を維持",
+	"ifuto-zoom.config.keep_zoom_level.tooltip": "ズーム終了後もスクロールで変更した倍率を維持します（オフなら拡大倍率に戻ります）。",
+
+	"ifuto-zoom.config.reduce_sensitivity": "感度を下げる",
+	"ifuto-zoom.config.reduce_sensitivity.tooltip": "拡大中はマウス感度を下げて、狙いやすくします。",
+	"ifuto-zoom.config.sensitivity_strength": "感度の下げ幅: %s",
+
+	"ifuto-zoom.config.reset": "初期設定に戻す"
+}

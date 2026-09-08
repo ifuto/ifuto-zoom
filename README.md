@@ -1,1 +1,76 @@
 # ifuto-zoom
+
+Minecraft (Fabric / 1.21.1) 用のシンプルで滑らかな **Zoom Mod** です。
+
+![icon](src/main/resources/assets/ifuto-zoom/icon.png)
+
+## 機能
+
+- **デフォルトキーバインド: `C`**（`設定 → 操作設定` から変更可能）
+- **押している間だけ拡大 / 押すたびに拡大・通常を切り替え** の 2 モードを Mod Menu の設定画面から変更可能
+  （デフォルトは **押している間だけ拡大**）
+- `C` を押すと **3 倍** に拡大（倍率も設定画面で変更可能）
+- **スクロールで倍率を変更**
+  - 拡大は実質無制限（安全上限 1000x）
+  - 縮小は設定した **縮小の限度**（デフォルト 1.0x = 通常視野）まで
+  - 倍率は対数的に変化するので、どの倍率でも 1 ノッチの感覚が一定
+- **拡大時はイーズイン**でアニメーション（戻るときは反転したカーブ）。カーブと所要時間は設定可能
+- 拡大中は **マウス感度を自動で低下**（オン/オフ・強さを設定可能）
+
+## 設定（Mod Menu）
+
+Mod Menu の一覧から `Ifuto Zoom` → `Config` を開くと、以下を変更できます。
+
+| 項目 | 説明 | 既定値 |
+| --- | --- | --- |
+| ズーム方式 | 押している間 / 切り替え | 押している間 |
+| 拡大倍率 | キーを押したときの倍率 | 3.0x |
+| アニメーション | なし / リニア / イーズイン / イーズイン（強）/ イーズインアウト | イーズイン |
+| アニメーション時間 | 0〜1000 ms | 250 ms |
+| 縮小の限度 | スクロールで縮小できる下限 | 1.00x |
+| スクロール刻み | 1 ノッチあたりの倍率変化 | 15% |
+| スクロールで倍率変更 | ズーム中のスクロールを倍率変更に使う | オン |
+| 倍率を維持 | ズーム終了後も倍率を保持する | オフ |
+| 感度を下げる / 感度の下げ幅 | 拡大中のマウス感度調整 | オン / 100% |
+
+設定は `config/ifuto-zoom.json` に保存されます。Mod Menu が入っていなくても、この JSON を直接編集すれば設定できます。
+
+## 必要環境
+
+- Minecraft **1.21.1**
+- Fabric Loader **0.16.0** 以上
+- [Fabric API](https://modrinth.com/mod/fabric-api)
+- （任意）[Mod Menu](https://modrinth.com/mod/modmenu) — GUI 設定画面用
+
+## ビルド
+
+```bash
+./gradlew build
+```
+
+生成された jar は `build/libs/ifuto-zoom-<version>.jar` に出力されます
+（`-sources.jar` ではない方をインストールしてください）。
+
+GitHub Actions（`.github/workflows/build.yml`）でも push のたびにビルドされ、
+成果物は Artifact としてアップロードされます。
+
+## 開発
+
+```bash
+./gradlew runClient   # 開発用クライアントを起動
+```
+
+主要なソース:
+
+| ファイル | 役割 |
+| --- | --- |
+| `IfutoZoomClient.java` | キーバインド登録・毎ティックの状態更新 |
+| `ZoomState.java` | 倍率・イージングアニメーションの計算 |
+| `mixin/GameRendererMixin.java` | `GameRenderer#getFov` を倍率で割って視野を狭める |
+| `mixin/MouseMixin.java` | スクロールでの倍率変更・拡大中の感度低下 |
+| `config/ZoomConfig.java` | JSON 設定の読み書き |
+| `gui/ZoomConfigScreen.java` | Mod Menu から開く設定画面 |
+
+## ライセンス
+
+MIT
