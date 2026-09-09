@@ -1,99 +1,172 @@
-name: Build Fabric Mod (MC 1.21.1)
+name: Multi Build
 
 on:
-  push:
-    branches: ["**"]
-  pull_request:
-    branches: ["**"]
   workflow_dispatch:
+    inputs:
+      mc:
+        description: "Minecraft バージョン（空欄 = リポジトリの既定値）"
+        required: false
+        default: ""
+      yarn:
+        description: "Yarn マッピング（空欄 = リポジトリの既定値）"
+        required: false
+        default: ""
+      loader:
+        description: "Fabric Loader バージョン（空欄 = リポジトリの既定値）"
+        required: false
+        default: ""
+      fabric_api:
+        description: "Fabric API バージョン（空欄 = リポジトリの既定値）"
+        required: false
+        default: ""
+      modmenu:
+        description: "Mod Menu バージョン（空欄 = リポジトリの既定値）"
+        required: false
+        default: ""
+      java:
+        description: "JDK バージョン"
+        required: false
+        default: "21"
+      workdir:
+        description: "ビルドするサブフォルダ（空欄 = リポジトリルート）"
+        required: false
+        default: ""
+      artifact_path:
+        description: "成果物としてアップロードするパス"
+        required: false
+        default: ""
+  push:
+    paths:
+      - "trigger.md"
+
+permissions:
+  contents: read
 
 jobs:
-  build:
+  prepare:
+    name: パラメータ解決
     runs-on: ubuntu-latest
-
-    permissions:
-      contents: write  # build-log を push するために必要
-
+    outputs:
+      mc: ${{ steps.p.outputs.mc }}
+      yarn: ${{ steps.p.outputs.yarn }}
+      loader: ${{ steps.p.outputs.loader }}
+      fabric_api: ${{ steps.p.outputs.fabric_api }}
+      modmenu: ${{ steps.p.outputs.modmenu }}
+      java: ${{ steps.p.outputs.java }}
+      workdir: ${{ steps.p.outputs.workdir }}
+      artifact_path: ${{ steps.p.outputs.artifact_path }}
     steps:
-      # ── 1. ソースチェックアウト ──────────────────────────────────
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0   # git push 用に履歴を取得
+      - uses: actions/checkout@v4
 
-      # ── 2. Java セットアップ (MC 1.21.1 → Java 21) ─────────────
-      - name: Set up JDK 21
+      - name: パラメータ決定（手動入力 > trigger.md > 既定値）
+        id: p
+        env:
+          IN_MC: ${{ inputs.mc }}
+          IN_YARN: ${{ inputs.yarn }}
+          IN_LOADER: ${{ inputs.loader }}
+          IN_FABRIC_API: ${{ inputs.fabric_api }}
+          IN_MODMENU: ${{ inputs.modmenu }}
+          IN_JAVA: ${{ inputs.java }}
+          IN_WORKDIR: ${{ inputs.workdir }}
+          IN_ARTIFACT_PATH: ${{ inputs.artifact_path }}
+        run: |
+          set -euo pipefail
+
+          # gradle.properties の現在値を読む（引数: プロパティ名）
+          prop() { grep -E "^$1=" gradle.properties 2>/dev/null | head -n1 | cut -d= -f2-; }
+
+          # trigger.md の "key: value" 行を読む（なければ空文字）
+          trig() {
+            [ -f trigger.md ] || return 0
+            grep -E "^[[:space:]]*$1[[:space:]]*:" trigger.md | head -n1 \
+              | sed -E "s/^[[:space:]]*$1[[:space:]]*:[[:space:]]*//; s/[[:space:]]+$//" || true
+          }
+
+          # 優先順位付きで値を決める（$1: 手動入力 $2: trigger.md のキー $3: 既定値）
+          pick() {
+            local v="${1:-}"
+            [ -n "$v" ] || v=$(trig "$2")
+            [ -n "$v" ] || v="$3"
+            printf '%s' "$v"
+          }
+
+          {
+            echo "mc=$(pick "$IN_MC" mc "$(prop minecraft_version)")"
+            echo "yarn=$(pick "$IN_YARN" yarn "$(prop yarn_mappings)")"
+            echo "loader=$(pick "$IN_LOADER" loader "$(prop loader_version)")"
+            echo "fabric_api=$(pick "$IN_FABRIC_API" fabric_api "$(prop fabric_version)")"
+            echo "modmenu=$(pick "$IN_MODMENU" modmenu "$(prop modmenu_version)")"
+            echo "java=$(pick "$IN_JAVA" java "21")"
+            echo "workdir=$(pick "$IN_WORKDIR" workdir "")"
+            echo "artifact_path=$(pick "$IN_ARTIFACT_PATH" artifact_path "build/libs/*.jar")"
+          } >> "$GITHUB_OUTPUT"
+
+  build:
+    name: ビルド (mc=${{ needs.prepare.outputs.mc }})
+    needs: prepare
+    runs-on: ubuntu-latest
+    env:
+      MC: ${{ needs.prepare.outputs.mc }}
+      YARN: ${{ needs.prepare.outputs.yarn }}
+      LOADER: ${{ needs.prepare.outputs.loader }}
+      FABRIC_API: ${{ needs.prepare.outputs.fabric_api }}
+      MODMENU: ${{ needs.prepare.outputs.modmenu }}
+      WORKDIR: ${{ needs.prepare.outputs.workdir }}
+      ARTIFACT_PATH: ${{ needs.prepare.outputs.artifact_path }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: JDK セットアップ
         uses: actions/setup-java@v4
         with:
-          java-version: "21"
-          distribution: "temurin"
+          distribution: temurin
+          java-version: ${{ needs.prepare.outputs.java }}
+          cache: gradle
 
-      # ── 3. Gradle キャッシュ ────────────────────────────────────
-      - name: Cache Gradle & Loom
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-            ~/.gradle/loom-cache
-          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties', '**/gradle.properties') }}
-          restore-keys: |
-            ${{ runner.os }}-gradle-
-
-      # ── 4. gradlew に実行権限を付与 ─────────────────────────────
-      - name: Grant execute permission to gradlew
-        run: chmod +x gradlew
-
-      # ── 5. ビルド実行 & ログ取得 ────────────────────────────────
-      #    続行フラグ (continue-on-error: false) はデフォルトなので省略
-      #    ビルド結果 (成功/失敗) を outcome で後続 step が参照する
-      - name: Build with Gradle
-        id: build
+      - name: gradle.properties にパラメータ反映
         run: |
-          ./gradlew build --stacktrace 2>&1 | tee build-log.txt
-          # パイプを使うと gradlew の終了コードが失われるため PIPESTATUS で明示的にチェック
-          exit "${PIPESTATUS[0]}"
-        continue-on-error: true   # 失敗してもログ upload step へ進む
+          set -euo pipefail
+          DIR="."
+          if [ -n "$WORKDIR" ] && [ -f "$WORKDIR/gradle.properties" ]; then
+            DIR="$WORKDIR"
+          fi
+          cd "$DIR"
 
-      # ── 6. ビルド成功時 → jar を Artifact としてアップロード ────
-      - name: Upload mod JAR
-        if: steps.build.outcome == 'success'
-        uses: actions/upload-artifact@v4
-        with:
-          name: mod-jar-${{ github.run_number }}
-          path: build/libs/*.jar
-          if-no-files-found: warn
+          put() { # $1: プロパティ名 $2: 値（空なら変更しない）
+            [ -n "$2" ] || return 0
+            if grep -q "^$1=" gradle.properties; then
+              sed -i "s|^$1=.*|$1=$2|" gradle.properties
+            else
+              echo "$1=$2" >> gradle.properties
+            fi
+          }
+          put minecraft_version "$MC"
+          put yarn_mappings "$YARN"
+          put loader_version "$LOADER"
+          put fabric_version "$FABRIC_API"
+          put modmenu_version "$MODMENU"
+          echo "--- gradle.properties ---"
+          cat gradle.properties
 
-      # ── 7. 常に → build-log を Artifact としてアップロード ──────
-      #    (成功・失敗どちらでも確認できるよう always() で実行)
-      - name: Upload build log
+      - name: ビルド実行
+        run: |
+          set -o pipefail
+          if [ -n "$WORKDIR" ] && [ -x "$WORKDIR/gradlew" ]; then
+            (cd "$WORKDIR" && ./gradlew build --stacktrace) 2>&1 | tee "$WORKDIR/build-log.txt"
+          elif [ -n "$WORKDIR" ]; then
+            chmod +x gradlew
+            ./gradlew -p "$WORKDIR" build --stacktrace 2>&1 | tee build-log.txt
+          else
+            chmod +x gradlew
+            ./gradlew build --stacktrace 2>&1 | tee build-log.txt
+          fi
+
+      - name: 成果物アップロード
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: build-log-${{ github.run_number }}
-          path: build-log.txt
+          name: multi-build-${{ github.run_number }}
+          path: |
+            ${{ env.ARTIFACT_PATH }}
+            **/build-log.txt
           if-no-files-found: warn
-
-      # ── 8. ビルド失敗時 → build-log を Git に push ───────────────
-      - name: Push build-log on failure
-        if: steps.build.outcome == 'failure'
-        run: |
-          git config user.name  "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-
-          mkdir -p build-logs
-          TIMESTAMP=$(date -u +"%Y%m%d_%H%M%S")
-          LOG_FILE="build-logs/build-log_run${{ github.run_number }}_${TIMESTAMP}.txt"
-
-          cp build-log.txt "${LOG_FILE}"
-
-          git add "${LOG_FILE}"
-          git commit -m "ci: add build-log for failed run #${{ github.run_number }} [skip ci]"
-          git push origin HEAD:${{ github.ref_name }}
-
-      # ── 9. ビルド失敗を最終的にワークフロー失敗として伝播 ───────
-      - name: Fail workflow if build failed
-        if: steps.build.outcome == 'failure'
-        run: |
-          echo "::error::Build failed. See build-log artifact or build-logs/ directory."
-          exit 1
