@@ -22,6 +22,9 @@
 	"ifuto-zoom.config.default_zoom": "Zoom Factor: %s",
 	"ifuto-zoom.config.ease_duration": "Animation Time: %s",
 	"ifuto-zoom.config.ease_duration.off": "Off",
+	"ifuto-zoom.config.scroll_smooth": "Scroll Smoothing: %s",
+	"ifuto-zoom.config.scroll_smooth.off": "Off",
+	"ifuto-zoom.config.easing_power": "Curve Strength: %s",
 	"ifuto-zoom.config.min_zoom": "Minimum Zoom: %s",
 	"ifuto-zoom.config.scroll_step": "Scroll Step: %s",
 

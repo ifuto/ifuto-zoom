@@ -48,8 +48,14 @@ public class ZoomConfig {
 	/** Easing curve of the zoom animation. */
 	public EasingType easing = EasingType.EASE_OUT;
 
-	/** Duration of the key press / release zoom animation in milliseconds (scroll always uses a ~175 ms smoothing). */
+	/** Exponent ("カーブの強さ") of the power-based curves: 1 = linear, 2 = quadratic, 3 = cubic... */
+	public double easingPower = 2.0D;
+
+	/** Duration of the key press / release zoom animation in milliseconds. */
 	public int easeDurationMs = 500;
+
+	/** Time for the scroll smoothing to mostly (95%) settle, in milliseconds; 0 = instant. */
+	public int scrollSmoothMs = 175;
 
 	/** Slow the mouse down while zoomed in. */
 	public boolean reduceSensitivity = true;
@@ -117,7 +123,9 @@ public class ZoomConfig {
 		this.scrollToZoom = defaults.scrollToZoom;
 		this.keepZoomLevel = defaults.keepZoomLevel;
 		this.easing = defaults.easing;
+		this.easingPower = defaults.easingPower;
 		this.easeDurationMs = defaults.easeDurationMs;
+		this.scrollSmoothMs = defaults.scrollSmoothMs;
 		this.reduceSensitivity = defaults.reduceSensitivity;
 		this.sensitivityStrength = defaults.sensitivityStrength;
 	}
@@ -137,10 +145,18 @@ public class ZoomConfig {
 		this.scrollStep = clamp(this.scrollStep, 1.01D, 2.0D, 1.15D);
 		this.sensitivityStrength = clamp(this.sensitivityStrength, 0.0D, 1.0D, 1.0D);
 
+		this.easingPower = clamp(this.easingPower, EasingType.MIN_POWER, EasingType.MAX_POWER, 2.0D);
+
 		if (this.easeDurationMs < 0) {
 			this.easeDurationMs = 0;
 		} else if (this.easeDurationMs > 2000) {
 			this.easeDurationMs = 2000;
+		}
+
+		if (this.scrollSmoothMs < 0) {
+			this.scrollSmoothMs = 0;
+		} else if (this.scrollSmoothMs > 2000) {
+			this.scrollSmoothMs = 2000;
 		}
 	}
 

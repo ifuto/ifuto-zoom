@@ -116,6 +116,22 @@ public class ZoomConfigScreen extends Screen {
 				value -> Text.literal(String.format("%.0f%%", value * 100.0D)),
 				value -> this.config.sensitivityStrength = value));
 
+		// Row 6: scroll smoothing + curve strength
+		y += ROW_HEIGHT;
+		this.addDrawableChild(new OptionSlider(left, y, WIDGET_WIDTH, WIDGET_HEIGHT,
+				"ifuto-zoom.config.scroll_smooth", 0.0D, 400.0D, 5.0D,
+				this.config.scrollSmoothMs,
+				value -> value <= 0.0D
+						? Text.translatable("ifuto-zoom.config.scroll_smooth.off")
+						: Text.literal(String.format("%d ms", (int) value)),
+				value -> this.config.scrollSmoothMs = (int) Math.round(value)));
+
+		this.addDrawableChild(new OptionSlider(right, y, WIDGET_WIDTH, WIDGET_HEIGHT,
+				"ifuto-zoom.config.easing_power", EasingType.MIN_POWER, 5.0D, 0.1D,
+				this.config.easingPower,
+				value -> Text.literal(String.format("%.1f", value)),
+				value -> this.config.easingPower = value));
+
 		// Footer
 		y += ROW_HEIGHT + 8;
 		this.addDrawableChild(ButtonWidget.builder(Text.translatable("ifuto-zoom.config.reset"), button -> {

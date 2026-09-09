@@ -13,9 +13,10 @@ import net.fabricmc.api.Environment;
  *   <li><b>Key press / release</b>: a fixed-length ease-out animation over the configured
  *       duration. The duration never depends on the zoom distance, so zooming back out
  *       always takes the same time, no matter how far the scroll wheel took you.</li>
- *   <li><b>Scroll wheel</b>: exponential smoothing that chases the target (≈175 ms to
- *       mostly settle). Repeated wheel ticks blend into one continuous glide instead of
- *       restarting a short animation for every notch, which used to feel choppy.</li>
+ *   <li><b>Scroll wheel</b>: exponential smoothing that chases the target (settle time
+ *       configurable, 175 ms by default). Repeated wheel ticks blend into one continuous
+ *       glide instead of restarting a short animation for every notch, which used to feel
+ *       choppy.</li>
  * </ul>
  *
  * <p>Curves are applied to the zoom factor directly (linear space): the perceived on-screen
@@ -29,12 +30,6 @@ public final class ZoomState {
 
 	/** Safety cap so extreme zoom levels cannot break the projection matrix. */
 	public static final double HARD_MAX_ZOOM = 1000.0D;
-
-	/**
-	 * Time constant of the scroll smoothing. An exponential chase is ~95% settled after
-	 * three time constants, so this makes one wheel notch glide for about 175 ms.
-	 */
-	private static final double SCROLL_TAU_SECONDS = 0.175D / 3.0D;
 
 	/** Longest frame step the smoothing integrates; longer hitches just snap to the target. */
 	private static final double MAX_FRAME_SECONDS = 0.1D;
@@ -128,11 +123,17 @@ public final class ZoomState {
 		long now = System.nanoTime();
 
 		if (smoothing) {
-			if (lastSmoothSampleNanos > 0L) {
+			// An exponential chase is ~95% settled after three time constants, so one wheel
+			// notch glides for about `scrollSmoothMs`. 0 ms means: snap straight to the target.
+			double tauSeconds = ZoomConfig.get().scrollSmoothMs / 3000.0D;
+
+			if (tauSeconds <= 1.0E-4D) {
+				animCurrent = animTo;
+			} else if (lastSmoothSampleNanos > 0L) {
 				double dt = Math.min(MAX_FRAME_SECONDS, (now - lastSmoothSampleNanos) / 1.0E9D);
 
 				if (dt > 0.0D) {
-					animCurrent += (animTo - animCurrent) * (1.0D - Math.exp(-dt / SCROLL_TAU_SECONDS));
+					animCurrent += (animTo - animCurrent) * (1.0D - Math.exp(-dt / tauSeconds));
 
 					if (Math.abs(animTo - animCurrent) < 1.0E-5D) {
 						animCurrent = animTo;
@@ -150,8 +151,8 @@ public final class ZoomState {
 				animDurationNanos = 0L;
 				animCurrent = animTo;
 			} else {
-				EasingType easing = ZoomConfig.get().easing;
-				animCurrent = animFrom + (animTo - animFrom) * easing.apply(Math.max(0.0D, progress));
+				ZoomConfig config = ZoomConfig.get();
+				animCurrent = animFrom + (animTo - animFrom) * config.easing.apply(Math.max(0.0D, progress), config.easingPower);
 			}
 		}
 

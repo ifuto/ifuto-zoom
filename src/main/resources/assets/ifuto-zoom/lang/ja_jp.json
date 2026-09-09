@@ -22,6 +22,9 @@
 	"ifuto-zoom.config.default_zoom": "拡大倍率: %s",
 	"ifuto-zoom.config.ease_duration": "アニメーション時間: %s",
 	"ifuto-zoom.config.ease_duration.off": "オフ",
+	"ifuto-zoom.config.scroll_smooth": "スクロール滑らかさ: %s",
+	"ifuto-zoom.config.scroll_smooth.off": "オフ",
+	"ifuto-zoom.config.easing_power": "カーブの強さ: %s",
 	"ifuto-zoom.config.min_zoom": "縮小の限度: %s",
 	"ifuto-zoom.config.scroll_step": "スクロール刻み: %s",
 
