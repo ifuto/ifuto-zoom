@@ -15,4 +15,4 @@ java: 21
 workdir:
 artifact_path: build/libs/*.jar
 
-note: 初回
+note: コメント整理のビルド確認

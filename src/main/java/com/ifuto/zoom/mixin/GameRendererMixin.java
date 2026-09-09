@@ -9,14 +9,14 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /**
- * Divides the vanilla field of view by the current zoom factor.
+ * ワールドの FOV を現在のズーム倍率で割る。
  */
 @Mixin(GameRenderer.class)
 public class GameRendererMixin {
 	@Inject(method = "getFov(Lnet/minecraft/client/render/Camera;FZ)F", at = @At("RETURN"), cancellable = true)
 	private void ifutoZoom$applyZoom(Camera camera, float tickProgress, boolean changingFov, CallbackInfoReturnable<Float> cir) {
-		// Vanilla asks for the "changing" fov for the world projection and for the plain one for the
-		// held item / overlays, so only touching the former keeps the hand at its normal size.
+		// getFov はワールド描画用 (changingFov=true) と手持ち・オーバーレイ用 (false) で別に呼ばれる。
+		// 前者だけ触れば手持ちアイテムはバニラサイズのままになる
 		if (!changingFov) {
 			return;
 		}

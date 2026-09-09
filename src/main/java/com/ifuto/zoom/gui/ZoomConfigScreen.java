@@ -18,7 +18,7 @@ import net.minecraft.text.Text;
 import java.util.function.DoubleConsumer;
 
 /**
- * Vanilla styled options screen, opened from Mod Menu.
+ * Mod Menu から開く設定画面。バニラのオプション画面っぽい見た目にしている。
  */
 @Environment(EnvType.CLIENT)
 public class ZoomConfigScreen extends Screen {
@@ -42,7 +42,7 @@ public class ZoomConfigScreen extends Screen {
 		int right = this.width / 2 + COLUMN_GAP / 2;
 		int y = 40;
 
-		// Row 1: mode + easing
+		// 1行目: 方式 / アニメーション
 		this.addDrawableChild(CyclingButtonWidget.<ZoomMode>builder(ZoomMode::getText, this.config.mode)
 				.values(ZoomMode.values())
 				.tooltip(value -> Tooltip.of(Text.translatable("ifuto-zoom.config.mode.tooltip")))
@@ -58,7 +58,7 @@ public class ZoomConfigScreen extends Screen {
 				.build(right, y, WIDGET_WIDTH, WIDGET_HEIGHT, Text.translatable("ifuto-zoom.config.easing"),
 						(button, value) -> this.config.easing = value));
 
-		// Row 2: default zoom + animation duration
+		// 2行目: 倍率 / アニメーション時間
 		y += ROW_HEIGHT;
 		this.addDrawableChild(new OptionSlider(left, y, WIDGET_WIDTH, WIDGET_HEIGHT,
 				"ifuto-zoom.config.default_zoom", 1.0D, ZoomConfig.MAX_CONFIGURABLE_ZOOM, 0.1D,
@@ -77,7 +77,7 @@ public class ZoomConfigScreen extends Screen {
 						: Text.literal(String.format("%d ms", (int) value)),
 				value -> this.config.easeDurationMs = (int) Math.round(value)));
 
-		// Row 3: minimum zoom + scroll step
+		// 3行目: 縮小の限度 / スクロール刻み
 		y += ROW_HEIGHT;
 		this.addDrawableChild(new OptionSlider(left, y, WIDGET_WIDTH, WIDGET_HEIGHT,
 				"ifuto-zoom.config.min_zoom", ZoomConfig.HARD_MIN_ZOOM, 5.0D, 0.05D,
@@ -91,7 +91,7 @@ public class ZoomConfigScreen extends Screen {
 				value -> Text.literal(String.format("%.0f%%", (value - 1.0D) * 100.0D)),
 				value -> this.config.scrollStep = value));
 
-		// Row 4: scroll to zoom + keep zoom level
+		// 4行目: スクロール関連
 		y += ROW_HEIGHT;
 		this.addDrawableChild(CyclingButtonWidget.onOffBuilder(this.config.scrollToZoom)
 				.tooltip(value -> Tooltip.of(Text.translatable("ifuto-zoom.config.scroll_to_zoom.tooltip")))
@@ -103,7 +103,7 @@ public class ZoomConfigScreen extends Screen {
 				.build(right, y, WIDGET_WIDTH, WIDGET_HEIGHT, Text.translatable("ifuto-zoom.config.keep_zoom_level"),
 						(button, value) -> this.config.keepZoomLevel = value));
 
-		// Row 5: sensitivity
+		// 5行目: 感度
 		y += ROW_HEIGHT;
 		this.addDrawableChild(CyclingButtonWidget.onOffBuilder(this.config.reduceSensitivity)
 				.tooltip(value -> Tooltip.of(Text.translatable("ifuto-zoom.config.reduce_sensitivity.tooltip")))
@@ -116,7 +116,7 @@ public class ZoomConfigScreen extends Screen {
 				value -> Text.literal(String.format("%.0f%%", value * 100.0D)),
 				value -> this.config.sensitivityStrength = value));
 
-		// Row 6: scroll smoothing + curve strength
+		// 6行目: スクロール滑らかさ / カーブの強さ
 		y += ROW_HEIGHT;
 		this.addDrawableChild(new OptionSlider(left, y, WIDGET_WIDTH, WIDGET_HEIGHT,
 				"ifuto-zoom.config.scroll_smooth", 0.0D, 400.0D, 5.0D,
@@ -132,7 +132,7 @@ public class ZoomConfigScreen extends Screen {
 				value -> Text.literal(String.format("%.1f", value)),
 				value -> this.config.easingPower = value));
 
-		// Footer
+		// リセット / 完了
 		y += ROW_HEIGHT + 8;
 		this.addDrawableChild(ButtonWidget.builder(Text.translatable("ifuto-zoom.config.reset"), button -> {
 			this.config.resetToDefaults();
@@ -166,9 +166,7 @@ public class ZoomConfigScreen extends Screen {
 		super.removed();
 	}
 
-	/**
-	 * A slider that maps its {@code [0, 1]} position onto a snapped double range.
-	 */
+	// スライダーの 0-1 位置を指定範囲に変換して刻むだけのクラス
 	private static class OptionSlider extends SliderWidget {
 		private final String labelKey;
 		private final double min;

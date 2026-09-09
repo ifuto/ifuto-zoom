@@ -15,7 +15,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 /**
- * Simple JSON backed configuration, stored in {@code config/ifuto-zoom.json}.
+ * config/ifuto-zoom.json に保存する設定。
  */
 @Environment(EnvType.CLIENT)
 public class ZoomConfig {
@@ -25,45 +25,41 @@ public class ZoomConfig {
 	private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 	private static ZoomConfig instance;
 
-	// ---- options -------------------------------------------------------------------------------
-
-	/** Hold the key (default) or toggle it. */
+	/** キーを押している間だけ or 押すたびに切り替わる（既定は前者） */
 	public ZoomMode mode = ZoomMode.HOLD;
 
-	/** Zoom factor applied when the key is pressed. */
+	/** キーを押したときの倍率 */
 	public double defaultZoom = 3.0D;
 
-	/** Lower bound while scrolling out (upper bound is practically unlimited). */
+	/** スクロールで縮小できる下限（上限は実質なし） */
 	public double minZoom = 1.0D;
 
-	/** Multiplier applied per scroll notch. */
+	/** スクロール1ノッチあたりの倍率 */
 	public double scrollStep = 1.15D;
 
-	/** Whether scrolling changes the zoom factor while zooming. */
+	/** ズーム中のスクロールを倍率変更に使うか */
 	public boolean scrollToZoom = true;
 
-	/** Keep the scrolled zoom factor after releasing the key. */
+	/** ズームを終えてもスクロールした倍率を維持するか */
 	public boolean keepZoomLevel = false;
 
-	/** Easing curve of the zoom animation. */
+	/** ズームの速度カーブ */
 	public EasingType easing = EasingType.EASE_OUT;
 
-	/** Exponent ("カーブの強さ") of the power-based curves: 1 = linear, 2 = quadratic, 3 = cubic... */
+	/** 「カーブの強さ」用の指数。1=リニア、2=二次、3=三次… */
 	public double easingPower = 2.0D;
 
-	/** Duration of the key press / release zoom animation in milliseconds. */
+	/** キーを押す/離したときのアニメーション時間（ミリ秒） */
 	public int easeDurationMs = 500;
 
-	/** Time for the scroll smoothing to mostly (95%) settle, in milliseconds; 0 = instant. */
+	/** スクロール追従がだいたい収まるまでの時間（ミリ秒）。0 で追従なし */
 	public int scrollSmoothMs = 175;
 
-	/** Slow the mouse down while zoomed in. */
+	/** ズーム中はマウス感度を落とす */
 	public boolean reduceSensitivity = true;
 
-	/** How strongly the sensitivity follows the zoom (1.0 = fully proportional). */
+	/** 感度の落とし具合（1.0 で倍率比例） */
 	public double sensitivityStrength = 1.0D;
-
-	// ---- loading / saving ----------------------------------------------------------------------
 
 	public static ZoomConfig get() {
 		if (instance == null) {
@@ -89,7 +85,7 @@ public class ZoomConfig {
 					config = loaded;
 				}
 			} catch (Exception e) {
-				IfutoZoomClient.LOGGER.warn("[ifuto-zoom] Could not read {}, falling back to defaults", path, e);
+				IfutoZoomClient.LOGGER.warn("[ifuto-zoom] {} が読めなかったので既定値で続行", path, e);
 			}
 		}
 
@@ -110,7 +106,7 @@ public class ZoomConfig {
 				GSON.toJson(this, writer);
 			}
 		} catch (IOException e) {
-			IfutoZoomClient.LOGGER.warn("[ifuto-zoom] Could not write {}", path, e);
+			IfutoZoomClient.LOGGER.warn("[ifuto-zoom] {} を書き込めなかった", path, e);
 		}
 	}
 
@@ -130,7 +126,7 @@ public class ZoomConfig {
 		this.sensitivityStrength = defaults.sensitivityStrength;
 	}
 
-	/** Keeps hand edited / outdated config files from breaking the game. */
+	/** 手書き編集や古いファイルで壊れていても落ちないように丸める */
 	public void validate() {
 		if (this.mode == null) {
 			this.mode = ZoomMode.HOLD;
@@ -144,20 +140,9 @@ public class ZoomConfig {
 		this.defaultZoom = clamp(this.defaultZoom, this.minZoom, MAX_CONFIGURABLE_ZOOM, 3.0D);
 		this.scrollStep = clamp(this.scrollStep, 1.01D, 2.0D, 1.15D);
 		this.sensitivityStrength = clamp(this.sensitivityStrength, 0.0D, 1.0D, 1.0D);
-
 		this.easingPower = clamp(this.easingPower, EasingType.MIN_POWER, EasingType.MAX_POWER, 2.0D);
-
-		if (this.easeDurationMs < 0) {
-			this.easeDurationMs = 0;
-		} else if (this.easeDurationMs > 2000) {
-			this.easeDurationMs = 2000;
-		}
-
-		if (this.scrollSmoothMs < 0) {
-			this.scrollSmoothMs = 0;
-		} else if (this.scrollSmoothMs > 2000) {
-			this.scrollSmoothMs = 2000;
-		}
+		this.easeDurationMs = (int) clamp(this.easeDurationMs, 0, 2000, 500);
+		this.scrollSmoothMs = (int) clamp(this.scrollSmoothMs, 0, 2000, 175);
 	}
 
 	private static double clamp(double value, double min, double max, double fallback) {

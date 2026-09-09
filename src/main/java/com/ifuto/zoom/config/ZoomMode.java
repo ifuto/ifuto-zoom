@@ -5,13 +5,13 @@ import net.fabricmc.api.Environment;
 import net.minecraft.text.Text;
 
 /**
- * How the zoom key behaves.
+ * ズームキーの動作。
  */
 @Environment(EnvType.CLIENT)
 public enum ZoomMode {
-	/** Zoom only while the key is held down (default). */
+	/** 押している間だけズーム（既定） */
 	HOLD("hold"),
-	/** Press once to zoom in, press again to zoom out. */
+	/** 押すたびに 拡大⇔通常 */
 	TOGGLE("toggle");
 
 	private final String name;

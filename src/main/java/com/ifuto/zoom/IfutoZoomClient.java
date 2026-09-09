@@ -15,16 +15,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Client entrypoint of ifuto-zoom.
- *
- * <p>Registers the zoom key binding (default: C) and drives {@link ZoomState} every client tick.</p>
+ * ズームキー（既定: C）の登録と、毎ティックの状態更新。
  */
 @Environment(EnvType.CLIENT)
 public class IfutoZoomClient implements ClientModInitializer {
 	public static final String MOD_ID = "ifuto-zoom";
 	public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
 
-	/** Own controls category; its label key is {@code key.category.ifuto-zoom.zoom}. */
+	// キー設定画面に出るカテゴリ名（言語キー: key.category.ifuto-zoom.zoom）
 	public static final KeyBinding.Category KEY_CATEGORY = KeyBinding.Category.create(Identifier.of(MOD_ID, "zoom"));
 
 	private static KeyBinding zoomKey;
@@ -35,7 +33,7 @@ public class IfutoZoomClient implements ClientModInitializer {
 
 	@Override
 	public void onInitializeClient() {
-		// Make sure the config exists on disk / is loaded before the first frame.
+		// 最初のフレームより前に設定ファイルを作って読み込んでおく
 		ZoomConfig.get();
 
 		zoomKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
@@ -63,9 +61,8 @@ public class IfutoZoomClient implements ClientModInitializer {
 					ZoomState.setActive(!ZoomState.isActive());
 				}
 			} else {
-				// Hold mode: the key state itself is the zoom state.
+				// 押しっぱなし方式: 溜まった押下は消費だけして、実際の状態はキーを見る
 				while (zoomKey.wasPressed()) {
-					// Consume queued presses so they do not leak into a later toggle.
 				}
 
 				ZoomState.setActive(zoomKey.isPressed());

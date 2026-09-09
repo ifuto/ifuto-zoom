@@ -6,47 +6,37 @@ import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 
 /**
- * Holds the runtime zoom state and computes the zoom factor used for rendering each frame.
+ * ズームの実行時状態と毎フレームの描画倍率を計算する。
  *
- * <p>Two kinds of motion are used:</p>
- * <ul>
- *   <li><b>Key press / release</b>: a fixed-length ease-out animation over the configured
- *       duration. The duration never depends on the zoom distance, so zooming back out
- *       always takes the same time, no matter how far the scroll wheel took you.</li>
- *   <li><b>Scroll wheel</b>: exponential smoothing that chases the target (settle time
- *       configurable, 175 ms by default). Repeated wheel ticks blend into one continuous
- *       glide instead of restarting a short animation for every notch, which used to feel
- *       choppy.</li>
- * </ul>
- *
- * <p>Curves are applied to the zoom factor directly (linear space): the perceived on-screen
- * speed follows {@code d(zoom)/dt}, so an ease-out here visibly decelerates from the first
- * frame.</p>
+ * 動きは2種類。キーの押す/離すは設定時間のイーズアウト（距離によらず一定時間）、
+ * ホイールは目標への追従スムージング（ノッチごとの再生だとカクつくので）。
+ * カーブは倍率そのものに掛ける。画面に見える速さは d(zoom)/dt で決まるので、
+ * ここでイーズアウトにすると最初のフレームから目に見えて減速する。
  */
 @Environment(EnvType.CLIENT)
 public final class ZoomState {
 	private ZoomState() {
 	}
 
-	/** Safety cap so extreme zoom levels cannot break the projection matrix. */
+	/** 極端な倍率で射影行列が壊れないよう一応の上限を掛けておく */
 	public static final double HARD_MAX_ZOOM = 1000.0D;
 
-	/** Longest frame step the smoothing integrates; longer hitches just snap to the target. */
+	/** カクつき時に何秒分まで平滑化するか。これ以上フレームが空いたらそのまま瞬間移動させる */
 	private static final double MAX_FRAME_SECONDS = 0.1D;
 
 	private static boolean active;
 
-	/** Target zoom factor while active (changed by scrolling). */
+	/** ズーム中の目標倍率（スクロールで変わる） */
 	private static double zoomLevel = -1.0D;
 
-	// Animation state, all in plain (linear) zoom factor space.
+	// アニメーション用（全部そのままの倍率で持つ）
 	private static double animFrom = 1.0D;
 	private static double animTo = 1.0D;
 	private static double animCurrent = 1.0D;
 	private static long animStartNanos;
 	private static long animDurationNanos;
 
-	/** True while the scroll smoothing owns {@link #animCurrent} instead of an ease animation. */
+	/** スクロールの平滑化が現在値を管理している間 true（イーズ再生中は false） */
 	private static boolean smoothing;
 	private static long lastSmoothSampleNanos;
 
@@ -56,7 +46,7 @@ public final class ZoomState {
 		return active;
 	}
 
-	/** @return true while the mod is changing the FOV (including the closing animation). */
+	/** 閉じるアニメーションを含め、FOV を書き換えている最中か */
 	public static boolean isZooming() {
 		return active || Math.abs(lastRenderZoom - 1.0D) > 1.0E-4D;
 	}
@@ -91,10 +81,7 @@ public final class ZoomState {
 	}
 
 	/**
-	 * Applies a mouse scroll while zooming.
-	 *
-	 * @param amount vertical scroll amount (positive = scroll up = zoom in)
-	 * @return true when the scroll was consumed by the zoom
+	 * ズーム中のスクロールを倍率変更に使う。
 	 */
 	public static boolean onScroll(double amount) {
 		ZoomConfig config = ZoomConfig.get();
@@ -109,7 +96,7 @@ public final class ZoomState {
 		return true;
 	}
 
-	/** Resets everything (used when the config changes). */
+	/** 設定が変わったとき用に全部戻す */
 	public static void reset() {
 		ZoomConfig config = ZoomConfig.get();
 		zoomLevel = config.defaultZoom;
@@ -117,14 +104,14 @@ public final class ZoomState {
 	}
 
 	/**
-	 * @return the zoom factor to render with this frame; 1.0 means "no zoom".
+	 * このフレームの描画倍率。1.0 ならズームなし。
 	 */
 	public static double getRenderZoom() {
 		long now = System.nanoTime();
 
 		if (smoothing) {
-			// An exponential chase is ~95% settled after three time constants, so one wheel
-			// notch glides for about `scrollSmoothMs`. 0 ms means: snap straight to the target.
+			// 指数追従は時定数の3倍でだいたい (95%) 収まるので、1ノッチが scrollSmoothMs くらいの動きになる。
+			// 0ms ならスムージングなし＝そのまま目標へ。
 			double tauSeconds = ZoomConfig.get().scrollSmoothMs / 3000.0D;
 
 			if (tauSeconds <= 1.0E-4D) {
@@ -164,7 +151,7 @@ public final class ZoomState {
 		return lastRenderZoom;
 	}
 
-	/** @return a mouse sensitivity multiplier for the current zoom, 1.0 when nothing should change. */
+	/** 現在のズームに応じたマウス感度の倍率。変更不要なら 1.0 */
 	public static double getSensitivityFactor() {
 		ZoomConfig config = ZoomConfig.get();
 
@@ -200,15 +187,14 @@ public final class ZoomState {
 		}
 
 		if (fromScroll && active) {
-			// Blend wheel ticks into one continuous glide instead of restarting a fixed
-			// animation per notch (the start-stop rhythm felt choppy).
+			// ノッチごとに短いアニメを再生し直すと「動く・止まる」の繰り返しでカクつくので、
+			// 目標だけ更新してあとは平滑化に任せる
 			smoothing = true;
 			lastSmoothSampleNanos = System.nanoTime();
 			return;
 		}
 
-		// Key press / release: always the configured duration, independent of the distance,
-		// so returning from any zoom level takes exactly the same time.
+		// キーの押す/離すは距離に関係なく設定時間で固定。どこまで拡大しても戻るテンポは同じ
 		smoothing = false;
 		animStartNanos = System.nanoTime();
 		animDurationNanos = Math.max(0, config.easeDurationMs) * 1_000_000L;

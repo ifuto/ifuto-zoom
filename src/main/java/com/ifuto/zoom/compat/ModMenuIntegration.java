@@ -7,7 +7,7 @@ import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 
 /**
- * Adds the "Config" button to the ifuto-zoom entry inside Mod Menu.
+ * Mod Menu の一覧から設定画面を開けるようにする。
  */
 @Environment(EnvType.CLIENT)
 public class ModMenuIntegration implements ModMenuApi {

@@ -9,7 +9,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
- * Uses the scroll wheel to change the zoom factor and slows the camera down while zoomed in.
+ * ズーム中のスクロールを倍率変更に回し、ついでに視点移動を減速する。
  */
 @Mixin(Mouse.class)
 public class MouseMixin {
