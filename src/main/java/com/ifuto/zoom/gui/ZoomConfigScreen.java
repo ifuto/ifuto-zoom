@@ -70,7 +70,7 @@ public class ZoomConfigScreen extends Screen {
 				}));
 
 		this.addDrawableChild(new OptionSlider(right, y, WIDGET_WIDTH, WIDGET_HEIGHT,
-				"ifuto-zoom.config.ease_duration", 0.0D, 1000.0D, 25.0D,
+				"ifuto-zoom.config.ease_duration", 0.0D, 1500.0D, 25.0D,
 				this.config.easeDurationMs,
 				value -> value <= 0.0D
 						? Text.translatable("ifuto-zoom.config.ease_duration.off")

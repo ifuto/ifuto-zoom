@@ -8,8 +8,15 @@ import net.fabricmc.api.Environment;
 /**
  * Holds the runtime zoom state and computes the smoothly eased zoom factor used for rendering.
  *
- * <p>The animation is done in logarithmic space so that every scroll step feels equally strong,
- * no matter how far you are already zoomed in.</p>
+ * <p>The easing is applied directly to the zoom factor (linear space), because that is what the
+ * eye actually perceives: the on-screen growth speed follows {@code d(zoom)/dt}, so an ease-out
+ * curve in this space visibly decelerates from the very first frame. (Applying ease-out in log
+ * space mostly cancels out against the exponential conversion and feels like it speeds up
+ * instead.)</p>
+ *
+ * <p>The animation duration is scaled by the size of the change: a full 3x zoom uses the
+ * configured duration, a small scroll notch uses a fraction of it, so scrolling stays responsive
+ * while the big zoom-in keeps its dramatic glide.</p>
  */
 @Environment(EnvType.CLIENT)
 public final class ZoomState {
@@ -19,15 +26,22 @@ public final class ZoomState {
 	/** Safety cap so extreme zoom levels cannot break the projection matrix. */
 	public static final double HARD_MAX_ZOOM = 1000.0D;
 
+	/** The reference zoom distance that takes the full configured duration. */
+	private static final double REFERENCE_DISTANCE = Math.log(3.0D);
+
+	/** Duration clamps relative to the configured duration. */
+	private static final double MIN_DURATION_FACTOR = 0.25D;
+	private static final double MAX_DURATION_FACTOR = 2.0D;
+
 	private static boolean active;
 
 	/** Target zoom factor while active (changed by scrolling). */
 	private static double zoomLevel = -1.0D;
 
-	// Animation state (all in log space).
-	private static double animFrom;
-	private static double animTo;
-	private static double animCurrent;
+	// Animation state, all in plain (linear) zoom factor space.
+	private static double animFrom = 1.0D;
+	private static double animTo = 1.0D;
+	private static double animCurrent = 1.0D;
 	private static long animStartNanos;
 	private static long animDurationNanos;
 
@@ -123,12 +137,11 @@ public final class ZoomState {
 			}
 		}
 
-		lastRenderZoom = Math.exp(animCurrent);
-
-		if (lastRenderZoom < 1.0E-3D) {
-			lastRenderZoom = 1.0E-3D;
+		if (animCurrent < 1.0E-3D) {
+			animCurrent = 1.0E-3D;
 		}
 
+		lastRenderZoom = animCurrent;
 		return lastRenderZoom;
 	}
 
@@ -150,29 +163,30 @@ public final class ZoomState {
 	}
 
 	private static void retarget() {
-		double target = Math.log(active ? getZoomLevel() : 1.0D);
+		double target = active ? getZoomLevel() : 1.0D;
 
 		if (Math.abs(target - animTo) < 1.0E-9D) {
 			return;
 		}
 
+		ZoomConfig config = ZoomConfig.get();
+
+		if (config.easing == EasingType.INSTANT || config.easeDurationMs <= 0) {
+			animFrom = animTo = animCurrent = target;
+			animDurationNanos = 0L;
+			return;
+		}
+
 		// Continue from wherever the animation currently is, so mid-animation changes stay smooth.
-		animFrom = animCurrent;
+		animFrom = Math.max(1.0E-3D, animCurrent);
 		animTo = target;
 		animStartNanos = System.nanoTime();
 
-		ZoomConfig config = ZoomConfig.get();
-		long duration = Math.max(0, config.easeDurationMs) * 1_000_000L;
-
-		if (config.easing == EasingType.INSTANT) {
-			duration = 0L;
-		}
-
-		animDurationNanos = duration;
-
-		if (duration <= 0L) {
-			animCurrent = animTo;
-		}
+		// Scale the duration with the size of the change: a 3x jump takes the configured time,
+		// a gentle scroll notch only a fraction, huge jumps up to double.
+		double distance = Math.abs(Math.log(animTo / animFrom));
+		double factor = Math.min(MAX_DURATION_FACTOR, Math.max(MIN_DURATION_FACTOR, distance / REFERENCE_DISTANCE));
+		animDurationNanos = (long) (config.easeDurationMs * factor * 1_000_000.0D);
 	}
 
 	private static double clampZoom(double value, ZoomConfig config) {

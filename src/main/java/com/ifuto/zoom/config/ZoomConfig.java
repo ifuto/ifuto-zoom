@@ -48,8 +48,8 @@ public class ZoomConfig {
 	/** Easing curve of the zoom animation. */
 	public EasingType easing = EasingType.EASE_OUT;
 
-	/** Duration of the zoom animation in milliseconds. */
-	public int easeDurationMs = 250;
+	/** Duration of a full (3x) zoom animation in milliseconds; smaller changes animate faster. */
+	public int easeDurationMs = 500;
 
 	/** Slow the mouse down while zoomed in. */
 	public boolean reduceSensitivity = true;
