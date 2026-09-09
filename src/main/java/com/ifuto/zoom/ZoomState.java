@@ -6,17 +6,21 @@ import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 
 /**
- * Holds the runtime zoom state and computes the smoothly eased zoom factor used for rendering.
+ * Holds the runtime zoom state and computes the zoom factor used for rendering each frame.
  *
- * <p>The easing is applied directly to the zoom factor (linear space), because that is what the
- * eye actually perceives: the on-screen growth speed follows {@code d(zoom)/dt}, so an ease-out
- * curve in this space visibly decelerates from the very first frame. (Applying ease-out in log
- * space mostly cancels out against the exponential conversion and feels like it speeds up
- * instead.)</p>
+ * <p>Two kinds of motion are used:</p>
+ * <ul>
+ *   <li><b>Key press / release</b>: a fixed-length ease-out animation over the configured
+ *       duration. The duration never depends on the zoom distance, so zooming back out
+ *       always takes the same time, no matter how far the scroll wheel took you.</li>
+ *   <li><b>Scroll wheel</b>: exponential smoothing that chases the target (≈175 ms to
+ *       mostly settle). Repeated wheel ticks blend into one continuous glide instead of
+ *       restarting a short animation for every notch, which used to feel choppy.</li>
+ * </ul>
  *
- * <p>The animation duration is scaled by the size of the change: a full 3x zoom uses the
- * configured duration, a small scroll notch uses a fraction of it, so scrolling stays responsive
- * while the big zoom-in keeps its dramatic glide.</p>
+ * <p>Curves are applied to the zoom factor directly (linear space): the perceived on-screen
+ * speed follows {@code d(zoom)/dt}, so an ease-out here visibly decelerates from the first
+ * frame.</p>
  */
 @Environment(EnvType.CLIENT)
 public final class ZoomState {
@@ -26,12 +30,14 @@ public final class ZoomState {
 	/** Safety cap so extreme zoom levels cannot break the projection matrix. */
 	public static final double HARD_MAX_ZOOM = 1000.0D;
 
-	/** The reference zoom distance that takes the full configured duration. */
-	private static final double REFERENCE_DISTANCE = Math.log(3.0D);
+	/**
+	 * Time constant of the scroll smoothing. An exponential chase is ~95% settled after
+	 * three time constants, so this makes one wheel notch glide for about 175 ms.
+	 */
+	private static final double SCROLL_TAU_SECONDS = 0.175D / 3.0D;
 
-	/** Duration clamps relative to the configured duration. */
-	private static final double MIN_DURATION_FACTOR = 0.25D;
-	private static final double MAX_DURATION_FACTOR = 2.0D;
+	/** Longest frame step the smoothing integrates; longer hitches just snap to the target. */
+	private static final double MAX_FRAME_SECONDS = 0.1D;
 
 	private static boolean active;
 
@@ -44,6 +50,10 @@ public final class ZoomState {
 	private static double animCurrent = 1.0D;
 	private static long animStartNanos;
 	private static long animDurationNanos;
+
+	/** True while the scroll smoothing owns {@link #animCurrent} instead of an ease animation. */
+	private static boolean smoothing;
+	private static long lastSmoothSampleNanos;
 
 	private static double lastRenderZoom = 1.0D;
 
@@ -82,7 +92,7 @@ public final class ZoomState {
 			zoomLevel = config.defaultZoom;
 		}
 
-		retarget();
+		retarget(false);
 	}
 
 	/**
@@ -100,7 +110,7 @@ public final class ZoomState {
 
 		double step = Math.max(1.001D, config.scrollStep);
 		zoomLevel = clampZoom(getZoomLevel() * Math.pow(step, amount), config);
-		retarget();
+		retarget(true);
 		return true;
 	}
 
@@ -108,32 +118,40 @@ public final class ZoomState {
 	public static void reset() {
 		ZoomConfig config = ZoomConfig.get();
 		zoomLevel = config.defaultZoom;
-		retarget();
+		retarget(false);
 	}
 
 	/**
 	 * @return the zoom factor to render with this frame; 1.0 means "no zoom".
 	 */
 	public static double getRenderZoom() {
-		double target = animTo;
+		long now = System.nanoTime();
 
-		if (animDurationNanos <= 0L) {
-			animCurrent = target;
+		if (smoothing) {
+			if (lastSmoothSampleNanos > 0L) {
+				double dt = Math.min(MAX_FRAME_SECONDS, (now - lastSmoothSampleNanos) / 1.0E9D);
+
+				if (dt > 0.0D) {
+					animCurrent += (animTo - animCurrent) * (1.0D - Math.exp(-dt / SCROLL_TAU_SECONDS));
+
+					if (Math.abs(animTo - animCurrent) < 1.0E-5D) {
+						animCurrent = animTo;
+					}
+				}
+			}
+
+			lastSmoothSampleNanos = now;
+		} else if (animDurationNanos <= 0L) {
+			animCurrent = animTo;
 		} else {
-			double progress = (System.nanoTime() - animStartNanos) / (double) animDurationNanos;
+			double progress = (now - animStartNanos) / (double) animDurationNanos;
 
 			if (progress >= 1.0D) {
-				progress = 1.0D;
 				animDurationNanos = 0L;
-				animCurrent = target;
+				animCurrent = animTo;
 			} else {
-				if (progress < 0.0D) {
-					progress = 0.0D;
-				}
-
 				EasingType easing = ZoomConfig.get().easing;
-				double eased = easing.apply(progress);
-				animCurrent = animFrom + (animTo - animFrom) * eased;
+				animCurrent = animFrom + (animTo - animFrom) * easing.apply(Math.max(0.0D, progress));
 			}
 		}
 
@@ -162,7 +180,7 @@ public final class ZoomState {
 		return 1.0D / Math.pow(zoom, Math.max(0.0D, config.sensitivityStrength));
 	}
 
-	private static void retarget() {
+	private static void retarget(boolean fromScroll) {
 		double target = active ? getZoomLevel() : 1.0D;
 
 		if (Math.abs(target - animTo) < 1.0E-9D) {
@@ -170,23 +188,29 @@ public final class ZoomState {
 		}
 
 		ZoomConfig config = ZoomConfig.get();
+		animFrom = Math.max(1.0E-3D, animCurrent);
+		animTo = target;
 
 		if (config.easing == EasingType.INSTANT || config.easeDurationMs <= 0) {
-			animFrom = animTo = animCurrent = target;
+			smoothing = false;
 			animDurationNanos = 0L;
+			animFrom = animTo = animCurrent = target;
 			return;
 		}
 
-		// Continue from wherever the animation currently is, so mid-animation changes stay smooth.
-		animFrom = Math.max(1.0E-3D, animCurrent);
-		animTo = target;
-		animStartNanos = System.nanoTime();
+		if (fromScroll && active) {
+			// Blend wheel ticks into one continuous glide instead of restarting a fixed
+			// animation per notch (the start-stop rhythm felt choppy).
+			smoothing = true;
+			lastSmoothSampleNanos = System.nanoTime();
+			return;
+		}
 
-		// Scale the duration with the size of the change: a 3x jump takes the configured time,
-		// a gentle scroll notch only a fraction, huge jumps up to double.
-		double distance = Math.abs(Math.log(animTo / animFrom));
-		double factor = Math.min(MAX_DURATION_FACTOR, Math.max(MIN_DURATION_FACTOR, distance / REFERENCE_DISTANCE));
-		animDurationNanos = (long) (config.easeDurationMs * factor * 1_000_000.0D);
+		// Key press / release: always the configured duration, independent of the distance,
+		// so returning from any zoom level takes exactly the same time.
+		smoothing = false;
+		animStartNanos = System.nanoTime();
+		animDurationNanos = Math.max(0, config.easeDurationMs) * 1_000_000L;
 	}
 
 	private static double clampZoom(double value, ZoomConfig config) {

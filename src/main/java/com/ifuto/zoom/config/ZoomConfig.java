@@ -48,7 +48,7 @@ public class ZoomConfig {
 	/** Easing curve of the zoom animation. */
 	public EasingType easing = EasingType.EASE_OUT;
 
-	/** Duration of a full (3x) zoom animation in milliseconds; smaller changes animate faster. */
+	/** Duration of the key press / release zoom animation in milliseconds (scroll always uses a ~175 ms smoothing). */
 	public int easeDurationMs = 500;
 
 	/** Slow the mouse down while zoomed in. */
