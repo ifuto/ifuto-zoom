@@ -10,7 +10,7 @@ ifuto 系 Mod が共通で受け取っている、Discord Rich Presence（Discor
 | 方向 | S2C（サーバー → クライアント）。PLAY フェーズ |
 | 中身 | **Minecraft 文字列2本**（① Client ID、② 表示文）※ 旧形式の文字列1本（表示文のみ）も読めます |
 | ① Client ID | 使う Discord アプリケーションの Client ID（数字のみの文字列） |
-| ② 表示文 | Rich Presence の 1 行目（details）にそのまま表示 |
+| ② 表示文 | Rich Presence の 1 行目（details）にそのまま表示。**改行 `\n` を1つ入れると2行目（state）として表示**（複数行対応）。3行目以降は Discord の仕様で出せないため、2行目に空白区切りで繋げます |
 | Client ID が空文字 | クライアント側設定の Client ID（あれば）を使う |
 | 表示文が空文字 | プレゼンスを消す |
 | 推奨頻度 | 変更時のみ送るのがベスト。毎秒 1 回程度までなら OK（クライアント側で 0.8 秒間隔に間引きされます） |
@@ -74,8 +74,11 @@ try {
 	// 他の ifuto mod が登録済み。それで問題ない
 }
 
-// 送信
+// 送信（1行だけ）
 ServerPlayNetworking.send(player, new DiscordPayload("123456789012345678", "Spawn にいるよ"));
+
+// 2行表示（details + state）
+ServerPlayNetworking.send(player, new DiscordPayload("123456789012345678", "Spawn にいるよ\n採掘中 ⛏ 残り 12:34"));
 ```
 
 ### Spigot / Paper（プラグインメッセージ）

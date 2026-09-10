@@ -294,7 +294,8 @@ public final class DiscordRichPresence {
 		return null;
 	}
 
-	// SET_ACTIVITY コマンドの JSON。空文字なら activity=null でクリア
+	// SET_ACTIVITY コマンドの JSON。空文字なら activity=null でクリア。
+	// 表示文の改行は Discord の details(1行目) / state(2行目) に振り分ける
 	private String buildSetActivityJson(String text) {
 		long pid = ProcessHandle.current().pid();
 		String nonce = UUID.randomUUID().toString();
@@ -303,8 +304,28 @@ public final class DiscordRichPresence {
 		if (text.isEmpty()) {
 			activity = new StringBuilder("null");
 		} else {
+			String details = text;
+			String state = null;
+
+			int newline = text.indexOf('\n');
+
+			if (newline >= 0) {
+				details = text.substring(0, newline);
+				// 3行目以降は Discord の仕様で出せないので2行目に空白で繋ぐ
+				state = text.substring(newline + 1).replace("\r", "").replace('\n', ' ').trim();
+
+				if (state.isEmpty()) {
+					state = null;
+				}
+			}
+
 			activity = new StringBuilder("{");
-			activity.append("\"details\":\"").append(jsonEscape(text)).append("\"");
+			activity.append("\"details\":\"").append(jsonEscape(details)).append("\"");
+
+			if (state != null) {
+				activity.append(",\"state\":\"").append(jsonEscape(state)).append("\"");
+			}
+
 			activity.append(",\"assets\":{\"large_image\":\"").append(this.externalIconKey()).append("\",\"large_text\":\"ifuto mods\"}");
 			activity.append("}");
 		}
