@@ -13,6 +13,6 @@ fabric_api:
 modmenu:
 java: 21
 workdir:
-artifact_path: build/libs/*.jar
+artifact_path: armor-hud/build/libs/*.jar
 
-note: コメント整理のビルド確認
+note: armor-hud 初回ビルド
