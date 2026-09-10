@@ -12,7 +12,7 @@ loader:
 fabric_api:
 modmenu:
 java: 21
-workdir:
-artifact_path: build/libs/*.jar
+workdir: armor-hud
+artifact_path: armor-hud/build/libs/*.jar
 
-note: zoom側の健全性チェック
+note: bisect discord除外
