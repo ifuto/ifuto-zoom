@@ -23,6 +23,12 @@
 			"com.ifuto.armorhud.compat.ModMenuIntegration"
 		]
 	},
+	"mixins": [
+		{
+			"config": "ifuto-armor-hud.mixins.json",
+			"environment": "client"
+		}
+	],
 	"depends": {
 		"fabricloader": ">=0.16.0",
 		"minecraft": "~1.21.11",

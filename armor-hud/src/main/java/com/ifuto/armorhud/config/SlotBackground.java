@@ -5,21 +5,23 @@ import net.fabricmc.api.Environment;
 import net.minecraft.text.Text;
 
 /**
- * HUD をホットバーの左右どちらに置くか。
+ * スロットの背景の描き方。
  */
 @Environment(EnvType.CLIENT)
-public enum HudPosition {
-	HOTBAR_LEFT("hotbar_left"),
-	HOTBAR_RIGHT("hotbar_right");
+public enum SlotBackground {
+	/** バニラっぽいアイテム枠を描く */
+	FRAME("frame"),
+	/** 枠は消して、空きスロットには装備のミニアイコンだけ背景に置く */
+	GHOST("ghost");
 
 	private final String name;
 
-	HudPosition(String name) {
+	SlotBackground(String name) {
 		this.name = name;
 	}
 
 	public String getTranslationKey() {
-		return "ifuto-armor-hud.config.position." + this.name;
+		return "ifuto-armor-hud.config.background." + this.name;
 	}
 
 	public Text getText() {

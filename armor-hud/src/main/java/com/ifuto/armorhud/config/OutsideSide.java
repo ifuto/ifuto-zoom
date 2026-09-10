@@ -5,21 +5,21 @@ import net.fabricmc.api.Environment;
 import net.minecraft.text.Text;
 
 /**
- * HUD をホットバーの左右どちらに置くか。
+ * 縦向きのとき、枠の外の表示を左右どちらに出すか。
  */
 @Environment(EnvType.CLIENT)
-public enum HudPosition {
-	HOTBAR_LEFT("hotbar_left"),
-	HOTBAR_RIGHT("hotbar_right");
+public enum OutsideSide {
+	LEFT("left"),
+	RIGHT("right");
 
 	private final String name;
 
-	HudPosition(String name) {
+	OutsideSide(String name) {
 		this.name = name;
 	}
 
 	public String getTranslationKey() {
-		return "ifuto-armor-hud.config.position." + this.name;
+		return "ifuto-armor-hud.config.side." + this.name;
 	}
 
 	public Text getText() {

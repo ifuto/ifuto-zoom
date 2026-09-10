@@ -25,21 +25,51 @@ public class ArmorHudConfig {
 	/** HUD 自体の表示/非表示（V キーでも切り替わる） */
 	public boolean showHud = true;
 
-	/** 画面のどの隅に置くか */
-	public HudPosition position = HudPosition.BOTTOM_LEFT;
+	/** ホットバーの左右どちらに置くか */
+	public HudPosition position = HudPosition.HOTBAR_LEFT;
 
 	/** アイコンの並べ方 */
 	public HudLayout layout = HudLayout.VERTICAL;
 
-	/** 耐久値の出し方 */
-	public DurabilityStyle durability = DurabilityStyle.BAR;
+	/** ホットバーからどれくらい離すか（既定はアイテムマス1つ分の 18px） */
+	public int hotbarGap = 18;
 
-	/** 装備していないスロットを出すか（false なら薄い枠だけ描く） */
-	public boolean hideEmptySlots = true;
+	/** 装備枠と枠の間の隙間（px） */
+	public int slotGap = 2;
 
-	/** 隅からの微調整（+が右/下方向） */
+	/** スロットの背景（アイテム枠 or ゴーストアイコンだけ） */
+	public SlotBackground background = SlotBackground.FRAME;
+
+	/** 装備していないスロットの扱い */
+	public EmptySlotMode emptyMode = EmptySlotMode.KEEP;
+
+	/** 耐久表示（枠の中）。既定は中ゲージのみ */
+	public InfoMode inside = InfoMode.GAUGE;
+
+	/** 耐久表示（枠の外）。横向きなら枠の上、縦向きなら指定側に横書き or 縦ゲージ */
+	public InfoMode outside = InfoMode.NONE;
+
+	/** 縦向きのとき枠の外を左右どちらに出すか */
+	public OutsideSide outsideSide = OutsideSide.LEFT;
+
+	/** 耐久がピンチになったら枠を赤く点滅させる */
+	public boolean warnBlink = false;
+
+	/** ピンチと見なす残り耐久（％） */
+	public int warnPercent = 15;
+
+	/** 文字とゲージの後ろに薄い影を敷いて見やすくする */
+	public boolean dynamicContrast = false;
+
+	/** 最終調整用のオフセット（+が右/下） */
 	public int offsetX = 0;
 	public int offsetY = 0;
+
+	/** Discord Rich Presence 用のアプリケーション Client ID（空欄なら連携オフ） */
+	public String discordClientId = "";
+
+	/** 参加時の案内チャットを出した回数（5回まで出す） */
+	public int joinCount = 0;
 
 	public static ArmorHudConfig get() {
 		if (instance == null) {
@@ -95,28 +125,64 @@ public class ArmorHudConfig {
 		this.showHud = defaults.showHud;
 		this.position = defaults.position;
 		this.layout = defaults.layout;
-		this.durability = defaults.durability;
-		this.hideEmptySlots = defaults.hideEmptySlots;
+		this.hotbarGap = defaults.hotbarGap;
+		this.slotGap = defaults.slotGap;
+		this.background = defaults.background;
+		this.emptyMode = defaults.emptyMode;
+		this.inside = defaults.inside;
+		this.outside = defaults.outside;
+		this.outsideSide = defaults.outsideSide;
+		this.warnBlink = defaults.warnBlink;
+		this.warnPercent = defaults.warnPercent;
+		this.dynamicContrast = defaults.dynamicContrast;
 		this.offsetX = defaults.offsetX;
 		this.offsetY = defaults.offsetY;
+		// discordClientId と joinCount はリセット対象外（ユーザー固有の値なので残す）
 	}
 
 	/** 手書き編集や古いファイルで壊れていても落ちないように丸める */
 	public void validate() {
 		if (this.position == null) {
-			this.position = HudPosition.BOTTOM_LEFT;
+			this.position = HudPosition.HOTBAR_LEFT;
 		}
 
 		if (this.layout == null) {
 			this.layout = HudLayout.VERTICAL;
 		}
 
-		if (this.durability == null) {
-			this.durability = DurabilityStyle.BAR;
+		if (this.background == null) {
+			this.background = SlotBackground.FRAME;
 		}
 
+		if (this.emptyMode == null) {
+			this.emptyMode = EmptySlotMode.KEEP;
+		}
+
+		if (this.inside == null) {
+			this.inside = InfoMode.GAUGE;
+		}
+
+		if (this.outside == null) {
+			this.outside = InfoMode.NONE;
+		}
+
+		if (this.outsideSide == null) {
+			this.outsideSide = OutsideSide.LEFT;
+		}
+
+		if (this.discordClientId == null) {
+			this.discordClientId = "";
+		}
+
+		this.hotbarGap = clamp(this.hotbarGap, 0, 64);
+		this.slotGap = clamp(this.slotGap, 0, 16);
+		this.warnPercent = clamp(this.warnPercent, 1, 50);
 		this.offsetX = clamp(this.offsetX, -500, 500);
 		this.offsetY = clamp(this.offsetY, -500, 500);
+
+		if (this.joinCount < 0) {
+			this.joinCount = 0;
+		}
 	}
 
 	private static int clamp(int value, int min, int max) {

@@ -1,15 +1,19 @@
 package com.ifuto.armorhud;
 
 import com.ifuto.armorhud.config.ArmorHudConfig;
+import com.ifuto.armorhud.discord.DiscordBridge;
+import com.ifuto.armorhud.discord.DiscordRichPresence;
 import com.ifuto.armorhud.hud.ArmorHudRenderer;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
 import net.minecraft.client.option.KeyBinding;
 import net.minecraft.client.util.InputUtil;
+import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 import org.lwjgl.glfw.GLFW;
 import org.slf4j.Logger;
@@ -27,6 +31,9 @@ public class IfutoArmorHudClient implements ClientModInitializer {
 	public static final KeyBinding.Category KEY_CATEGORY = KeyBinding.Category.create(Identifier.of(MOD_ID, "armor_hud"));
 
 	private static KeyBinding toggleKey;
+
+	/** 案内チャットをこのセッションで送ったか */
+	private static boolean joinNoticeSent;
 
 	public static KeyBinding getToggleKey() {
 		return toggleKey;
@@ -53,10 +60,29 @@ public class IfutoArmorHudClient implements ClientModInitializer {
 				config.showHud = !config.showHud;
 				config.save();
 			}
+
+			// 導入直後の人向け案内（最初の5回の参加まで。シングル・マルチどちらでも）
+			if (client.player == null) {
+				joinNoticeSent = false;
+			} else if (!joinNoticeSent) {
+				joinNoticeSent = true;
+				ArmorHudConfig config = ArmorHudConfig.get();
+
+				if (config.joinCount < 5) {
+					config.joinCount++;
+					config.save();
+					client.player.sendMessage(Text.translatable("ifuto-armor-hud.join_notice"), false);
+				}
+			}
 		});
 
 		// 常に最後に描けば他の MOD の HUD とだいたい共存できる
 		HudElementRegistry.addLast(Identifier.of(MOD_ID, "armor_hud"), new ArmorHudRenderer());
+
+		// Discord 連携用チャンネル（他modと共有。登録済みならそのまま使う）
+		DiscordBridge.registerPayloadType();
+
+		ClientLifecycleEvents.CLIENT_STOPPING.register(client -> DiscordRichPresence.get().shutdown());
 
 		LOGGER.info("[ifuto-armor-hud] initialized");
 	}

@@ -2,32 +2,61 @@
 	"key.category.ifuto-armor-hud.armor_hud": "Ifuto Armor HUD",
 	"key.ifuto-armor-hud.toggle": "Armor HUD 表示切替",
 
+	"ifuto-armor-hud.join_notice": "§7[Armor HUD]§r 設定は Mod Menu というModで追加される Config 画面から好きにいじれます（表示切替は V キー）",
+
 	"ifuto-armor-hud.config.title": "Ifuto Armor HUD 設定",
 	"ifuto-armor-hud.config.hint": "既定キー: V — HUD の表示/非表示を切り替え",
 
 	"ifuto-armor-hud.config.show_hud": "HUD を表示",
+
 	"ifuto-armor-hud.config.position": "表示位置",
-	"ifuto-armor-hud.config.position.top_left": "左上",
-	"ifuto-armor-hud.config.position.top_right": "右上",
-	"ifuto-armor-hud.config.position.bottom_left": "左下",
-	"ifuto-armor-hud.config.position.bottom_right": "右下",
+	"ifuto-armor-hud.config.position.hotbar_left": "ホットバーの左",
+	"ifuto-armor-hud.config.position.hotbar_right": "ホットバーの右",
 
 	"ifuto-armor-hud.config.layout": "並び方",
-	"ifuto-armor-hud.config.layout.vertical": "縦並び",
-	"ifuto-armor-hud.config.layout.horizontal": "横並び",
+	"ifuto-armor-hud.config.layout.vertical": "縦向き",
+	"ifuto-armor-hud.config.layout.horizontal": "横向き",
 
-	"ifuto-armor-hud.config.durability": "耐久表示",
-	"ifuto-armor-hud.config.durability.none": "なし",
-	"ifuto-armor-hud.config.durability.bar": "バーのみ",
-	"ifuto-armor-hud.config.durability.bar_number": "バー＋数値",
-	"ifuto-armor-hud.config.durability.bar_percent": "バー＋％",
-	"ifuto-armor-hud.config.durability.number": "数値のみ",
-	"ifuto-armor-hud.config.durability.percent": "％のみ",
-	"ifuto-armor-hud.config.durability.tooltip": "残り耐久の出し方です。色は緑→黄→赤で傷み具合を表します。",
+	"ifuto-armor-hud.config.background": "スロットの背景",
+	"ifuto-armor-hud.config.background.frame": "アイテム枠",
+	"ifuto-armor-hud.config.background.ghost": "装備アイコン（枠なし）",
+	"ifuto-armor-hud.config.background.tooltip": "アイテム枠: バニラ風の枠を描きます。装備アイコン: 枠は消して、空きスロットには装備のミニアイコンだけ背景に置きます。",
 
-	"ifuto-armor-hud.config.hide_empty": "空きスロットを隠す",
+	"ifuto-armor-hud.config.empty": "空きスロット",
+	"ifuto-armor-hud.config.empty.keep": "そのまま残す",
+	"ifuto-armor-hud.config.empty.faded": "半透明に",
+	"ifuto-armor-hud.config.empty.hide": "消す",
+
+	"ifuto-armor-hud.config.hotbar_gap": "ホットバーとの距離: %s",
+	"ifuto-armor-hud.config.slot_gap": "スロット間隔: %s",
+
+	"ifuto-armor-hud.config.inside": "耐久（枠の中）",
+	"ifuto-armor-hud.config.inside.tooltip": "枠の中の下部（ゲージの場所）に出すものです。",
+	"ifuto-armor-hud.config.outside": "耐久（枠の外）",
+	"ifuto-armor-hud.config.outside.tooltip": "横向き: 枠の上に表示。縦向き: 指定した側に横書きで表示（ゲージは縦になります）。",
+	"ifuto-armor-hud.config.info.none": "なし",
+	"ifuto-armor-hud.config.info.gauge": "ゲージ",
+	"ifuto-armor-hud.config.info.percent": "残り耐久（%）",
+	"ifuto-armor-hud.config.info.number": "残り耐久（数値）",
+	"ifuto-armor-hud.config.info.lost": "減った耐久",
+
+	"ifuto-armor-hud.config.outside_side": "外の表示位置",
+	"ifuto-armor-hud.config.outside_side.tooltip": "縦向きのとき、枠の外の表示を左右どちらに出すか。ホットバー側に出せば、その分が自然な余白になります。",
+	"ifuto-armor-hud.config.side.left": "枠の左",
+	"ifuto-armor-hud.config.side.right": "枠の右",
+
+	"ifuto-armor-hud.config.warn_blink": "ピンチで枠を点滅",
+	"ifuto-armor-hud.config.warn_percent": "点滅しきい値: %s",
+
+	"ifuto-armor-hud.config.dynamic_contrast": "コントラスト自動調整",
+	"ifuto-armor-hud.config.dynamic_contrast.tooltip": "文字とゲージの後ろに薄い影を敷いて、明るい背景でも読みやすくします。",
+
 	"ifuto-armor-hud.config.offset_x": "横位置: %s",
 	"ifuto-armor-hud.config.offset_y": "縦位置: %s",
+
+	"ifuto-armor-hud.config.client_id": "Discord Client ID",
+	"ifuto-armor-hud.config.client_id.placeholder": "Discord の Client ID（空欄 = 連携オフ）",
+	"ifuto-armor-hud.config.client_id.tooltip": "サーバーから ifumods:server/discord が飛んできたら、その文字を Discord のステータスに表示します。Client ID は Discord Developer Portal でアプリを作って取得。",
 
 	"ifuto-armor-hud.config.reset": "初期設定に戻す"
 }

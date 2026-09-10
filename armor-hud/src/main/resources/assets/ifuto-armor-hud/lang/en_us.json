@@ -2,32 +2,61 @@
 	"key.category.ifuto-armor-hud.armor_hud": "Ifuto Armor HUD",
 	"key.ifuto-armor-hud.toggle": "Toggle Armor HUD",
 
+	"ifuto-armor-hud.join_notice": "§7[Armor HUD]§r You can tweak everything from the Config screen added by the Mod Menu mod (toggle HUD with V)",
+
 	"ifuto-armor-hud.config.title": "Ifuto Armor HUD Settings",
 	"ifuto-armor-hud.config.hint": "Default key: V — show or hide the HUD",
 
 	"ifuto-armor-hud.config.show_hud": "Show HUD",
+
 	"ifuto-armor-hud.config.position": "Position",
-	"ifuto-armor-hud.config.position.top_left": "Top Left",
-	"ifuto-armor-hud.config.position.top_right": "Top Right",
-	"ifuto-armor-hud.config.position.bottom_left": "Bottom Left",
-	"ifuto-armor-hud.config.position.bottom_right": "Bottom Right",
+	"ifuto-armor-hud.config.position.hotbar_left": "Left of Hotbar",
+	"ifuto-armor-hud.config.position.hotbar_right": "Right of Hotbar",
 
 	"ifuto-armor-hud.config.layout": "Layout",
 	"ifuto-armor-hud.config.layout.vertical": "Vertical",
 	"ifuto-armor-hud.config.layout.horizontal": "Horizontal",
 
-	"ifuto-armor-hud.config.durability": "Durability",
-	"ifuto-armor-hud.config.durability.none": "None",
-	"ifuto-armor-hud.config.durability.bar": "Bar Only",
-	"ifuto-armor-hud.config.durability.bar_number": "Bar + Number",
-	"ifuto-armor-hud.config.durability.bar_percent": "Bar + %",
-	"ifuto-armor-hud.config.durability.number": "Number Only",
-	"ifuto-armor-hud.config.durability.percent": "% Only",
-	"ifuto-armor-hud.config.durability.tooltip": "How the remaining durability is shown. The color fades green → yellow → red as the item wears out.",
+	"ifuto-armor-hud.config.background": "Slot Background",
+	"ifuto-armor-hud.config.background.frame": "Item Frame",
+	"ifuto-armor-hud.config.background.ghost": "Ghost Icons (No Frame)",
+	"ifuto-armor-hud.config.background.tooltip": "Item Frame: draw a vanilla-like frame. Ghost Icons: no frame, empty slots only show a faint icon of what goes there.",
 
-	"ifuto-armor-hud.config.hide_empty": "Hide Empty Slots",
+	"ifuto-armor-hud.config.empty": "Empty Slots",
+	"ifuto-armor-hud.config.empty.keep": "Keep As Is",
+	"ifuto-armor-hud.config.empty.faded": "Semi-transparent",
+	"ifuto-armor-hud.config.empty.hide": "Hide",
+
+	"ifuto-armor-hud.config.hotbar_gap": "Gap From Hotbar: %s",
+	"ifuto-armor-hud.config.slot_gap": "Slot Spacing: %s",
+
+	"ifuto-armor-hud.config.inside": "Durability (Inside)",
+	"ifuto-armor-hud.config.inside.tooltip": "What to show at the bottom inside the slot (where the gauge goes).",
+	"ifuto-armor-hud.config.outside": "Durability (Outside)",
+	"ifuto-armor-hud.config.outside.tooltip": "Horizontal: above the slot. Vertical: beside the slot on the chosen side (the gauge stands upright).",
+	"ifuto-armor-hud.config.info.none": "None",
+	"ifuto-armor-hud.config.info.gauge": "Gauge",
+	"ifuto-armor-hud.config.info.percent": "Remaining (%)",
+	"ifuto-armor-hud.config.info.number": "Remaining (Number)",
+	"ifuto-armor-hud.config.info.lost": "Lost Durability",
+
+	"ifuto-armor-hud.config.outside_side": "Outside Position",
+	"ifuto-armor-hud.config.outside_side.tooltip": "For the vertical layout: which side of the slots shows the outside info. Pointing it toward the hotbar doubles as natural padding.",
+	"ifuto-armor-hud.config.side.left": "Left of Slots",
+	"ifuto-armor-hud.config.side.right": "Right of Slots",
+
+	"ifuto-armor-hud.config.warn_blink": "Blink Frames on Low Durability",
+	"ifuto-armor-hud.config.warn_percent": "Blink Threshold: %s",
+
+	"ifuto-armor-hud.config.dynamic_contrast": "Auto Contrast",
+	"ifuto-armor-hud.config.dynamic_contrast.tooltip": "Draws a soft shadow behind text and gauges so they stay readable on bright backgrounds.",
+
 	"ifuto-armor-hud.config.offset_x": "X Offset: %s",
 	"ifuto-armor-hud.config.offset_y": "Y Offset: %s",
+
+	"ifuto-armor-hud.config.client_id": "Discord Client ID",
+	"ifuto-armor-hud.config.client_id.placeholder": "Discord Client ID (blank = off)",
+	"ifuto-armor-hud.config.client_id.tooltip": "When the server sends ifumods:server/discord, its text is shown as your Discord status text. Create an app in the Discord Developer Portal to get a client ID.",
 
 	"ifuto-armor-hud.config.reset": "Reset to Defaults"
 }
