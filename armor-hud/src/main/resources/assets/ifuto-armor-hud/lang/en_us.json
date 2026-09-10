@@ -54,9 +54,9 @@
 	"ifuto-armor-hud.config.offset_x": "X Offset: %s",
 	"ifuto-armor-hud.config.offset_y": "Y Offset: %s",
 
-	"ifuto-armor-hud.config.client_id": "Discord Client ID",
-	"ifuto-armor-hud.config.client_id.placeholder": "Discord Client ID (blank = off)",
-	"ifuto-armor-hud.config.client_id.tooltip": "When the server sends ifumods:server/discord, its text is shown as your Discord status text. Create an app in the Discord Developer Portal to get a client ID.",
+	"ifuto-armor-hud.config.client_id": "Discord Client ID (Fallback)",
+	"ifuto-armor-hud.config.client_id.placeholder": "Used when the packet has no client ID (blank = off)",
+	"ifuto-armor-hud.config.client_id.tooltip": "When the server sends ifumods:server/discord, its text is shown as your Discord status. The packet normally carries its own client ID; this field is the fallback for when it doesn't.",
 
 	"ifuto-armor-hud.config.reset": "Reset to Defaults"
 }

@@ -54,9 +54,9 @@
 	"ifuto-armor-hud.config.offset_x": "横位置: %s",
 	"ifuto-armor-hud.config.offset_y": "縦位置: %s",
 
-	"ifuto-armor-hud.config.client_id": "Discord Client ID",
-	"ifuto-armor-hud.config.client_id.placeholder": "Discord の Client ID（空欄 = 連携オフ）",
-	"ifuto-armor-hud.config.client_id.tooltip": "サーバーから ifumods:server/discord が飛んできたら、その文字を Discord のステータスに表示します。Client ID は Discord Developer Portal でアプリを作って取得。",
+	"ifuto-armor-hud.config.client_id": "Discord Client ID（予備）",
+	"ifuto-armor-hud.config.client_id.placeholder": "パケットに Client ID が無いとき用（空欄 = 連携オフ）",
+	"ifuto-armor-hud.config.client_id.tooltip": "サーバーから ifumods:server/discord が飛んできたら、その文字を Discord のステータスに表示します。Client ID はふつうパケットに付いてくるので、ここは付いてこない場合の予備です。",
 
 	"ifuto-armor-hud.config.reset": "初期設定に戻す"
 }

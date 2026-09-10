@@ -15,4 +15,4 @@ java: 21
 workdir: armor-hud
 artifact_path: armor-hud/build/libs/*.jar
 
-note: codec修正後の検証
+note: ClientID同梱＋他mod RPC遮断の検証

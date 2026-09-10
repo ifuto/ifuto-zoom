@@ -1,6 +1,5 @@
 package com.ifuto.armorhud.discord;
 
-import com.ifuto.armorhud.config.ArmorHudConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -20,8 +19,8 @@ import java.util.UUID;
  * Discord のローカル IPC (discord-ipc-N) に直接つないで Rich Presence を更新する。
  * 外部ライブラリ無しの素の実装（Windows は名前付きパイプ、それ以外は UNIX ドメインソケット）。
  *
- * サーバーからのパケットは結構な頻度で来る想定なので、送信はワーカースレッドで
- * 間引き（0.8秒に1回・最新値だけ送る）にしている。
+ * Client ID はパケット側から渡される。途中で変わったら古い方を消してから繋ぎ直す。
+ * 送信はワーカースレッドで間引き（0.8秒に1回・最新値だけ送る）。
  */
 public final class DiscordRichPresence {
 	private static final Logger LOGGER = LoggerFactory.getLogger("ifuto-armor-hud");
@@ -40,8 +39,11 @@ public final class DiscordRichPresence {
 
 	private final Object lock = new Object();
 
+	private String requestedClientId; // 次に使いたい Client ID（null = 握っていない）
 	private String latestText;
 	private String sentText;
+	private String activeClientId; // いまの接続で handshake した Client ID
+	private boolean forceSend;
 	private boolean started;
 	private volatile boolean running;
 	private Connection connection;
@@ -51,15 +53,10 @@ public final class DiscordRichPresence {
 	private DiscordRichPresence() {
 	}
 
-	/** サーバーから文字列が届いたときに呼ぶ（空文字でクリア）。 */
-	public void submit(String text) {
-		String clientId = ArmorHudConfig.get().discordClientId;
-
-		if (clientId == null || clientId.isBlank()) {
-			return; // Client ID 未設定の間は連携しない
-		}
-
+	/** サーバーから (clientId, text) が届いたときに呼ぶ（text が空ならクリア）。 */
+	public void submit(String clientId, String text) {
 		synchronized (this.lock) {
+			this.requestedClientId = clientId;
 			this.latestText = text;
 
 			if (!this.started) {
@@ -70,6 +67,27 @@ public final class DiscordRichPresence {
 				worker.start();
 			}
 
+			this.lock.notifyAll();
+		}
+	}
+
+	/** いま出している内容を強制的に送り直す。他modに上書きされたときの押し戻し用。 */
+	public void refresh() {
+		synchronized (this.lock) {
+			if (this.sentText == null || this.sentText.isEmpty()) {
+				return;
+			}
+
+			this.forceSend = true;
+			this.lock.notifyAll();
+		}
+	}
+
+	/** サーバーから抜けたときに呼ぶ。プレゼンスを消して接続は畳む。 */
+	public void release() {
+		synchronized (this.lock) {
+			this.requestedClientId = null;
+			this.latestText = null;
 			this.lock.notifyAll();
 		}
 	}
@@ -85,20 +103,45 @@ public final class DiscordRichPresence {
 
 	private void loop() {
 		while (this.running) {
+			String clientId;
 			String text;
-			long now = System.currentTimeMillis();
+			boolean force;
 
 			synchronized (this.lock) {
+				clientId = this.requestedClientId;
 				text = this.latestText;
+				force = this.forceSend;
 			}
 
-			if (text == null || text.equals(this.sentText)) {
+			// 出すものが無い間はプレゼンスを消して接続も畳んで待つ
+			if (clientId == null || text == null) {
+				this.clearPresence();
+				this.closeConnection();
+				this.activeClientId = null;
+
 				if (!this.sleepUninterrupted(500L)) {
 					break;
 				}
 
 				continue;
 			}
+
+			// Client ID が変わったら古い内容を消してから繋ぎ直す
+			if (this.connection != null && !clientId.equals(this.activeClientId)) {
+				this.clearPresence();
+				this.closeConnection();
+				this.activeClientId = null;
+			}
+
+			if (!force && text.equals(this.sentText)) {
+				if (!this.sleepUninterrupted(500L)) {
+					break;
+				}
+
+				continue;
+			}
+
+			long now = System.currentTimeMillis();
 
 			if (this.connection == null) {
 				if (now < this.nextConnectAt) {
@@ -109,19 +152,24 @@ public final class DiscordRichPresence {
 					continue;
 				}
 
-				this.connection = this.tryConnect();
+				this.connection = this.tryConnect(clientId);
 
 				if (this.connection == null) {
 					this.nextConnectAt = System.currentTimeMillis() + RETRY_INTERVAL_MS;
 					continue;
 				}
 
+				this.activeClientId = clientId;
 				LOGGER.info("[ifuto-armor-hud] Discord に接続しました");
 			}
 
 			try {
-				this.connection.send(buildSetActivityJson(text));
-				this.sentText = text;
+				this.connection.send(this.buildSetActivityJson(text));
+
+				synchronized (this.lock) {
+					this.sentText = text;
+					this.forceSend = false;
+				}
 
 				if (!this.sleepUninterrupted(MIN_SEND_INTERVAL_MS)) {
 					break;
@@ -129,12 +177,13 @@ public final class DiscordRichPresence {
 			} catch (IOException e) {
 				LOGGER.info("[ifuto-armor-hud] Discord との接続が切れました ({})", e.toString());
 				this.closeConnection();
+				this.activeClientId = null;
 				this.nextConnectAt = System.currentTimeMillis() + RETRY_INTERVAL_MS;
 			}
 		}
 
 		// 終了時はプレゼンスを消してから閉じる
-		clearPresence();
+		this.clearPresence();
 		this.closeConnection();
 	}
 
@@ -146,10 +195,12 @@ public final class DiscordRichPresence {
 		}
 
 		try {
-			conn.send(buildSetActivityJson(""));
+			conn.send(this.buildSetActivityJson(""));
 		} catch (IOException ignored) {
 			// 終了時なので失敗しても気にしない
 		}
+
+		this.sentText = null;
 	}
 
 	private void closeConnection() {
@@ -175,8 +226,12 @@ public final class DiscordRichPresence {
 		}
 	}
 
-	private Connection tryConnect() {
-		String clientId = ArmorHudConfig.get().discordClientId.trim();
+	private Connection tryConnect(String clientId) {
+		String id = clientId.trim();
+
+		if (id.isEmpty()) {
+			return null;
+		}
 
 		for (int i = 0; i < 10; i++) {
 			Connection conn = this.openPipe(i);
@@ -186,7 +241,7 @@ public final class DiscordRichPresence {
 			}
 
 			try {
-				conn.handshake(clientId);
+				conn.handshake(id);
 				return conn;
 			} catch (IOException e) {
 				try {
@@ -250,7 +305,7 @@ public final class DiscordRichPresence {
 		} else {
 			activity = new StringBuilder("{");
 			activity.append("\"details\":\"").append(jsonEscape(text)).append("\"");
-			activity.append(",\"assets\":{\"large_image\":\"").append(externalIconKey()).append("\",\"large_text\":\"ifuto mods\"}");
+			activity.append(",\"assets\":{\"large_image\":\"").append(this.externalIconKey()).append("\",\"large_text\":\"ifuto mods\"}");
 			activity.append("}");
 		}
 
