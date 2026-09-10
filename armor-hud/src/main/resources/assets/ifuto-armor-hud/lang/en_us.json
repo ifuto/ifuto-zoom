@@ -1,0 +1,33 @@
+{
+	"key.category.ifuto-armor-hud.armor_hud": "Ifuto Armor HUD",
+	"key.ifuto-armor-hud.toggle": "Toggle Armor HUD",
+
+	"ifuto-armor-hud.config.title": "Ifuto Armor HUD Settings",
+	"ifuto-armor-hud.config.hint": "Default key: V — show or hide the HUD",
+
+	"ifuto-armor-hud.config.show_hud": "Show HUD",
+	"ifuto-armor-hud.config.position": "Position",
+	"ifuto-armor-hud.config.position.top_left": "Top Left",
+	"ifuto-armor-hud.config.position.top_right": "Top Right",
+	"ifuto-armor-hud.config.position.bottom_left": "Bottom Left",
+	"ifuto-armor-hud.config.position.bottom_right": "Bottom Right",
+
+	"ifuto-armor-hud.config.layout": "Layout",
+	"ifuto-armor-hud.config.layout.vertical": "Vertical",
+	"ifuto-armor-hud.config.layout.horizontal": "Horizontal",
+
+	"ifuto-armor-hud.config.durability": "Durability",
+	"ifuto-armor-hud.config.durability.none": "None",
+	"ifuto-armor-hud.config.durability.bar": "Bar Only",
+	"ifuto-armor-hud.config.durability.bar_number": "Bar + Number",
+	"ifuto-armor-hud.config.durability.bar_percent": "Bar + %",
+	"ifuto-armor-hud.config.durability.number": "Number Only",
+	"ifuto-armor-hud.config.durability.percent": "% Only",
+	"ifuto-armor-hud.config.durability.tooltip": "How the remaining durability is shown. The color fades green → yellow → red as the item wears out.",
+
+	"ifuto-armor-hud.config.hide_empty": "Hide Empty Slots",
+	"ifuto-armor-hud.config.offset_x": "X Offset: %s",
+	"ifuto-armor-hud.config.offset_y": "Y Offset: %s",
+
+	"ifuto-armor-hud.config.reset": "Reset to Defaults"
+}

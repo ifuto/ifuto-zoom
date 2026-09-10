@@ -1,0 +1,33 @@
+{
+	"key.category.ifuto-armor-hud.armor_hud": "Ifuto Armor HUD",
+	"key.ifuto-armor-hud.toggle": "Armor HUD 表示切替",
+
+	"ifuto-armor-hud.config.title": "Ifuto Armor HUD 設定",
+	"ifuto-armor-hud.config.hint": "既定キー: V — HUD の表示/非表示を切り替え",
+
+	"ifuto-armor-hud.config.show_hud": "HUD を表示",
+	"ifuto-armor-hud.config.position": "表示位置",
+	"ifuto-armor-hud.config.position.top_left": "左上",
+	"ifuto-armor-hud.config.position.top_right": "右上",
+	"ifuto-armor-hud.config.position.bottom_left": "左下",
+	"ifuto-armor-hud.config.position.bottom_right": "右下",
+
+	"ifuto-armor-hud.config.layout": "並び方",
+	"ifuto-armor-hud.config.layout.vertical": "縦並び",
+	"ifuto-armor-hud.config.layout.horizontal": "横並び",
+
+	"ifuto-armor-hud.config.durability": "耐久表示",
+	"ifuto-armor-hud.config.durability.none": "なし",
+	"ifuto-armor-hud.config.durability.bar": "バーのみ",
+	"ifuto-armor-hud.config.durability.bar_number": "バー＋数値",
+	"ifuto-armor-hud.config.durability.bar_percent": "バー＋％",
+	"ifuto-armor-hud.config.durability.number": "数値のみ",
+	"ifuto-armor-hud.config.durability.percent": "％のみ",
+	"ifuto-armor-hud.config.durability.tooltip": "残り耐久の出し方です。色は緑→黄→赤で傷み具合を表します。",
+
+	"ifuto-armor-hud.config.hide_empty": "空きスロットを隠す",
+	"ifuto-armor-hud.config.offset_x": "横位置: %s",
+	"ifuto-armor-hud.config.offset_y": "縦位置: %s",
+
+	"ifuto-armor-hud.config.reset": "初期設定に戻す"
+}
