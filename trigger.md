@@ -12,7 +12,7 @@ loader:
 fabric_api:
 modmenu:
 java: 21
-workdir:
+workdir: armor-hud
 artifact_path: armor-hud/build/libs/*.jar
 
 note: armor-hud 初回ビルド
