@@ -15,4 +15,4 @@ java: 21
 workdir: armor-hud
 artifact_path: armor-hud/build/libs/*.jar
 
-note: armor-hud 初回ビルド
+note: armor-hud 精密設定のビルド確認
