@@ -1,7 +1,6 @@
 package com.ifuto.armorhud;
 
 import com.ifuto.armorhud.config.ArmorHudConfig;
-import com.ifuto.armorhud.discord.DiscordBridge;
 import com.ifuto.armorhud.discord.DiscordRichPresence;
 import com.ifuto.armorhud.hud.ArmorHudRenderer;
 import net.fabricmc.api.ClientModInitializer;
@@ -79,9 +78,6 @@ public class IfutoArmorHudClient implements ClientModInitializer {
 		// 常に最後に描けば他の MOD の HUD とだいたい共存できる
 		HudElementRegistry.addLast(Identifier.of(MOD_ID, "armor_hud"), new ArmorHudRenderer());
 
-
-		// Discord 連携用チャンネル（他modと共有。登録済みならそのまま使う）
-		DiscordBridge.registerPayloadType();
 
 		ClientLifecycleEvents.CLIENT_STOPPING.register(client -> DiscordRichPresence.get().shutdown());
 
