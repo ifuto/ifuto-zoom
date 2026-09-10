@@ -8,9 +8,10 @@ ifuto 系 Mod が共通で受け取っている、Discord Rich Presence（Discor
 | --- | --- |
 | チャンネル | `ifumods:server/discord` |
 | 方向 | S2C（サーバー → クライアント）。PLAY フェーズ |
-| 中身 | **Minecraft 文字列2本**（① Client ID、② 表示文）※ 旧形式の文字列1本（表示文のみ）も読めます |
+| 中身 | **Minecraft 文字列2～3本**（① Client ID、② 表示文、③ 時間秒数＝任意）※ 旧形式の文字列1本（表示文のみ）も読めます |
 | ① Client ID | 使う Discord アプリケーションの Client ID（数字のみの文字列） |
 | ② 表示文 | Rich Presence の 1 行目（details）にそのまま表示。**改行 `\n` を1つ入れると2行目（state）として表示**（複数行対応）。3行目以降は Discord の仕様で出せないため、2行目に空白区切りで繋げます |
+| ③ 時間秒数（任意） | `+秒数` なら**残り時間カウントダウン**（例: `"+600"` → あと10分）、`-秒数` なら**経過表示**（例: `"-90"` → 90秒前から計測中）。空文字・`0`・省略なら時間表示なし。Discord 側はバーではなく `12:34 left` / `1:23 elapsed` という時間テキストになります |
 | Client ID が空文字 | クライアント側設定の Client ID（あれば）を使う |
 | 表示文が空文字 | プレゼンスを消す |
 | 推奨頻度 | 変更時のみ送るのがベスト。毎秒 1 回程度までなら OK（クライアント側で 0.8 秒間隔に間引きされます） |
@@ -35,13 +36,13 @@ ifuto 系 Mod が共通で受け取っている、Discord Rich Presence（Discor
 
 ## ペイロードの中身（バイト列の構造）
 
-カスタムペイロードのボディは、Minecraft 文字列（VarInt 長 + UTF-8）が2つ順に並んだものです。
+カスタムペイロードのボディは、Minecraft 文字列（VarInt 長 + UTF-8）が2～3つ順に並んだものです（③ は任意）。
 
 ```
-+------------+----------------+------------+----------------+
-| VarInt 長さ | Client ID      | VarInt 長さ | 表示文          |
-|             | (UTF-8)        |             | (UTF-8)        |
-+------------+----------------+------------+----------------+
++------------+-----------+------------+---------+------------+---------------+
+| VarInt 長さ | Client ID | VarInt 長さ | 表示文   | VarInt 長さ | 時間秒数(任意) |
+|            | (UTF-8)   |            | (UTF-8) |            | (UTF-8)       |
++------------+-----------+------------+---------+------------+---------------+
 ```
 
 例: Client ID `123456789012345678`、表示文 `Spawn にいるよ`。チャンネル名を含むパケット全体の構造は各実装の CustomPayload に従います。
@@ -53,15 +54,16 @@ ifuto 系 Mod が共通で受け取っている、Discord Rich Presence（Discor
 ### Fabric (yarn) サーバー側
 
 ```java
-public record DiscordPayload(String clientId, String text) implements CustomPayload {
+public record DiscordPayload(String clientId, String text, String timeSpec) implements CustomPayload {
 	public static final Identifier CHANNEL = Identifier.of("ifumods", "server/discord");
 	public static final CustomPayload.Id<DiscordPayload> ID = new CustomPayload.Id<>(CHANNEL);
 	public static final PacketCodec<RegistryByteBuf, DiscordPayload> CODEC = CustomPayload.codecOf(
 			(value, buf) -> {           // エンコーダは value 先・buf 後（ValueFirstEncoder）
 				buf.writeString(value.clientId);
 				buf.writeString(value.text);
+				buf.writeString(value.timeSpec);
 			},
-			buf -> new DiscordPayload(buf.readString(), buf.readString())
+			buf -> new DiscordPayload(buf.readString(), buf.readString(), buf.readString())
 	);
 
 	@Override public Id<? extends CustomPayload> getId() { return ID; }
@@ -74,25 +76,31 @@ try {
 	// 他の ifuto mod が登録済み。それで問題ない
 }
 
-// 送信（1行だけ）
-ServerPlayNetworking.send(player, new DiscordPayload("123456789012345678", "Spawn にいるよ"));
+// 送信（1行だけ・時間なし）
+ServerPlayNetworking.send(player, new DiscordPayload("123456789012345678", "Spawn にいるよ", ""));
 
-// 2行表示（details + state）
-ServerPlayNetworking.send(player, new DiscordPayload("123456789012345678", "Spawn にいるよ\n採掘中 ⛏ 残り 12:34"));
+// 2行表示（details + state）＋残り10分のカウントダウン
+ServerPlayNetworking.send(player, new DiscordPayload("123456789012345678", "イベント会場にいるよ\nボス戦！", "+600"));
+
+// 経過表示（この時間指定が届いた時点の5秒前から計測中として表示）
+ServerPlayNetworking.send(player, new DiscordPayload("123456789012345678", "探検中", "-5"));
 ```
 
 ### Spigot / Paper（プラグインメッセージ）
 
 ```java
 String clientId = "123456789012345678";
-String text = "Spawn にいるよ";
+String text = "Spawn にいるよ\n採掘中";
+String timeSpec = "+600"; // 残り10分。要らなければ空文字 or 省略
 
-byte[] idBytes = encodeMinecraftString(clientId); // VarInt長 + UTF-8
+byte[] idBytes = encodeMinecraftString(clientId);   // VarInt長 + UTF-8
 byte[] textBytes = encodeMinecraftString(text);
+byte[] timeBytes = encodeMinecraftString(timeSpec);
 
-byte[] body = new byte[idBytes.length + textBytes.length];
+byte[] body = new byte[idBytes.length + textBytes.length + timeBytes.length];
 System.arraycopy(idBytes, 0, body, 0, idBytes.length);
 System.arraycopy(textBytes, 0, body, idBytes.length, textBytes.length);
+System.arraycopy(timeBytes, 0, body, idBytes.length + textBytes.length, timeBytes.length);
 
 player.sendPluginMessage(plugin, "ifumods:server/discord", body);
 ```
@@ -105,10 +113,12 @@ player.sendPluginMessage(plugin, "ifumods:server/discord", body);
 
 1. **型の登録は「なければ登録」** — PayloadTypeRegistry は重複登録で例外を投げます。例外を握りつぶせば、先に登録した Mod の型でバイト列を読めます
 2. **受信ハンドラでパケットをキャンセルしない** — 読むだけにしてください。Ifuto Armor HUD は mixin で読むだけにしているので、他 Mod の受信を邪魔しません
-3. **record は `String clientId, String text` の2コンポーネントで** — 他 Mod の型としてデコードされても、record の String コンポーネントを宣言順に読めば取り出せます（Ifuto Armor HUD はその方式で読みにいきます）。文字列が1本だけの record も旧形式として読めます
+3. **record は `String clientId, String text`（時間を使うなら `, String timeSpec`）のコンポーネントで** — 他 Mod の型としてデコードされても、record の String コンポーネントを宣言順に読めば取り出せます（Ifuto Armor HUD はその方式で読みにいきます）。1本だけ（最古の形式）の record も表示文として読めます
 
 ```java
 public record DiscordPayload(String clientId, String text) implements CustomPayload { ... }
+// または
+public record DiscordPayload(String clientId, String text, String timeSpec) implements CustomPayload { ... }
 ```
 
 この形に揃えておけば、どちらの Mod が先に読み込まれても、どちらも同じパケットを正しく読めます。バグらず、RPC もどちらか片方だけが正常に出る状態になります。

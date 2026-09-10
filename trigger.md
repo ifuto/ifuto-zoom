@@ -15,4 +15,4 @@ java: 21
 workdir: armor-hud
 artifact_path: armor-hud/build/libs/*.jar
 
-note: RPC複数行（state）対応の検証
+note: RPC時間表示（timestamps）対応の検証

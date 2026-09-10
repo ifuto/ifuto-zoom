@@ -13,6 +13,7 @@ import java.nio.channels.SocketChannel;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Objects;
 import java.util.UUID;
 
 /**
@@ -41,7 +42,11 @@ public final class DiscordRichPresence {
 
 	private String requestedClientId; // 次に使いたい Client ID（null = 握っていない）
 	private String latestText;
+	private String requestedTimeSpec; // 時間表示の指定（+残り秒 / -経過秒 / 空=なし）
 	private String sentText;
+	private String anchoredSpec; // ワーカーでエポックに換算済みの timeSpec
+	private long anchoredStartSec;
+	private long anchoredEndSec;
 	private String activeClientId; // いまの接続で handshake した Client ID
 	private boolean forceSend;
 	private boolean started;
@@ -53,11 +58,12 @@ public final class DiscordRichPresence {
 	private DiscordRichPresence() {
 	}
 
-	/** サーバーから (clientId, text) が届いたときに呼ぶ（text が空ならクリア）。 */
-	public void submit(String clientId, String text) {
+	/** サーバーから (clientId, text, timeSpec) が届いたときに呼ぶ（text が空ならクリア）。 */
+	public void submit(String clientId, String text, String timeSpec) {
 		synchronized (this.lock) {
 			this.requestedClientId = clientId;
 			this.latestText = text;
+			this.requestedTimeSpec = timeSpec;
 
 			if (!this.started) {
 				this.started = true;
@@ -88,6 +94,7 @@ public final class DiscordRichPresence {
 		synchronized (this.lock) {
 			this.requestedClientId = null;
 			this.latestText = null;
+			this.requestedTimeSpec = null;
 			this.lock.notifyAll();
 		}
 	}
@@ -105,11 +112,13 @@ public final class DiscordRichPresence {
 		while (this.running) {
 			String clientId;
 			String text;
+			String timeSpec;
 			boolean force;
 
 			synchronized (this.lock) {
 				clientId = this.requestedClientId;
 				text = this.latestText;
+				timeSpec = this.requestedTimeSpec;
 				force = this.forceSend;
 			}
 
@@ -133,7 +142,16 @@ public final class DiscordRichPresence {
 				this.activeClientId = null;
 			}
 
-			if (!force && text.equals(this.sentText)) {
+			// 時間指定が変わったときだけ「受信時点」を起点にエポックへ換算し直す
+			// （心拍で送り直しても残り時間が巻き戻らないように）
+			boolean specChanged = !Objects.equals(timeSpec, this.anchoredSpec);
+
+			if (specChanged) {
+				this.anchoredSpec = timeSpec;
+				this.anchorTimestamps(timeSpec);
+			}
+
+			if (!force && !specChanged && text.equals(this.sentText)) {
 				if (!this.sleepUninterrupted(500L)) {
 					break;
 				}
@@ -164,7 +182,7 @@ public final class DiscordRichPresence {
 			}
 
 			try {
-				this.connection.send(this.buildSetActivityJson(text));
+				this.connection.send(this.buildSetActivityJson(text, this.anchoredStartSec, this.anchoredEndSec));
 
 				synchronized (this.lock) {
 					this.sentText = text;
@@ -195,7 +213,7 @@ public final class DiscordRichPresence {
 		}
 
 		try {
-			conn.send(this.buildSetActivityJson(""));
+			conn.send(this.buildSetActivityJson("", 0L, 0L));
 		} catch (IOException ignored) {
 			// 終了時なので失敗しても気にしない
 		}
@@ -294,9 +312,42 @@ public final class DiscordRichPresence {
 		return null;
 	}
 
+	// 時間指定（"+600"=残り10分 / "-90"=90秒前から経過 / それ以外=なし）をエポックに変換
+	private void anchorTimestamps(String timeSpec) {
+		Long seconds = parseTimeSpec(timeSpec);
+
+		if (seconds == null || seconds == 0L) {
+			this.anchoredStartSec = 0L;
+			this.anchoredEndSec = 0L;
+			return;
+		}
+
+		long nowSec = System.currentTimeMillis() / 1000L;
+
+		if (seconds > 0L) {
+			this.anchoredStartSec = nowSec;
+			this.anchoredEndSec = nowSec + seconds;
+		} else {
+			this.anchoredStartSec = nowSec + seconds;
+			this.anchoredEndSec = 0L;
+		}
+	}
+
+	private static Long parseTimeSpec(String timeSpec) {
+		if (timeSpec == null || timeSpec.isBlank()) {
+			return null;
+		}
+
+		try {
+			return Long.parseLong(timeSpec.trim());
+		} catch (NumberFormatException e) {
+			return null;
+		}
+	}
+
 	// SET_ACTIVITY コマンドの JSON。空文字なら activity=null でクリア。
 	// 表示文の改行は Discord の details(1行目) / state(2行目) に振り分ける
-	private String buildSetActivityJson(String text) {
+	private String buildSetActivityJson(String text, long startSec, long endSec) {
 		long pid = ProcessHandle.current().pid();
 		String nonce = UUID.randomUUID().toString();
 		StringBuilder activity;
@@ -324,6 +375,25 @@ public final class DiscordRichPresence {
 
 			if (state != null) {
 				activity.append(",\"state\":\"").append(jsonEscape(state)).append("\"");
+			}
+
+			// 時間表示: start/end どちらかあれば timestamps を付ける
+			if (startSec > 0L || endSec > 0L) {
+				activity.append(",\"timestamps\":{");
+
+				if (startSec > 0L) {
+					activity.append("\"start\":").append(startSec);
+				}
+
+				if (endSec > 0L) {
+					if (startSec > 0L) {
+						activity.append(',');
+					}
+
+					activity.append("\"end\":").append(endSec);
+				}
+
+				activity.append('}');
 			}
 
 			activity.append(",\"assets\":{\"large_image\":\"").append(this.externalIconKey()).append("\",\"large_text\":\"ifuto mods\"}");

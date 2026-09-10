@@ -16,7 +16,7 @@ import java.util.List;
  * - 型の登録は「なければ登録」。すでに登録済みなら（他modの型でも）そのまま使う
  * - 受信はハンドラを登録せず mixin で読むだけ。packet は絶対にキャンセルしない
  * - 他modの型でデコードされた場合は record の String コンポーネントを順に読む
- *   （ガイドで「String clientId, String text の record」に揃えてあるので互いに読める）
+ *   （ガイドで「String clientId, String text（, String timeSpec）の record」に揃えてあるので互いに読める）
  *
  * サーバーからパケットが来たら、退出するまではこちらが Rich Presence を握る。
  * 握っている間は他modの Discord RPC を mixin（mixin/compat）で止めていて、
@@ -53,10 +53,12 @@ public final class DiscordBridge {
 
 		String clientId;
 		String text;
+		String timeSpec;
 
 		if (payload instanceof DiscordPayload ours) {
 			clientId = ours.clientId();
 			text = ours.text();
+			timeSpec = ours.timeSpec();
 		} else {
 			List<String> values = readRecordStrings(payload);
 
@@ -66,10 +68,15 @@ public final class DiscordBridge {
 
 			clientId = values.size() >= 2 ? values.get(0) : "";
 			text = values.size() >= 2 ? values.get(1) : values.get(0);
+			timeSpec = values.size() >= 3 ? values.get(2) : "";
 		}
 
 		if (text == null) {
 			text = "";
+		}
+
+		if (timeSpec == null) {
+			timeSpec = "";
 		}
 
 		clientId = resolveClientId(clientId);
@@ -80,7 +87,7 @@ public final class DiscordBridge {
 		}
 
 		setServerLocked(true);
-		DiscordRichPresence.get().submit(clientId, text);
+		DiscordRichPresence.get().submit(clientId, text, timeSpec);
 	}
 
 	/** クライアント tick ごとに呼ぶ。ロック中は定期的に自前のプレゼンスを送り直す。 */
