@@ -15,4 +15,4 @@ java: 21
 workdir: armor-hud
 artifact_path: armor-hud/build/libs/*.jar
 
-note: v1.4.8 設定画面スクロール化
+note: v1.4.8 Row参照修正
