@@ -15,4 +15,4 @@ java: 21
 workdir: armor-hud
 artifact_path: armor-hud/build/libs/*.jar
 
-note: bisect4-1 壊れ検知を外す
+note: bisect4-2 描画系も外す（言語だけ）

@@ -6,7 +6,6 @@ import com.ifuto.armorhud.config.HudLayout;
 import com.ifuto.armorhud.config.HudPosition;
 import com.ifuto.armorhud.config.InfoMode;
 import com.ifuto.armorhud.config.OutsideSide;
-import com.ifuto.armorhud.config.ShowCondition;
 import com.ifuto.armorhud.config.SlotBackground;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
@@ -29,8 +28,7 @@ import java.util.List;
  */
 @Environment(EnvType.CLIENT)
 public class ArmorHudRenderer implements HudElement {
-	// 頭→胴→脚→足の順（壊れ通知の走査でも使うので公開）
-	public static final EquipmentSlot[] SLOTS = {
+	private static final EquipmentSlot[] SLOTS = {
 			EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET
 	};
 
@@ -72,11 +70,6 @@ public class ArmorHudRenderer implements HudElement {
 		}
 
 		if (items.isEmpty()) {
-			return;
-		}
-
-		// 表示条件: 傷あり / ピンチの装備が1つも無ければ出さない
-		if (config.showCondition != ShowCondition.ALWAYS && !matchesCondition(items, config)) {
 			return;
 		}
 
@@ -133,19 +126,6 @@ public class ArmorHudRenderer implements HudElement {
 
 		boolean sideStripLeft = !horizontal && outside != InfoMode.NONE && config.outsideSide == OutsideSide.LEFT;
 
-		// HUD スケール。ホットバーに近い側の下角を支点に拡縮する
-		float scale = config.hudScale / 100.0F;
-
-		if (scale != 1.0F) {
-			double anchorX = config.position == HudPosition.HOTBAR_LEFT ? x0 + panelW : x0;
-			double anchorY = y0 + panelH;
-			var matrices = context.getMatrices();
-			matrices.pushMatrix();
-			matrices.translate(anchorX, anchorY);
-			matrices.scale(scale, scale);
-			matrices.translate(-anchorX, -anchorY);
-		}
-
 		for (int i = 0; i < n; i++) {
 			ItemStack stack = items.get(i);
 			int fx = horizontal
@@ -189,29 +169,6 @@ public class ArmorHudRenderer implements HudElement {
 				}
 			}
 		}
-
-		if (scale != 1.0F) {
-			context.getMatrices().popMatrix();
-		}
-	}
-
-	private static boolean matchesCondition(List<ItemStack> items, ArmorHudConfig config) {
-		for (ItemStack stack : items) {
-			if (!hasDurability(stack)) {
-				continue;
-			}
-
-			if (config.showCondition == ShowCondition.WHEN_DAMAGED && stack.getDamage() > 0) {
-				return true;
-			}
-
-			if (config.showCondition == ShowCondition.WHEN_CRITICAL
-					&& durabilityRatio(stack) * 100.0F <= config.warnPercent) {
-				return true;
-			}
-		}
-
-		return false;
 	}
 
 	private void drawSlot(DrawContext context, ArmorHudConfig config, ItemStack stack, Identifier ghost, int fx, int fy) {
@@ -305,7 +262,6 @@ public class ArmorHudRenderer implements HudElement {
 			case PERCENT -> Math.round(durabilityRatio(stack) * 100.0F) + "%";
 			case NUMBER -> Integer.toString(stack.getMaxDamage() - stack.getDamage());
 			case LOST -> Integer.toString(stack.getDamage());
-			case LOST_PERCENT -> Math.round((1.0F - durabilityRatio(stack)) * 100.0F) + "%";
 			default -> "";
 		};
 	}

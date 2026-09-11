@@ -6,7 +6,6 @@ import com.ifuto.armorhud.config.HudLayout;
 import com.ifuto.armorhud.config.HudPosition;
 import com.ifuto.armorhud.config.InfoMode;
 import com.ifuto.armorhud.config.OutsideSide;
-import com.ifuto.armorhud.config.ShowCondition;
 import com.ifuto.armorhud.config.SlotBackground;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
@@ -132,32 +131,14 @@ public class ArmorHudConfigScreen extends Screen {
 				this.config.offsetX,
 				value -> this.config.offsetX = value));
 
-		// 8行目: 縦オフセット / HUD の大きさ
+		// 8行目: 縦オフセット
 		y += ROW_HEIGHT;
 		this.addDrawableChild(new OptionSlider(left, y, WIDGET_WIDTH, WIDGET_HEIGHT,
 				"ifuto-armor-hud.config.offset_y", -100, 100, "%+d px",
 				this.config.offsetY,
 				value -> this.config.offsetY = value));
 
-		this.addDrawableChild(new OptionSlider(right, y, WIDGET_WIDTH, WIDGET_HEIGHT,
-				"ifuto-armor-hud.config.hud_scale", 50, 150, "%d%%",
-				this.config.hudScale,
-				value -> this.config.hudScale = value));
-
-		// 9行目: 表示条件 / 壊れたら通知
-		y += ROW_HEIGHT;
-		this.addDrawableChild(CyclingButtonWidget.<ShowCondition>builder(ShowCondition::getText, this.config.showCondition)
-				.values(ShowCondition.values())
-				.tooltip(value -> Tooltip.of(Text.translatable("ifuto-armor-hud.config.show_condition.tooltip")))
-				.build(left, y, WIDGET_WIDTH, WIDGET_HEIGHT, Text.translatable("ifuto-armor-hud.config.show_condition"),
-						(button, value) -> this.config.showCondition = value));
-
-		this.addDrawableChild(CyclingButtonWidget.onOffBuilder(this.config.breakAlert)
-				.tooltip(value -> Tooltip.of(Text.translatable("ifuto-armor-hud.config.break_alert.tooltip")))
-				.build(right, y, WIDGET_WIDTH, WIDGET_HEIGHT, Text.translatable("ifuto-armor-hud.config.break_alert"),
-						(button, value) -> this.config.breakAlert = value));
-
-		// 10行目: Discord Client ID
+		// 9行目: Discord Client ID
 		y += ROW_HEIGHT;
 		TextFieldWidget clientIdField = new TextFieldWidget(this.textRenderer,
 				left, y, WIDGET_WIDTH * 2 + COLUMN_GAP, WIDGET_HEIGHT,
