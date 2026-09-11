@@ -215,6 +215,11 @@ public class ArmorHudConfigScreen extends Screen {
 			super(client, width, height, y, itemHeight);
 		}
 
+		@Override
+		public int addEntry(Row entry) {
+			return super.addEntry(entry);
+		}
+
 		private static class Row extends ElementListWidget.Entry<Row> {
 			private final List<ClickableWidget> widgets = new ArrayList<>();
 
