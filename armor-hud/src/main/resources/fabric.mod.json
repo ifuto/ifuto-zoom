@@ -3,7 +3,7 @@
 	"id": "ifuto-armor-hud",
 	"version": "${version}",
 	"name": "Ifuto Armor HUD",
-	"description": "Shows your equipped armor and its durability on the HUD. Position, layout and durability format are configurable.",
+	"description": "Shows your equipped armor and durability right next to the hotbar — drawn pixel-perfect with vanilla textures, from the seamless hotbar frame to the offhand-style rounded one. Vanilla overlays, blink warnings, resource-pack friendly, Mod Menu config.",
 	"authors": [
 		"ifuto"
 	],
