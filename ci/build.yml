@@ -1,0 +1,215 @@
+name: Multi Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      mc:
+        description: "Minecraft バージョン（空欄 = リポジトリの既定値）"
+        required: false
+        default: ""
+      yarn:
+        description: "Yarn マッピング（空欄 = リポジトリの既定値）"
+        required: false
+        default: ""
+      loader:
+        description: "Fabric Loader バージョン（空欄 = リポジトリの既定値）"
+        required: false
+        default: ""
+      fabric_api:
+        description: "Fabric API バージョン（空欄 = リポジトリの既定値）"
+        required: false
+        default: ""
+      modmenu:
+        description: "Mod Menu バージョン（空欄 = リポジトリの既定値）"
+        required: false
+        default: ""
+      java:
+        description: "JDK バージョン"
+        required: false
+        default: "21"
+      workdir:
+        description: "ビルドするサブフォルダ（空欄 = リポジトリルート）"
+        required: false
+        default: ""
+      artifact_path:
+        description: "成果物としてアップロードするパス"
+        required: false
+        default: ""
+  push:
+    paths:
+      - "trigger.md"
+
+permissions:
+  contents: read
+
+jobs:
+  prepare:
+    name: パラメータ解決
+    runs-on: ubuntu-latest
+    outputs:
+      mc: ${{ steps.p.outputs.mc }}
+      yarn: ${{ steps.p.outputs.yarn }}
+      loader: ${{ steps.p.outputs.loader }}
+      fabric_api: ${{ steps.p.outputs.fabric_api }}
+      modmenu: ${{ steps.p.outputs.modmenu }}
+      java: ${{ steps.p.outputs.java }}
+      workdir: ${{ steps.p.outputs.workdir }}
+      artifact_path: ${{ steps.p.outputs.artifact_path }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: パラメータ決定（手動入力 > trigger.md > 既定値）
+        id: p
+        env:
+          IN_MC: ${{ inputs.mc }}
+          IN_YARN: ${{ inputs.yarn }}
+          IN_LOADER: ${{ inputs.loader }}
+          IN_FABRIC_API: ${{ inputs.fabric_api }}
+          IN_MODMENU: ${{ inputs.modmenu }}
+          IN_JAVA: ${{ inputs.java }}
+          IN_WORKDIR: ${{ inputs.workdir }}
+          IN_ARTIFACT_PATH: ${{ inputs.artifact_path }}
+        run: |
+          set -euo pipefail
+
+          # gradle.properties の現在値を読む（引数: プロパティ名）
+          prop() { grep -E "^$1=" gradle.properties 2>/dev/null | head -n1 | cut -d= -f2-; }
+
+          # trigger.md の "key: value" 行を読む（なければ空文字）
+          trig() {
+            [ -f trigger.md ] || return 0
+            grep -E "^[[:space:]]*$1[[:space:]]*:" trigger.md | head -n1 \
+              | sed -E "s/^[[:space:]]*$1[[:space:]]*:[[:space:]]*//; s/[[:space:]]+$//" || true
+          }
+
+          # 優先順位付きで値を決める（$1: 手動入力 $2: trigger.md のキー $3: 既定値）
+          pick() {
+            local v="${1:-}"
+            [ -n "$v" ] || v=$(trig "$2")
+            [ -n "$v" ] || v="$3"
+            printf '%s' "$v"
+          }
+
+          {
+            echo "mc=$(pick "$IN_MC" mc "$(prop minecraft_version)")"
+            echo "yarn=$(pick "$IN_YARN" yarn "$(prop yarn_mappings)")"
+            echo "loader=$(pick "$IN_LOADER" loader "$(prop loader_version)")"
+            echo "fabric_api=$(pick "$IN_FABRIC_API" fabric_api "$(prop fabric_version)")"
+            echo "modmenu=$(pick "$IN_MODMENU" modmenu "$(prop modmenu_version)")"
+            echo "java=$(pick "$IN_JAVA" java "21")"
+            echo "workdir=$(pick "$IN_WORKDIR" workdir "")"
+            echo "artifact_path=$(pick "$IN_ARTIFACT_PATH" artifact_path "build/libs/*.jar")"
+          } >> "$GITHUB_OUTPUT"
+
+  build:
+    name: ビルド (mc=${{ needs.prepare.outputs.mc }})
+    needs: prepare
+    runs-on: ubuntu-latest
+    env:
+      MC: ${{ needs.prepare.outputs.mc }}
+      YARN: ${{ needs.prepare.outputs.yarn }}
+      LOADER: ${{ needs.prepare.outputs.loader }}
+      FABRIC_API: ${{ needs.prepare.outputs.fabric_api }}
+      MODMENU: ${{ needs.prepare.outputs.modmenu }}
+      WORKDIR: ${{ needs.prepare.outputs.workdir }}
+      ARTIFACT_PATH: ${{ needs.prepare.outputs.artifact_path }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: JDK セットアップ
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ needs.prepare.outputs.java }}
+          cache: gradle
+
+      - name: gradle.properties にパラメータ反映
+        run: |
+          set -euo pipefail
+          DIR="."
+          if [ -n "$WORKDIR" ] && [ -f "$WORKDIR/gradle.properties" ]; then
+            DIR="$WORKDIR"
+          fi
+          cd "$DIR"
+
+          put() { # $1: プロパティ名 $2: 値（空なら変更しない）
+            [ -n "$2" ] || return 0
+            if grep -q "^$1=" gradle.properties; then
+              sed -i "s|^$1=.*|$1=$2|" gradle.properties
+            else
+              echo "$1=$2" >> gradle.properties
+            fi
+          }
+          put minecraft_version "$MC"
+          put yarn_mappings "$YARN"
+          put loader_version "$LOADER"
+          put fabric_version "$FABRIC_API"
+          put modmenu_version "$MODMENU"
+          echo "--- gradle.properties ---"
+          cat gradle.properties
+
+      - name: ビルド実行
+        run: |
+          set -o pipefail
+          if [ -n "$WORKDIR" ] && [ -x "$WORKDIR/gradlew" ]; then
+            (cd "$WORKDIR" && ./gradlew build --stacktrace) 2>&1 | tee "$WORKDIR/build-log.txt"
+          elif [ -n "$WORKDIR" ]; then
+            chmod +x gradlew
+            ./gradlew -p "$WORKDIR" build --stacktrace 2>&1 | tee build-log.txt
+          else
+            chmod +x gradlew
+            ./gradlew build --stacktrace 2>&1 | tee build-log.txt
+          fi
+
+      # --- ここから追加 ---
+      # 失敗時、エラー抜粋を「チェックアノテーション」に乗せる。
+      # アノテーションは GitHub Checks API から普通に取得できるので、
+      # Azure blob 経由でしか読めない生ログの代替になる。
+      - name: 失敗時: エラーをアノテーション化
+        if: failure()
+        run: |
+          # ログ本体を探す
+          LOG=""
+          for c in "${WORKDIR:+$WORKDIR/}build-log.txt" build-log.txt; do
+            [ -n "$c" ] && [ -f "$c" ] && LOG="$c" && break
+          done
+
+          # workflow command の特殊文字エスケープ
+          esc() { local s="$1"; s="${s//%/%25}"; s="${s//$'\r'/%0D}"; s="${s//$'\n'/%0A}"; printf '%s' "$s"; }
+
+          # 1行を javac 風に分解できれば file/line 付きで、無理なら文ごとただの error で出す
+          emit() {
+            local l="$1"
+            if [[ "$l" =~ (.*\.java):([0-9]+):\ error:\ (.*) ]]; then
+              local f="${BASH_REMATCH[1]#"$GITHUB_WORKSPACE/"}"
+              echo "::error file=$f,line=${BASH_REMATCH[2]}::$(esc "${BASH_REMATCH[3]}")"
+            else
+              echo "::error::$(esc "$l")"
+            fi
+          }
+
+          if [ -z "$LOG" ]; then
+            echo "::error::build-log.txt が見つかりません"
+            exit 0
+          fi
+
+          # まずエラーっぽい行を最大30件拾う。1件も無ければ末尾30行を代わりに出す
+          if grep -aqE "error:|FAILED|Caused by|Exception" "$LOG"; then
+            grep -aE "error:|FAILED|Caused by|Exception" "$LOG" | head -30 | while IFS= read -r l; do emit "$l"; done
+          else
+            tail -30 "$LOG" | while IFS= read -r l; do emit "$l"; done
+          fi
+
+          # 人間向け: ブラウザの Summary にも末尾を貼る
+          { echo '```'; tail -300 "$LOG"; echo '```'; } >> "$GITHUB_STEP_SUMMARY" || true
+      # --- 追加ここまで ---
+
+      - name: 成果物アップロード
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: multi-build-${{ github.run_number }}
+          path: |
+            ${{ env.ARTIFACT_PATH }}
+            **/build-log.txt
+          if-no-files-found: warn
