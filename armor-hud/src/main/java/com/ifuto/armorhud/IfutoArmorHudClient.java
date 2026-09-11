@@ -16,7 +16,6 @@ import net.minecraft.client.option.KeyBinding;
 import net.minecraft.client.util.InputUtil;
 import net.minecraft.entity.EquipmentSlot;
 import net.minecraft.item.ItemStack;
-import net.minecraft.sound.SoundEvents;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 import org.lwjgl.glfw.GLFW;
@@ -131,7 +130,6 @@ public class IfutoArmorHudClient implements ClientModInitializer {
 				BreakWatch watched = breakWatch[i];
 
 				if (stack.isEmpty() && watched != null && watched.lastDamage() >= watched.maxDamage() - 1) {
-					player.playSound(SoundEvents.ENTITY_ITEM_BREAK, 1.0F, 1.0F);
 					player.sendMessage(Text.translatable("ifuto-armor-hud.break_notice", watched.name()), false);
 				}
 
