@@ -105,7 +105,7 @@ public class ArmorHudRenderer implements HudElement {
 
 		// 隙間なし: ホットバーのツギ目枠(20)。隙間あり: オフハンド風の角丸(22)
 		int cell = config.slotGap > 0 ? OFFHAND_CELL : CELL;
-		int iconOff = cell - 18; // 20→2, 22→3
+		int iconOff = cell == OFFHAND_CELL ? OFFHAND_ICON_OFF : ICON_OFF;
 
 		// 枠外の表示が占有する高さ/幅（横なら上、縦なら脇）
 		int topExtra = 0;

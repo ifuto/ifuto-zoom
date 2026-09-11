@@ -15,4 +15,4 @@ java: 21
 workdir: armor-hud
 artifact_path: armor-hud/build/libs/*.jar
 
-note: v1.4.10 ほぼ満タンも非表示
+note: v1.4.11 アイテム位置の計算ミス
