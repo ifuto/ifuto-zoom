@@ -36,8 +36,14 @@ public class ArmorHudRenderer implements HudElement {
 			EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET
 	};
 
-	// バニラのスロット枠スプライト（リソパで上書き可）。18x18 で外側の囲いも一体
-	private static final Identifier SLOT_TEXTURE = Identifier.ofVanilla("container/slot");
+	// バニラのホットバーテクスチャから1スロット分(20x20)を切り抜いて使う（リソパで上書き可）
+	private static final Identifier HOTBAR_TEXTURE = Identifier.ofVanilla("textures/gui/sprites/hud/hotbar.png");
+	private static final int CELL = 20;      // セルの外寸（ボーダー2 + 内16）
+	private static final int CELL_U = 21;    // 切り抜き範囲 (u, v)（中ほどのセルで両端の影を避ける）
+	private static final int CELL_V = 1;
+	private static final int HOTBAR_TEX_W = 182;
+	private static final int HOTBAR_TEX_H = 22;
+	private static final int ICON_OFF = 2;   // セル内のアイテム位置
 
 	// バニラの空き装備スロットに出るミニアイコンと同じやつ
 	private static final Identifier[] GHOST_ICONS = {
@@ -48,11 +54,6 @@ public class ArmorHudRenderer implements HudElement {
 	};
 
 	private static final int ICON = 16;
-	private static final int SLOT = 18;       // 枠の外寸（アイコン + 1px の枠）
-
-	// 常設の囲い枠スプライト（80x80、中央は透明）。小さく縮めて枠の外側に被せる
-	private static final Identifier SLOT_FRAME = Identifier.ofVanilla("widget/slot_frame");
-	private static final int FRAME_SIZE = SLOT + 4; // 周囲2pxずつはみ出す
 	private static final int TEXT_H = 9;
 	private static final int HOTBAR_HALF = 91; // ホットバーは中央に幅182px
 	private static final float INSIDE_TEXT_SCALE = 0.55F;
@@ -121,11 +122,11 @@ public class ArmorHudRenderer implements HudElement {
 		int panelH;
 
 		if (horizontal) {
-			panelW = n * SLOT + (n - 1) * config.slotGap;
-			panelH = SLOT + topExtra;
+			panelW = n * CELL + (n - 1) * config.slotGap;
+			panelH = CELL + topExtra;
 		} else {
-			panelW = SLOT + sideExtra;
-			panelH = n * SLOT + (n - 1) * config.slotGap;
+			panelW = CELL + sideExtra;
+			panelH = n * CELL + (n - 1) * config.slotGap;
 		}
 
 		int screenW = context.getScaledWindowWidth();
@@ -154,11 +155,11 @@ public class ArmorHudRenderer implements HudElement {
 
 		for (int i = 0; i < n; i++) {
 			xs[i] = horizontal
-					? x0 + i * (SLOT + config.slotGap)
+					? x0 + i * (CELL + config.slotGap)
 					: x0 + (sideStripLeft ? sideExtra : 0);
 			ys[i] = horizontal
 					? yFrame0
-					: yFrame0 + i * (SLOT + config.slotGap);
+					: yFrame0 + i * (CELL + config.slotGap);
 		}
 
 		// HUD スケール。ホットバーに近い側の下角を支点に拡縮する
@@ -188,9 +189,9 @@ public class ArmorHudRenderer implements HudElement {
 				// 枠の中
 				if (inside == InfoMode.GAUGE) {
 					int barW = Math.round(12.0F * ratio);
-					context.fill(fx + 3, fy + 14, fx + 15, fy + 16, 0xFF1F1F1F);
+					context.fill(fx + 4, fy + 15, fx + 16, fy + 17, 0xFF1F1F1F);
 					if (barW > 0) {
-						context.fill(fx + 3, fy + 14, fx + 3 + barW, fy + 15, color);
+						context.fill(fx + 4, fy + 15, fx + 4 + barW, fy + 16, color);
 					}
 				} else if (inside.isText()) {
 					drawInsideText(context, tr, infoText(inside, stack), fx, fy, color);
@@ -206,10 +207,10 @@ public class ArmorHudRenderer implements HudElement {
 					double phase = System.nanoTime() / 1.0E9 * Math.PI * 3.0;
 					int alpha = (int) ((Math.sin(phase) + 1.0) / 2.0 * 0.7 * 255.0);
 					int blink = alpha << 24 | 0xFF0000;
-					context.fill(fx, fy, fx + SLOT, fy + 1, blink);
-					context.fill(fx, fy + SLOT - 1, fx + SLOT, fy + SLOT, blink);
-					context.fill(fx, fy, fx + 1, fy + SLOT, blink);
-					context.fill(fx + SLOT - 1, fy, fx + SLOT, fy + SLOT, blink);
+					context.fill(fx, fy, fx + CELL, fy + 1, blink);
+					context.fill(fx, fy + CELL - 1, fx + CELL, fy + CELL, blink);
+					context.fill(fx, fy, fx + 1, fy + CELL, blink);
+					context.fill(fx + CELL - 1, fy, fx + CELL, fy + CELL, blink);
 				}
 			}
 		}
@@ -244,20 +245,19 @@ public class ArmorHudRenderer implements HudElement {
 
 		if (stack.isEmpty() && config.background == SlotBackground.GHOST) {
 			// ゴーストアイコンは白ティントで（素のままだと暗くて見づらい）
-			context.drawGuiTexture(RenderPipelines.GUI_TEXTURED, ghost, fx + 1, fy + 1, ICON, ICON, tint);
+			context.drawGuiTexture(RenderPipelines.GUI_TEXTURED, ghost,
+					fx + ICON_OFF, fy + ICON_OFF, ICON, ICON, tint);
 			return;
 		}
 
 		if (config.background == SlotBackground.FRAME) {
-			// 外側の囲い → 中のウェル の順で
-			context.drawGuiTexture(RenderPipelines.GUI_TEXTURED, SLOT_FRAME,
-					fx - 2, fy - 2, FRAME_SIZE, FRAME_SIZE, tint);
-			// スプライトは18x18。セルにきっちり乗せる（アイテムは中の16x16）
-			context.drawGuiTexture(RenderPipelines.GUI_TEXTURED, SLOT_TEXTURE, fx, fy, SLOT, SLOT, tint);
+			// ホットバーのセルをそのまま切り抜いて乗せる（アイテムは+2+2）
+			context.drawTexture(RenderPipelines.GUI_TEXTURED, HOTBAR_TEXTURE, fx, fy,
+					(float) CELL_U, (float) CELL_V, CELL, CELL, CELL, CELL, HOTBAR_TEX_W, HOTBAR_TEX_H, tint);
 		}
 
 		if (!stack.isEmpty()) {
-			context.drawItem(stack, fx + 1, fy + 1);
+			context.drawItem(stack, fx + ICON_OFF, fy + ICON_OFF);
 		}
 	}
 
@@ -265,16 +265,16 @@ public class ArmorHudRenderer implements HudElement {
 							 InfoMode outside, float ratio, int color, int fx, int fy, boolean horizontal) {
 		if (outside == InfoMode.GAUGE) {
 			// 縦ゲージ用。縦向きのときだけ有効（横向きは呼ばれない）
-			int gx = config.outsideSide == OutsideSide.LEFT ? fx - 3 : fx + SLOT + 1;
+			int gx = config.outsideSide == OutsideSide.LEFT ? fx - 3 : fx + CELL + 1;
 
 			if (config.dynamicContrast) {
-				context.fill(gx - 1, fy, gx + 3, fy + SLOT, 0x66000000);
+				context.fill(gx - 1, fy, gx + 3, fy + CELL, 0x66000000);
 			}
 
-			int h = Math.round((SLOT - 2) * ratio);
-			context.fill(gx, fy + 1, gx + 2, fy + SLOT - 1, 0xFF1F1F1F);
+			int h = Math.round((CELL - 2) * ratio);
+			context.fill(gx, fy + 1, gx + 2, fy + CELL - 1, 0xFF1F1F1F);
 			if (h > 0) {
-				context.fill(gx, fy + SLOT - 1 - h, gx + 2, fy + SLOT - 1, color);
+				context.fill(gx, fy + CELL - 1 - h, gx + 2, fy + CELL - 1, color);
 			}
 			return;
 		}
@@ -285,11 +285,11 @@ public class ArmorHudRenderer implements HudElement {
 		int ty;
 
 		if (horizontal) {
-			tx = fx + SLOT / 2 - w / 2;
+			tx = fx + CELL / 2 - w / 2;
 			ty = fy - TEXT_H;
 		} else {
-			tx = config.outsideSide == OutsideSide.LEFT ? fx - 2 - w : fx + SLOT + 2;
-			ty = fy + (SLOT - TEXT_H) / 2;
+			tx = config.outsideSide == OutsideSide.LEFT ? fx - 2 - w : fx + CELL + 2;
+			ty = fy + (CELL - TEXT_H) / 2;
 		}
 
 		if (config.dynamicContrast) {
@@ -303,7 +303,7 @@ public class ArmorHudRenderer implements HudElement {
 		// 枠の内側に収まるよう、縮めて右下寄せにする
 		var matrices = context.getMatrices();
 		matrices.pushMatrix();
-		matrices.translate(fx + SLOT - 2, fy + 10);
+		matrices.translate(fx + CELL - 2, fy + 11);
 		matrices.scale(INSIDE_TEXT_SCALE, INSIDE_TEXT_SCALE);
 		context.drawTextWithShadow(tr, text, -tr.getWidth(text), 0, color);
 		matrices.popMatrix();
@@ -331,7 +331,7 @@ public class ArmorHudRenderer implements HudElement {
 	// 残量 1.0 で緑、0.5 くらいで黄、0 で赤。色相を残量に乗せるだけ
 	private static int durabilityColor(float ratio) {
 		float h6 = Math.max(0.0F, Math.min(1.0F, ratio)) * 2.0F; // 0..2 (赤→黄→緑)
-		int i = (int) h6;
+		int i = Math.min(1, (int) h6); // ちょうど1.0でi=2に落ちて黄になるのを防ぐ
 		float f = h6 - i;
 		int r;
 		int g;
