@@ -13,9 +13,11 @@ import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
 import net.minecraft.client.option.KeyBinding;
+import net.minecraft.client.sound.PositionedSoundInstance;
 import net.minecraft.client.util.InputUtil;
 import net.minecraft.entity.EquipmentSlot;
 import net.minecraft.item.ItemStack;
+import net.minecraft.sound.SoundEvents;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 import org.lwjgl.glfw.GLFW;
@@ -132,6 +134,8 @@ public class IfutoArmorHudClient implements ClientModInitializer {
 				BreakWatch watched = breakWatch[i];
 
 				if (stack.isEmpty() && watched != null && watched.lastDamage() >= watched.maxDamage() - 1) {
+					// yarn 1.21.11 だと master() は ui() に改名されているのでこちらを使う
+					client.getSoundManager().play(PositionedSoundInstance.ui(SoundEvents.ENTITY_ITEM_BREAK, 1.0F));
 					player.sendMessage(Text.translatable("ifuto-armor-hud.break_notice", watched.name()), false);
 				}
 
