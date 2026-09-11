@@ -15,4 +15,4 @@ java: 21
 workdir: armor-hud
 artifact_path: armor-hud/build/libs/*.jar
 
-note: 減った耐久%・HUDスケール・壊れ通知・表示条件（float修正済み）
+note: bisect4-5 最小差分（SLOTS公開+LOST_PERCENT）
