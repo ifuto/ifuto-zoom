@@ -13,9 +13,11 @@ import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
 import net.minecraft.client.option.KeyBinding;
+import net.minecraft.client.sound.PositionedSoundInstance;
 import net.minecraft.client.util.InputUtil;
 import net.minecraft.entity.EquipmentSlot;
 import net.minecraft.item.ItemStack;
+import net.minecraft.sound.SoundEvents;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 import org.lwjgl.glfw.GLFW;
@@ -93,7 +95,7 @@ public class IfutoArmorHudClient implements ClientModInitializer {
 
 			// 装備が壊れた瞬間を検知して音とチャットで知らせる
 			if (ArmorHudConfig.get().breakAlert) {
-				checkBrokenArmor(client.player);
+				checkBrokenArmor(client);
 			}
 		});
 
@@ -114,7 +116,9 @@ public class IfutoArmorHudClient implements ClientModInitializer {
 
 	// 前 tick は装備していた耐久アイテムが消えたら「壊れた」とみなす。
 	// 手持ちに戻しただけの場合は lastDamage < 最大直前なので誤爆しない（最大-1 まで削れたものが消えたら壊れ判定）
-	private static void checkBrokenArmor(net.minecraft.client.network.ClientPlayerEntity player) {
+	private static void checkBrokenArmor(net.minecraft.client.MinecraftClient client) {
+		var player = client.player;
+
 		if (player == null) {
 			for (int i = 0; i < breakWatch.length; i++) {
 				breakWatch[i] = null;
@@ -130,6 +134,7 @@ public class IfutoArmorHudClient implements ClientModInitializer {
 				BreakWatch watched = breakWatch[i];
 
 				if (stack.isEmpty() && watched != null && watched.lastDamage() >= watched.maxDamage() - 1) {
+					client.getSoundManager().play(PositionedSoundInstance.master(SoundEvents.ENTITY_ITEM_BREAK, 1.0F));
 					player.sendMessage(Text.translatable("ifuto-armor-hud.break_notice", watched.name()), false);
 				}
 
