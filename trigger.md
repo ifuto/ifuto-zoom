@@ -15,4 +15,4 @@ java: 21
 workdir: armor-hud
 artifact_path: armor-hud/build/libs/*.jar
 
-note: v1.4.4 forward参照直し
+note: v1.4.5 ホットバー切り抜き枠と新品色バグ
