@@ -15,4 +15,4 @@ java: 21
 workdir: armor-hud
 artifact_path: armor-hud/build/libs/*.jar
 
-note: bisect4-8 画面だけ外す
+note: bisect4-9 音だけ外して全描画
