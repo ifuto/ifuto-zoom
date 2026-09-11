@@ -32,7 +32,7 @@ public class ArmorHudConfig {
 	public HudLayout layout = HudLayout.VERTICAL;
 
 	/** ホットバーからどれくらい離すか（既定はアイテムマス1つ分の 18px） */
-	public int hotbarGap = 2;
+	public int hotbarGap = 7;
 
 	/** 装備枠と枠の間の隙間（px） */
 	public int slotGap = 2;

@@ -15,4 +15,4 @@ java: 21
 workdir: armor-hud
 artifact_path: armor-hud/build/libs/*.jar
 
-note: v1.4.6 バニラオーバーレイと位置調整
+note: v1.4.7 オフハンド距離と角丸枠
