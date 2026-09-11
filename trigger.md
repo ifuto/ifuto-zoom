@@ -15,4 +15,4 @@ java: 21
 workdir: armor-hud
 artifact_path: armor-hud/build/libs/*.jar
 
-note: v1.4.3 メソッド経由で
+note: v1.4.4 くっきり囲い枠とスペク隠し

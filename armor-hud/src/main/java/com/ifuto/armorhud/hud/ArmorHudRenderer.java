@@ -39,6 +39,10 @@ public class ArmorHudRenderer implements HudElement {
 	// バニラのスロット枠スプライト（リソパで上書き可）。18x18 で外側の囲いも一体
 	private static final Identifier SLOT_TEXTURE = Identifier.ofVanilla("container/slot");
 
+	// 常設の囲い枠スプライト（80x80、中央は透明）。小さく縮めて枠の外側に被せる
+	private static final Identifier SLOT_FRAME = Identifier.ofVanilla("widget/slot_frame");
+	private static final int FRAME_SIZE = SLOT + 4; // 周囲2pxずつはみ出す
+
 	// バニラの空き装備スロットに出るミニアイコンと同じやつ
 	private static final Identifier[] GHOST_ICONS = {
 			Identifier.ofVanilla("container/slot/helmet"),
@@ -58,7 +62,7 @@ public class ArmorHudRenderer implements HudElement {
 		ArmorHudConfig config = ArmorHudConfig.get();
 		MinecraftClient client = MinecraftClient.getInstance();
 
-		if (!config.showHud || client.player == null || client.options.hudHidden) {
+		if (!config.showHud || client.player == null || client.options.hudHidden || client.player.isSpectator()) {
 			return;
 		}
 
@@ -245,6 +249,9 @@ public class ArmorHudRenderer implements HudElement {
 		}
 
 		if (config.background == SlotBackground.FRAME) {
+			// 外側の囲い → 中のウェル の順で
+			context.drawGuiTexture(RenderPipelines.GUI_TEXTURED, SLOT_FRAME,
+					fx - 2, fy - 2, FRAME_SIZE, FRAME_SIZE, tint);
 			// スプライトは18x18。セルにきっちり乗せる（アイテムは中の16x16）
 			context.drawGuiTexture(RenderPipelines.GUI_TEXTURED, SLOT_TEXTURE, fx, fy, SLOT, SLOT, tint);
 		}
