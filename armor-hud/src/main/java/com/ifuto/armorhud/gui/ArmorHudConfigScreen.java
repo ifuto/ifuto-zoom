@@ -12,38 +12,38 @@ import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.gui.Element;
-import net.minecraft.client.gui.Selectable;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.tooltip.Tooltip;
 import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.client.gui.widget.ClickableWidget;
 import net.minecraft.client.gui.widget.CyclingButtonWidget;
-import net.minecraft.client.gui.widget.EntryListWidget;
+import net.minecraft.client.gui.widget.DirectionalLayoutWidget;
+import net.minecraft.client.gui.widget.LayoutWidget;
+import net.minecraft.client.gui.widget.ScrollableLayoutWidget;
 import net.minecraft.client.gui.widget.SliderWidget;
 import net.minecraft.client.gui.widget.TextFieldWidget;
+import net.minecraft.client.gui.widget.TextWidget;
+import net.minecraft.client.gui.widget.ThreePartsLayoutWidget;
 import net.minecraft.text.Text;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.function.IntConsumer;
 
 /**
  * Mod Menu から開く設定画面。バニラのオプション画面っぽい見た目にしている。
- * ウィンドウの縦が短くても下まで届くよう、項目はスクロールするリストに入れている。
+ * バニラのスクロールレイアウトを使っているので、ウィンドウの縦が短くても全部届く。
  */
 @Environment(EnvType.CLIENT)
 public class ArmorHudConfigScreen extends Screen {
 	private static final int WIDGET_WIDTH = 158;
 	private static final int WIDGET_HEIGHT = 20;
 	private static final int COLUMN_GAP = 8;
-	private static final int ROW_HEIGHT = 24;
-	private static final int HEADER = 40; // タイトル+ヒント分
-	private static final int FOOTER = 36; // ボタン分
+	private static final int ROW_SPACING = 4;
+	private static final int SCROLL_MIN_HEIGHT = 120;
 
 	private final Screen parent;
 	private final ArmorHudConfig config;
-	private HudOptionsList list;
+	private ScrollableLayoutWidget scrollable;
+	private ThreePartsLayoutWidget layout;
 
 	public ArmorHudConfigScreen(Screen parent) {
 		super(Text.translatable("ifuto-armor-hud.config.title"));
@@ -53,12 +53,17 @@ public class ArmorHudConfigScreen extends Screen {
 
 	@Override
 	protected void init() {
-		this.list = this.addDrawableChild(
-				new HudOptionsList(this.client, this.width, this.height - FOOTER - HEADER, HEADER, ROW_HEIGHT));
-		java.util.List<HudOptionsList.Row> entries = new java.util.ArrayList<>();
+		this.layout = new ThreePartsLayoutWidget(this);
+		this.layout.addHeader(this.title, this.textRenderer);
 
-		// 1行目: 表示 / 位置
-		entries.add(HudOptionsList.Row.of(
+		DirectionalLayoutWidget body = this.layout.addBody(DirectionalLayoutWidget.vertical());
+		body.add(new TextWidget(Text.translatable("ifuto-armor-hud.config.hint"), this.textRenderer),
+				positioner -> positioner.marginBottom(6));
+
+		// 中身は2列グリッド。行ごとの横配置を縦に積む
+		DirectionalLayoutWidget content = DirectionalLayoutWidget.vertical().spacing(ROW_SPACING);
+
+		content.add(row(
 				CyclingButtonWidget.onOffBuilder(this.config.showHud)
 						.tooltip(value -> Tooltip.of(Text.translatable("ifuto-armor-hud.config.show_hud.tooltip")))
 						.build(0, 0, WIDGET_WIDTH, WIDGET_HEIGHT, Text.translatable("ifuto-armor-hud.config.show_hud"),
@@ -69,8 +74,7 @@ public class ArmorHudConfigScreen extends Screen {
 						.build(0, 0, WIDGET_WIDTH, WIDGET_HEIGHT, Text.translatable("ifuto-armor-hud.config.position"),
 								(button, value) -> this.config.position = value)));
 
-		// 2行目: 並び方 / 背景
-		entries.add(HudOptionsList.Row.of(
+		content.add(row(
 				CyclingButtonWidget.<HudLayout>builder(HudLayout::getText, this.config.layout)
 						.values(HudLayout.values())
 						.tooltip(value -> Tooltip.of(Text.translatable("ifuto-armor-hud.config.layout.tooltip")))
@@ -82,8 +86,7 @@ public class ArmorHudConfigScreen extends Screen {
 						.build(0, 0, WIDGET_WIDTH, WIDGET_HEIGHT, Text.translatable("ifuto-armor-hud.config.background"),
 								(button, value) -> this.config.background = value)));
 
-		// 3行目: 空きスロット / ホットバーとの距離
-		entries.add(HudOptionsList.Row.of(
+		content.add(row(
 				CyclingButtonWidget.<EmptySlotMode>builder(EmptySlotMode::getText, this.config.emptyMode)
 						.values(EmptySlotMode.values())
 						.tooltip(value -> Tooltip.of(Text.translatable("ifuto-armor-hud.config.empty.tooltip")))
@@ -94,8 +97,7 @@ public class ArmorHudConfigScreen extends Screen {
 						this.config.hotbarGap,
 						value -> this.config.hotbarGap = value).tooltip("ifuto-armor-hud.config.hotbar_gap.tooltip")));
 
-		// 4行目: スロット間隔 / 枠の中
-		entries.add(HudOptionsList.Row.of(
+		content.add(row(
 				new OptionSlider(0, 0, WIDGET_WIDTH, WIDGET_HEIGHT,
 						"ifuto-armor-hud.config.slot_gap", 0, 16, "%d px",
 						this.config.slotGap,
@@ -106,8 +108,7 @@ public class ArmorHudConfigScreen extends Screen {
 						.build(0, 0, WIDGET_WIDTH, WIDGET_HEIGHT, Text.translatable("ifuto-armor-hud.config.inside"),
 								(button, value) -> this.config.inside = value)));
 
-		// 5行目: 枠の外 / 外の表示位置
-		entries.add(HudOptionsList.Row.of(
+		content.add(row(
 				CyclingButtonWidget.<InfoMode>builder(InfoMode::getText, this.config.outside)
 						.values(InfoMode.values())
 						.tooltip(value -> Tooltip.of(Text.translatable("ifuto-armor-hud.config.outside.tooltip")))
@@ -119,8 +120,7 @@ public class ArmorHudConfigScreen extends Screen {
 						.build(0, 0, WIDGET_WIDTH, WIDGET_HEIGHT, Text.translatable("ifuto-armor-hud.config.outside_side"),
 								(button, value) -> this.config.outsideSide = value)));
 
-		// 6行目: ピンチで点滅 / しきい値
-		entries.add(HudOptionsList.Row.of(
+		content.add(row(
 				CyclingButtonWidget.onOffBuilder(this.config.warnBlink)
 						.tooltip(value -> Tooltip.of(Text.translatable("ifuto-armor-hud.config.warn_blink.tooltip")))
 						.build(0, 0, WIDGET_WIDTH, WIDGET_HEIGHT, Text.translatable("ifuto-armor-hud.config.warn_blink"),
@@ -130,8 +130,7 @@ public class ArmorHudConfigScreen extends Screen {
 						this.config.warnPercent,
 						value -> this.config.warnPercent = value).tooltip("ifuto-armor-hud.config.warn_percent.tooltip")));
 
-		// 7行目: コントラスト / 横オフセット
-		entries.add(HudOptionsList.Row.of(
+		content.add(row(
 				CyclingButtonWidget.onOffBuilder(this.config.dynamicContrast)
 						.tooltip(value -> Tooltip.of(Text.translatable("ifuto-armor-hud.config.dynamic_contrast.tooltip")))
 						.build(0, 0, WIDGET_WIDTH, WIDGET_HEIGHT, Text.translatable("ifuto-armor-hud.config.dynamic_contrast"),
@@ -141,8 +140,7 @@ public class ArmorHudConfigScreen extends Screen {
 						this.config.offsetX,
 						value -> this.config.offsetX = value).tooltip("ifuto-armor-hud.config.offset_x.tooltip")));
 
-		// 8行目: 縦オフセット / HUD の大きさ
-		entries.add(HudOptionsList.Row.of(
+		content.add(row(
 				new OptionSlider(0, 0, WIDGET_WIDTH, WIDGET_HEIGHT,
 						"ifuto-armor-hud.config.offset_y", -100, 100, "%+d px",
 						this.config.offsetY,
@@ -152,8 +150,7 @@ public class ArmorHudConfigScreen extends Screen {
 						this.config.hudScale,
 						value -> this.config.hudScale = value).tooltip("ifuto-armor-hud.config.hud_scale.tooltip")));
 
-		// 9行目: 表示条件 / 壊れたら通知
-		entries.add(HudOptionsList.Row.of(
+		content.add(row(
 				CyclingButtonWidget.<ShowCondition>builder(ShowCondition::getText, this.config.showCondition)
 						.values(ShowCondition.values())
 						.tooltip(value -> Tooltip.of(Text.translatable("ifuto-armor-hud.config.show_condition.tooltip")))
@@ -164,7 +161,7 @@ public class ArmorHudConfigScreen extends Screen {
 						.build(0, 0, WIDGET_WIDTH, WIDGET_HEIGHT, Text.translatable("ifuto-armor-hud.config.break_alert"),
 								(button, value) -> this.config.breakAlert = value)));
 
-		// 10行目: Discord Client ID（全幅）
+		// Discord Client ID は全幅
 		TextFieldWidget clientIdField = new TextFieldWidget(this.textRenderer,
 				0, 0, WIDGET_WIDTH * 2 + COLUMN_GAP, WIDGET_HEIGHT,
 				Text.translatable("ifuto-armor-hud.config.client_id"));
@@ -173,29 +170,46 @@ public class ArmorHudConfigScreen extends Screen {
 		clientIdField.setPlaceholder(Text.translatable("ifuto-armor-hud.config.client_id.placeholder"));
 		clientIdField.setTooltip(Tooltip.of(Text.translatable("ifuto-armor-hud.config.client_id.tooltip")));
 		clientIdField.setChangedListener(value -> this.config.discordClientId = value.trim());
-		entries.add(HudOptionsList.Row.of(clientIdField));
+		content.add(row(clientIdField, null));
 
-		this.list.replaceEntries(entries);
+		this.scrollable = new ScrollableLayoutWidget(this.client, content, SCROLL_MIN_HEIGHT);
+		this.scrollable.setWidth(WIDGET_WIDTH * 2 + COLUMN_GAP + 8);
+		body.add(this.scrollable);
 
-		// 下部は固定（リストの外）
-		this.addDrawableChild(ButtonWidget.builder(Text.translatable("ifuto-armor-hud.config.reset"), button -> {
+		DirectionalLayoutWidget footer = this.layout.addFooter(DirectionalLayoutWidget.horizontal().spacing(COLUMN_GAP));
+		footer.add(ButtonWidget.builder(Text.translatable("ifuto-armor-hud.config.reset"), button -> {
 			this.config.resetToDefaults();
 			this.config.save();
 			this.clearAndInit();
-		}).dimensions(this.width / 2 - WIDGET_WIDTH - COLUMN_GAP / 2, this.height - FOOTER + 4,
-				WIDGET_WIDTH, WIDGET_HEIGHT).build());
+		}).width(WIDGET_WIDTH).build());
+		footer.add(ButtonWidget.builder(Text.translatable("gui.done"), button -> this.close())
+				.width(WIDGET_WIDTH).build());
 
-		this.addDrawableChild(ButtonWidget.builder(Text.translatable("gui.done"), button -> this.close())
-				.dimensions(this.width / 2 + COLUMN_GAP / 2, this.height - FOOTER + 4,
-						WIDGET_WIDTH, WIDGET_HEIGHT).build());
+		this.layout.forEachChild(this::addDrawableChild);
+		this.refreshWidgetPositions();
+	}
+
+	private static LayoutWidget row(ClickableWidget left, ClickableWidget right) {
+		DirectionalLayoutWidget row = DirectionalLayoutWidget.horizontal().spacing(COLUMN_GAP);
+		row.add(left);
+		if (right != null) {
+			row.add(right);
+		}
+		return row;
+	}
+
+	@Override
+	protected void refreshWidgetPositions() {
+		this.scrollable.setHeight(SCROLL_MIN_HEIGHT);
+		this.layout.refreshPositions();
+		// 余った分だけスクロール領域を伸ばす（バニラのワールド生成画面と同じやり方）
+		int extra = this.height - this.layout.getFooterHeight() - this.scrollable.getNavigationFocus().getBottom();
+		this.scrollable.setHeight(this.scrollable.getHeight() + extra);
 	}
 
 	@Override
 	public void render(DrawContext context, int mouseX, int mouseY, float delta) {
 		super.render(context, mouseX, mouseY, delta);
-		context.drawCenteredTextWithShadow(this.textRenderer, this.title, this.width / 2, 14, 0xFFFFFFFF);
-		context.drawCenteredTextWithShadow(this.textRenderer, Text.translatable("ifuto-armor-hud.config.hint"),
-				this.width / 2, 26, 0xFFA0A0A0);
 		context.drawTextWithShadow(this.textRenderer, "Made by Ifuto_mitai", 4, this.height - 12, 0xFF808080);
 	}
 
@@ -209,51 +223,6 @@ public class ArmorHudConfigScreen extends Screen {
 	public void removed() {
 		this.config.save();
 		super.removed();
-	}
-
-	// バニラのオプション画面と同じ、スクロールするリスト
-	private static class HudOptionsList extends EntryListWidget<HudOptionsList.Row> {
-
-		HudOptionsList(MinecraftClient client, int width, int height, int y, int itemHeight) {
-			super(client, width, height, y, itemHeight);
-		}
-
-		private static class Row extends EntryListWidget.Entry<Row> {
-			private final List<ClickableWidget> widgets = new ArrayList<>();
-
-			private Row(ClickableWidget... widgets) {
-				this.widgets.addAll(List.of(widgets));
-			}
-
-			static Row of(ClickableWidget... widgets) {
-				return new Row(widgets);
-			}
-
-			@Override
-			public List<? extends Element> children() {
-				return this.widgets;
-			}
-
-			@Override
-			public List<? extends Selectable> selectableChildren() {
-				return this.widgets;
-			}
-
-			@Override
-			public void render(DrawContext context, int mouseX, int mouseY, boolean hovered, float tickDelta) {
-				// 行の中に2列グリッド式に並べる。全幅の部品は1つだけ引き伸ばす
-				int widgetWidth = this.widgets.size() == 1 ? WIDGET_WIDTH * 2 + COLUMN_GAP : WIDGET_WIDTH;
-				int left = this.getContentMiddleX() - (WIDGET_WIDTH * 2 + COLUMN_GAP) / 2;
-				int yy = this.getContentMiddleY() - WIDGET_HEIGHT / 2;
-				for (int i = 0; i < this.widgets.size(); i++) {
-					ClickableWidget widget = this.widgets.get(i);
-					int wx = this.widgets.size() == 1 || i == 0 ? left : left + WIDGET_WIDTH + COLUMN_GAP;
-					widget.setWidth(widgetWidth);
-					widget.setPosition(wx, yy);
-					widget.render(context, mouseX, mouseY, tickDelta);
-				}
-			}
-		}
 	}
 
 	// スライダーの 0-1 位置を指定範囲に変換して刻むだけのクラス
