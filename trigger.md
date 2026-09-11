@@ -15,4 +15,4 @@ java: 21
 workdir: armor-hud
 artifact_path: armor-hud/build/libs/*.jar
 
-note: 全機能（float支点＋soundManager音）検証
+note: bisect4-8 画面だけ外す
