@@ -55,9 +55,10 @@ public class ArmorHudConfigScreen extends Screen {
 	protected void init() {
 		this.list = this.addDrawableChild(
 				new HudOptionsList(this.client, this.width, this.height - FOOTER - HEADER, HEADER, ROW_HEIGHT));
+		java.util.List<HudOptionsList.Row> entries = new java.util.ArrayList<>();
 
 		// 1行目: 表示 / 位置
-		this.list.addEntry(HudOptionsList.Row.of(
+		entries.add(HudOptionsList.Row.of(
 				CyclingButtonWidget.onOffBuilder(this.config.showHud)
 						.tooltip(value -> Tooltip.of(Text.translatable("ifuto-armor-hud.config.show_hud.tooltip")))
 						.build(0, 0, WIDGET_WIDTH, WIDGET_HEIGHT, Text.translatable("ifuto-armor-hud.config.show_hud"),
@@ -69,7 +70,7 @@ public class ArmorHudConfigScreen extends Screen {
 								(button, value) -> this.config.position = value)));
 
 		// 2行目: 並び方 / 背景
-		this.list.addEntry(HudOptionsList.Row.of(
+		entries.add(HudOptionsList.Row.of(
 				CyclingButtonWidget.<HudLayout>builder(HudLayout::getText, this.config.layout)
 						.values(HudLayout.values())
 						.tooltip(value -> Tooltip.of(Text.translatable("ifuto-armor-hud.config.layout.tooltip")))
@@ -82,7 +83,7 @@ public class ArmorHudConfigScreen extends Screen {
 								(button, value) -> this.config.background = value)));
 
 		// 3行目: 空きスロット / ホットバーとの距離
-		this.list.addEntry(HudOptionsList.Row.of(
+		entries.add(HudOptionsList.Row.of(
 				CyclingButtonWidget.<EmptySlotMode>builder(EmptySlotMode::getText, this.config.emptyMode)
 						.values(EmptySlotMode.values())
 						.tooltip(value -> Tooltip.of(Text.translatable("ifuto-armor-hud.config.empty.tooltip")))
@@ -94,7 +95,7 @@ public class ArmorHudConfigScreen extends Screen {
 						value -> this.config.hotbarGap = value).tooltip("ifuto-armor-hud.config.hotbar_gap.tooltip")));
 
 		// 4行目: スロット間隔 / 枠の中
-		this.list.addEntry(HudOptionsList.Row.of(
+		entries.add(HudOptionsList.Row.of(
 				new OptionSlider(0, 0, WIDGET_WIDTH, WIDGET_HEIGHT,
 						"ifuto-armor-hud.config.slot_gap", 0, 16, "%d px",
 						this.config.slotGap,
@@ -106,7 +107,7 @@ public class ArmorHudConfigScreen extends Screen {
 								(button, value) -> this.config.inside = value)));
 
 		// 5行目: 枠の外 / 外の表示位置
-		this.list.addEntry(HudOptionsList.Row.of(
+		entries.add(HudOptionsList.Row.of(
 				CyclingButtonWidget.<InfoMode>builder(InfoMode::getText, this.config.outside)
 						.values(InfoMode.values())
 						.tooltip(value -> Tooltip.of(Text.translatable("ifuto-armor-hud.config.outside.tooltip")))
@@ -119,7 +120,7 @@ public class ArmorHudConfigScreen extends Screen {
 								(button, value) -> this.config.outsideSide = value)));
 
 		// 6行目: ピンチで点滅 / しきい値
-		this.list.addEntry(HudOptionsList.Row.of(
+		entries.add(HudOptionsList.Row.of(
 				CyclingButtonWidget.onOffBuilder(this.config.warnBlink)
 						.tooltip(value -> Tooltip.of(Text.translatable("ifuto-armor-hud.config.warn_blink.tooltip")))
 						.build(0, 0, WIDGET_WIDTH, WIDGET_HEIGHT, Text.translatable("ifuto-armor-hud.config.warn_blink"),
@@ -130,7 +131,7 @@ public class ArmorHudConfigScreen extends Screen {
 						value -> this.config.warnPercent = value).tooltip("ifuto-armor-hud.config.warn_percent.tooltip")));
 
 		// 7行目: コントラスト / 横オフセット
-		this.list.addEntry(HudOptionsList.Row.of(
+		entries.add(HudOptionsList.Row.of(
 				CyclingButtonWidget.onOffBuilder(this.config.dynamicContrast)
 						.tooltip(value -> Tooltip.of(Text.translatable("ifuto-armor-hud.config.dynamic_contrast.tooltip")))
 						.build(0, 0, WIDGET_WIDTH, WIDGET_HEIGHT, Text.translatable("ifuto-armor-hud.config.dynamic_contrast"),
@@ -141,7 +142,7 @@ public class ArmorHudConfigScreen extends Screen {
 						value -> this.config.offsetX = value).tooltip("ifuto-armor-hud.config.offset_x.tooltip")));
 
 		// 8行目: 縦オフセット / HUD の大きさ
-		this.list.addEntry(HudOptionsList.Row.of(
+		entries.add(HudOptionsList.Row.of(
 				new OptionSlider(0, 0, WIDGET_WIDTH, WIDGET_HEIGHT,
 						"ifuto-armor-hud.config.offset_y", -100, 100, "%+d px",
 						this.config.offsetY,
@@ -152,7 +153,7 @@ public class ArmorHudConfigScreen extends Screen {
 						value -> this.config.hudScale = value).tooltip("ifuto-armor-hud.config.hud_scale.tooltip")));
 
 		// 9行目: 表示条件 / 壊れたら通知
-		this.list.addEntry(HudOptionsList.Row.of(
+		entries.add(HudOptionsList.Row.of(
 				CyclingButtonWidget.<ShowCondition>builder(ShowCondition::getText, this.config.showCondition)
 						.values(ShowCondition.values())
 						.tooltip(value -> Tooltip.of(Text.translatable("ifuto-armor-hud.config.show_condition.tooltip")))
@@ -172,7 +173,9 @@ public class ArmorHudConfigScreen extends Screen {
 		clientIdField.setPlaceholder(Text.translatable("ifuto-armor-hud.config.client_id.placeholder"));
 		clientIdField.setTooltip(Tooltip.of(Text.translatable("ifuto-armor-hud.config.client_id.tooltip")));
 		clientIdField.setChangedListener(value -> this.config.discordClientId = value.trim());
-		this.list.addEntry(HudOptionsList.Row.of(clientIdField));
+		entries.add(HudOptionsList.Row.of(clientIdField));
+
+		this.list.replaceEntries(entries);
 
 		// 下部は固定（リストの外）
 		this.addDrawableChild(ButtonWidget.builder(Text.translatable("ifuto-armor-hud.config.reset"), button -> {

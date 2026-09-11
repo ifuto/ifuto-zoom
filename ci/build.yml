@@ -195,7 +195,7 @@ jobs:
 
           # まずエラーっぽい行を最大30件拾う。1件も無ければ末尾30行を代わりに出す
           if grep -aqE "error:|FAILED|Caused by|Exception" "$LOG"; then
-            grep -aE "error:|FAILED|Caused by|Exception" "$LOG" | head -30 | while IFS= read -r l; do emit "$l"; done
+            grep -aE "error:|FAILED|Caused by|Exception|required:|found:|symbol:|location:" "$LOG" | head -60 | while IFS= read -r l; do emit "$l"; done
           else
             tail -30 "$LOG" | while IFS= read -r l; do emit "$l"; done
           fi
