@@ -18,8 +18,6 @@ import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.render.RenderTickCounter;
 import net.minecraft.entity.EquipmentSlot;
 import net.minecraft.item.ItemStack;
-import net.minecraft.util.Arm;
-import net.minecraft.util.Hand;
 import net.minecraft.util.Identifier;
 
 import java.util.ArrayList;
@@ -127,15 +125,9 @@ public class ArmorHudRenderer implements HudElement {
 		int screenW = context.getScaledWindowWidth();
 		int screenH = context.getScaledWindowHeight();
 
-		// オフハンド枠（幅29px）が出ていてHUDと同じ側なら、その分ずらす
-		boolean hudRight = config.position == HudPosition.HOTBAR_RIGHT;
-		boolean offhandRight = client.options.mainArm.getValue() == Arm.LEFT;
-		int sidePad = hudRight == offhandRight && !client.player.getStackInHand(Hand.OFF_HAND).isEmpty()
-				? 29 : 0;
-
-		int x0 = hudRight
-				? screenW / 2 + HOTBAR_HALF + sidePad + config.hotbarGap
-				: screenW / 2 - HOTBAR_HALF - sidePad - config.hotbarGap - panelW;
+		int x0 = config.position == HudPosition.HOTBAR_LEFT
+				? screenW / 2 - HOTBAR_HALF - config.hotbarGap - panelW
+				: screenW / 2 + HOTBAR_HALF + config.hotbarGap;
 		x0 += config.offsetX;
 
 		// 下端をホットバーに揃える（ホットバーの底は screenH - 2 くらい）
