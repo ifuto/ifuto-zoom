@@ -15,4 +15,4 @@ java: 21
 workdir: armor-hud
 artifact_path: armor-hud/build/libs/*.jar
 
-note: v1.4.1 RP枠と白アイコン
+note: v1.4.2 外枠もスプライトで

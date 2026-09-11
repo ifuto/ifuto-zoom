@@ -37,6 +37,11 @@ public class ArmorHudRenderer implements HudElement {
 	// バニラのスロット枠スプライト（リソースパックで上書きできる）
 	private static final Identifier SLOT_TEXTURE = Identifier.ofVanilla("container/slot");
 
+	// バニラでスロットにホバーしたとき出る外側の囲い。24x24のナインスライス
+	private static final Identifier SLOT_SURROUND = Identifier.ofVanilla("container/slot_highlight_back");
+	private static final int SURROUND = 24;
+	private static final int SURROUND_MARGIN = 4;
+
 	// バニラの空き装備スロットに出るミニアイコンと同じやつ
 	private static final Identifier[] GHOST_ICONS = {
 			Identifier.ofVanilla("container/slot/helmet"),
@@ -136,6 +141,19 @@ public class ArmorHudRenderer implements HudElement {
 
 		boolean sideStripLeft = !horizontal && outside != InfoMode.NONE && config.outsideSide == OutsideSide.LEFT;
 
+		// 見えているスロットの位置を先に決めておく
+		int[] xs = new int[n];
+		int[] ys = new int[n];
+
+		for (int i = 0; i < n; i++) {
+			xs[i] = horizontal
+					? x0 + i * (SLOT + config.slotGap)
+					: x0 + (sideStripLeft ? sideExtra : 0);
+			ys[i] = horizontal
+					? yFrame0
+					: yFrame0 + i * (SLOT + config.slotGap);
+		}
+
 		// HUD スケール。ホットバーに近い側の下角を支点に拡縮する
 		float scale = config.hudScale / 100.0F;
 
@@ -149,14 +167,20 @@ public class ArmorHudRenderer implements HudElement {
 			matrices.translate(-anchorX, -anchorY);
 		}
 
+		// 囲いは隣の枠に被らないよう、全部先に描く
+		if (config.background == SlotBackground.FRAME) {
+			for (int i = 0; i < n; i++) {
+				float a = items.get(i).isEmpty() ? config.emptyMode.alpha() : 1.0F;
+				int tint = Math.round(a * 255.0F) << 24 | 0xFFFFFF;
+				context.drawGuiTexture(RenderPipelines.GUI_TEXTURED, SLOT_SURROUND,
+						xs[i] - SURROUND_MARGIN, ys[i] - SURROUND_MARGIN, SURROUND, SURROUND, tint);
+			}
+		}
+
 		for (int i = 0; i < n; i++) {
 			ItemStack stack = items.get(i);
-			int fx = horizontal
-					? x0 + i * (SLOT + config.slotGap)
-					: x0 + (sideStripLeft ? sideExtra : 0);
-			int fy = horizontal
-					? yFrame0
-					: yFrame0 + i * (SLOT + config.slotGap);
+			int fx = xs[i];
+			int fy = ys[i];
 
 			drawSlot(context, config, stack, ghosts.get(i), fx, fy);
 
