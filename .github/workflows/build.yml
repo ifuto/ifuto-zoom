@@ -161,6 +161,49 @@ jobs:
             ./gradlew build --stacktrace 2>&1 | tee build-log.txt
           fi
 
+      # --- ここから追加 ---
+      # 失敗時、エラー抜粋を「チェックアノテーション」に乗せる。
+      # アノテーションは GitHub Checks API から普通に取得できるので、
+      # Azure blob 経由でしか読めない生ログの代替になる。
+      - name: 失敗時: エラーをアノテーション化
+        if: failure()
+        run: |
+          # ログ本体を探す
+          LOG=""
+          for c in "${WORKDIR:+$WORKDIR/}build-log.txt" build-log.txt; do
+            [ -n "$c" ] && [ -f "$c" ] && LOG="$c" && break
+          done
+
+          # workflow command の特殊文字エスケープ
+          esc() { local s="$1"; s="${s//%/%25}"; s="${s//$'\r'/%0D}"; s="${s//$'\n'/%0A}"; printf '%s' "$s"; }
+
+          # 1行を javac 風に分解できれば file/line 付きで、無理なら文ごとただの error で出す
+          emit() {
+            local l="$1"
+            if [[ "$l" =~ (.*\.java):([0-9]+):\ error:\ (.*) ]]; then
+              local f="${BASH_REMATCH[1]#"$GITHUB_WORKSPACE/"}"
+              echo "::error file=$f,line=${BASH_REMATCH[2]}::$(esc "${BASH_REMATCH[3]}")"
+            else
+              echo "::error::$(esc "$l")"
+            fi
+          }
+
+          if [ -z "$LOG" ]; then
+            echo "::error::build-log.txt が見つかりません"
+            exit 0
+          fi
+
+          # まずエラーっぽい行を最大30件拾う。1件も無ければ末尾30行を代わりに出す
+          if grep -aqE "error:|FAILED|Caused by|Exception" "$LOG"; then
+            grep -aE "error:|FAILED|Caused by|Exception" "$LOG" | head -30 | while IFS= read -r l; do emit "$l"; done
+          else
+            tail -30 "$LOG" | while IFS= read -r l; do emit "$l"; done
+          fi
+
+          # 人間向け: ブラウザの Summary にも末尾を貼る
+          { echo '```'; tail -300 "$LOG"; echo '```'; } >> "$GITHUB_STEP_SUMMARY" || true
+      # --- 追加ここまで ---
+
       - name: 成果物アップロード
         if: always()
         uses: actions/upload-artifact@v4
