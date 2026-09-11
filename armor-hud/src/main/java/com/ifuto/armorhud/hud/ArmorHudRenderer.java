@@ -137,8 +137,8 @@ public class ArmorHudRenderer implements HudElement {
 		float scale = config.hudScale / 100.0F;
 
 		if (scale != 1.0F) {
-			double anchorX = config.position == HudPosition.HOTBAR_LEFT ? x0 + panelW : x0;
-			double anchorY = y0 + panelH;
+			float anchorX = config.position == HudPosition.HOTBAR_LEFT ? x0 + panelW : x0;
+			float anchorY = y0 + panelH;
 			var matrices = context.getMatrices();
 			matrices.pushMatrix();
 			matrices.translate(anchorX, anchorY);
