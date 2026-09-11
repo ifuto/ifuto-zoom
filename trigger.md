@@ -15,4 +15,4 @@ java: 21
 workdir: armor-hud
 artifact_path: armor-hud/build/libs/*.jar
 
-note: v1.4.2 外枠もスプライトで
+note: v1.4.3 オフハンド回避と枠サイズ修正

@@ -18,6 +18,8 @@ import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.render.RenderTickCounter;
 import net.minecraft.entity.EquipmentSlot;
 import net.minecraft.item.ItemStack;
+import net.minecraft.util.Arm;
+import net.minecraft.util.Hand;
 import net.minecraft.util.Identifier;
 
 import java.util.ArrayList;
@@ -34,13 +36,8 @@ public class ArmorHudRenderer implements HudElement {
 			EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET
 	};
 
-	// バニラのスロット枠スプライト（リソースパックで上書きできる）
+	// バニラのスロット枠スプライト（リソパで上書き可）。18x18 で外側の囲いも一体
 	private static final Identifier SLOT_TEXTURE = Identifier.ofVanilla("container/slot");
-
-	// バニラでスロットにホバーしたとき出る外側の囲い。24x24のナインスライス
-	private static final Identifier SLOT_SURROUND = Identifier.ofVanilla("container/slot_highlight_back");
-	private static final int SURROUND = 24;
-	private static final int SURROUND_MARGIN = 4;
 
 	// バニラの空き装備スロットに出るミニアイコンと同じやつ
 	private static final Identifier[] GHOST_ICONS = {
@@ -130,9 +127,15 @@ public class ArmorHudRenderer implements HudElement {
 		int screenW = context.getScaledWindowWidth();
 		int screenH = context.getScaledWindowHeight();
 
-		int x0 = config.position == HudPosition.HOTBAR_LEFT
-				? screenW / 2 - HOTBAR_HALF - config.hotbarGap - panelW
-				: screenW / 2 + HOTBAR_HALF + config.hotbarGap;
+		// オフハンド枠（幅29px）が出ていてHUDと同じ側なら、その分ずらす
+		boolean hudRight = config.position == HudPosition.HOTBAR_RIGHT;
+		boolean offhandRight = client.options.mainArm.getValue() == Arm.LEFT;
+		int sidePad = hudRight == offhandRight && !client.player.getStackInHand(Hand.OFF_HAND).isEmpty()
+				? 29 : 0;
+
+		int x0 = hudRight
+				? screenW / 2 + HOTBAR_HALF + sidePad + config.hotbarGap
+				: screenW / 2 - HOTBAR_HALF - sidePad - config.hotbarGap - panelW;
 		x0 += config.offsetX;
 
 		// 下端をホットバーに揃える（ホットバーの底は screenH - 2 くらい）
@@ -165,16 +168,6 @@ public class ArmorHudRenderer implements HudElement {
 			matrices.translate(anchorX, anchorY);
 			matrices.scale(scale, scale);
 			matrices.translate(-anchorX, -anchorY);
-		}
-
-		// 囲いは隣の枠に被らないよう、全部先に描く
-		if (config.background == SlotBackground.FRAME) {
-			for (int i = 0; i < n; i++) {
-				float a = items.get(i).isEmpty() ? config.emptyMode.alpha() : 1.0F;
-				int tint = Math.round(a * 255.0F) << 24 | 0xFFFFFF;
-				context.drawGuiTexture(RenderPipelines.GUI_TEXTURED, SLOT_SURROUND,
-						xs[i] - SURROUND_MARGIN, ys[i] - SURROUND_MARGIN, SURROUND, SURROUND, tint);
-			}
 		}
 
 		for (int i = 0; i < n; i++) {
@@ -252,8 +245,8 @@ public class ArmorHudRenderer implements HudElement {
 		}
 
 		if (config.background == SlotBackground.FRAME) {
-			// スプライトは16x16。アイテムと同じ基準位置に乗せる
-			context.drawGuiTexture(RenderPipelines.GUI_TEXTURED, SLOT_TEXTURE, fx, fy, ICON, ICON, tint);
+			// スプライトは18x18。セルにきっちり乗せる（アイテムは中の16x16）
+			context.drawGuiTexture(RenderPipelines.GUI_TEXTURED, SLOT_TEXTURE, fx, fy, SLOT, SLOT, tint);
 		}
 
 		if (!stack.isEmpty()) {
