@@ -209,13 +209,13 @@ public class ArmorHudConfigScreen extends Screen {
 	}
 
 	// バニラのオプション画面と同じ、スクロールするリスト
-	private static class HudOptionsList extends EntryListWidget {
+	private static class HudOptionsList extends EntryListWidget<HudOptionsList.Row> {
 
 		HudOptionsList(MinecraftClient client, int width, int height, int y, int itemHeight) {
 			super(client, width, height, y, itemHeight);
 		}
 
-		private static class Row extends EntryListWidget.Entry {
+		private static class Row extends EntryListWidget.Entry<Row> {
 			private final List<ClickableWidget> widgets = new ArrayList<>();
 
 			private Row(ClickableWidget... widgets) {
