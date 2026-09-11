@@ -1,75 +1,68 @@
 {
 	"key.category.ifuto-armor-hud.armor_hud": "Ifuto Armor HUD",
 	"key.ifuto-armor-hud.toggle": "Przełącz HUD zbroi",
-
 	"ifuto-armor-hud.join_notice": "§7[Armor HUD]§r Wszystko ustawisz na ekranie Config dodawanym przez mod Mod Menu (HUD pod klawiszem V)",
-
 	"ifuto-armor-hud.config.title": "Ustawienia Ifuto Armor HUD",
 	"ifuto-armor-hud.config.hint": "Domyślny klawisz: V — pokaż lub ukryj HUD",
-
-	"ifuto-armor-hud.config.show_hud": "Pokaż HUD",
-
+	"ifuto-armor-hud.config.show_hud": "HUD",
+	"ifuto-armor-hud.config.show_hud.tooltip": "Pokazuje lub ukrywa cały HUD (klawisz V też przełącza).",
 	"ifuto-armor-hud.config.position": "Pozycja",
-	"ifuto-armor-hud.config.position.hotbar_left": "Po lewej stronie paska",
-	"ifuto-armor-hud.config.position.hotbar_right": "Po prawej stronie paska",
-
+	"ifuto-armor-hud.config.position.tooltip": "Po której stronie paska szybkiego dostępu umieścić panel.",
+	"ifuto-armor-hud.config.position.hotbar_left": "Lewo",
+	"ifuto-armor-hud.config.position.hotbar_right": "Prawo",
 	"ifuto-armor-hud.config.layout": "Układ",
+	"ifuto-armor-hud.config.layout.tooltip": "Czy sloty układane są pionowo czy w rzędzie.",
 	"ifuto-armor-hud.config.layout.vertical": "Pionowy",
 	"ifuto-armor-hud.config.layout.horizontal": "Poziomowy",
-
-	"ifuto-armor-hud.config.background": "Tło komórki",
+	"ifuto-armor-hud.config.background": "Tło",
 	"ifuto-armor-hud.config.background.frame": "Ramka",
-	"ifuto-armor-hud.config.background.ghost": "Ikony-widma (bez ramki)",
-	"ifuto-armor-hud.config.background.tooltip": "Ramka: rysuje ramkę w stylu waniliowym. Ikony-widma: bez ramki; puste komórki pokazują tylko blade ikonki.",
-
-	"ifuto-armor-hud.config.empty": "Puste komórki",
-	"ifuto-armor-hud.config.empty.keep": "Zostaw jak jest",
-	"ifuto-armor-hud.config.empty.faded": "Półprzezroczyste",
+	"ifuto-armor-hud.config.background.ghost": "Ikony",
+	"ifuto-armor-hud.config.background.tooltip": "Ramka: ramka slotu jak w vanilla (obsługuje paczki zasobów). Ikony: bez ramki; puste sloty pokazują białą ikonkę.",
+	"ifuto-armor-hud.config.empty": "Puste",
+	"ifuto-armor-hud.config.empty.tooltip": "Co robić ze slotami bez ekwipunku.",
+	"ifuto-armor-hud.config.empty.keep": "Bez zmian",
+	"ifuto-armor-hud.config.empty.faded": "Wyszarzone",
 	"ifuto-armor-hud.config.empty.hide": "Ukryj",
-
-	"ifuto-armor-hud.config.hotbar_gap": "Odstęp od paska: %s",
-	"ifuto-armor-hud.config.slot_gap": "Odstęp komórek: %s",
-
-	"ifuto-armor-hud.config.inside": "Wytrzymałość (wewnątrz)",
+	"ifuto-armor-hud.config.hotbar_gap": "Odstęp: %s",
+	"ifuto-armor-hud.config.hotbar_gap.tooltip": "Odległość od krawędzi paska (18 px = jeden slot).",
+	"ifuto-armor-hud.config.slot_gap": "Rozstaw: %s",
+	"ifuto-armor-hud.config.slot_gap.tooltip": "Odstęp między slotami.",
+	"ifuto-armor-hud.config.inside": "Wewnątrz",
 	"ifuto-armor-hud.config.inside.tooltip": "Co pokazać na dole wewnątrz komórki (tam, gdzie pasek).",
-	"ifuto-armor-hud.config.outside": "Wytrzymałość (na zewnątrz)",
-	"ifuto-armor-hud.config.outside.tooltip": "Poziomo: nad komórką. Pionowo: obok komórki po wybranej stronie (pasek stoi pionowo).",
+	"ifuto-armor-hud.config.outside": "Na zewnątrz",
+	"ifuto-armor-hud.config.outside.tooltip": "Poziomo: tekst nad slotem (bez paska). Pionowo: obok slotu; pasek stoi pionowo.",
 	"ifuto-armor-hud.config.info.none": "Brak",
 	"ifuto-armor-hud.config.info.gauge": "Pasek",
-	"ifuto-armor-hud.config.info.percent": "Pozostało (%)",
-	"ifuto-armor-hud.config.info.number": "Pozostało (liczba)",
-	"ifuto-armor-hud.config.info.lost": "Utracona wytrzymałość",
-
-	"ifuto-armor-hud.config.outside_side": "Pozycja zewnętrzna",
+	"ifuto-armor-hud.config.info.percent": "Pozostało %",
+	"ifuto-armor-hud.config.info.number": "Pozostało",
+	"ifuto-armor-hud.config.info.lost": "Zużyte",
+	"ifuto-armor-hud.config.outside_side": "Strona",
 	"ifuto-armor-hud.config.outside_side.tooltip": "W układzie pionowym: po której stronie komórek pokazywać info zewnętrzne. W stronę paska tworzy naturalny margines.",
-	"ifuto-armor-hud.config.side.left": "Po lewej od komórek",
-	"ifuto-armor-hud.config.side.right": "Po prawej od komórek",
-
-	"ifuto-armor-hud.config.warn_blink": "Miganie przy niskiej wytrzymałości",
-	"ifuto-armor-hud.config.warn_percent": "Próg migania: %s",
-
-	"ifuto-armor-hud.config.dynamic_contrast": "Auto kontrast",
+	"ifuto-armor-hud.config.side.left": "Lewo",
+	"ifuto-armor-hud.config.side.right": "Prawo",
+	"ifuto-armor-hud.config.warn_blink": "Miganie",
+	"ifuto-armor-hud.config.warn_blink.tooltip": "Płynnie pulsuje czerwoną ramką, gdy element spadnie poniżej progu.",
+	"ifuto-armor-hud.config.warn_percent": "Próg: %s",
+	"ifuto-armor-hud.config.warn_percent.tooltip": "Używany przez miganie i warunek „Krytyczny”.",
+	"ifuto-armor-hud.config.dynamic_contrast": "Cień",
 	"ifuto-armor-hud.config.dynamic_contrast.tooltip": "Rysuje delikatny cień za tekstem i paskami, by były czytelne na jasnym tle.",
-
-	"ifuto-armor-hud.config.offset_x": "Przesunięcie X: %s",
-	"ifuto-armor-hud.config.offset_y": "Przesunięcie Y: %s",
-
+	"ifuto-armor-hud.config.offset_x": "X: %s",
+	"ifuto-armor-hud.config.offset_x.tooltip": "Dokładne przesunięcie (+ w prawo).",
+	"ifuto-armor-hud.config.offset_y": "Y: %s",
+	"ifuto-armor-hud.config.offset_y.tooltip": "Dokładne przesunięcie (+ w dół).",
 	"ifuto-armor-hud.config.client_id": "Client ID Discorda (zapasowe)",
 	"ifuto-armor-hud.config.client_id.placeholder": "Używane, gdy pakiet nie ma Client ID (puste = wył.)",
 	"ifuto-armor-hud.config.client_id.tooltip": "Gdy serwer wyśle ifumods:server/discord, tekst pojawi się jako Twój status na Discordzie. Pakiet zwykle zawiera własne Client ID; to pole to zapas.",
-
-	"ifuto-armor-hud.config.info.lost_percent": "Utracona wytrzymałość (%)",
-
-	"ifuto-armor-hud.config.show_condition": "Warunek pokazywania",
+	"ifuto-armor-hud.config.info.lost_percent": "Zużyte %",
+	"ifuto-armor-hud.config.show_condition": "Warunek",
 	"ifuto-armor-hud.config.show_condition.always": "Zawsze",
-	"ifuto-armor-hud.config.show_condition.when_damaged": "Gdy uszkodzone",
-	"ifuto-armor-hud.config.show_condition.when_critical": "Gdy krytyczne",
+	"ifuto-armor-hud.config.show_condition.when_damaged": "Po uszkodzeniu",
+	"ifuto-armor-hud.config.show_condition.when_critical": "Krytyczny",
 	"ifuto-armor-hud.config.show_condition.tooltip": "Krytyczne: pokazuje HUD tylko, gdy jakiś element jest na lub poniżej progu migania.",
-	"ifuto-armor-hud.config.break_alert": "Alarm zniszczenia",
+	"ifuto-armor-hud.config.break_alert": "Alert",
 	"ifuto-armor-hud.config.break_alert.tooltip": "Odtwarza dźwięk i wiadomość na czacie w chwili zniszczenia elementu.",
-	"ifuto-armor-hud.config.hud_scale": "Wielkość HUD: %s",
-
+	"ifuto-armor-hud.config.hud_scale": "Rozmiar: %s",
+	"ifuto-armor-hud.config.hud_scale.tooltip": "Skaluje cały HUD względem rogu najbliższego paska.",
 	"ifuto-armor-hud.break_notice": "§c[Armor HUD]§r %s zostało zniszczone!",
-
-	"ifuto-armor-hud.config.reset": "Przywróć domyślne"
+	"ifuto-armor-hud.config.reset": "Przywróć"
 }

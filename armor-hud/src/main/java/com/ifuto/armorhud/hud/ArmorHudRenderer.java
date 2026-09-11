@@ -34,6 +34,9 @@ public class ArmorHudRenderer implements HudElement {
 			EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET
 	};
 
+	// バニラのスロット枠スプライト（リソースパックで上書きできる）
+	private static final Identifier SLOT_TEXTURE = Identifier.ofVanilla("container/slot");
+
 	// バニラの空き装備スロットに出るミニアイコンと同じやつ
 	private static final Identifier[] GHOST_ICONS = {
 			Identifier.ofVanilla("container/slot/helmet"),
@@ -216,14 +219,17 @@ public class ArmorHudRenderer implements HudElement {
 
 	private void drawSlot(DrawContext context, ArmorHudConfig config, ItemStack stack, Identifier ghost, int fx, int fy) {
 		float alpha = stack.isEmpty() ? config.emptyMode.alpha() : 1.0F;
+		int tint = Math.round(alpha * 255.0F) << 24 | 0xFFFFFF;
 
 		if (stack.isEmpty() && config.background == SlotBackground.GHOST) {
-			context.drawGuiTexture(RenderPipelines.GUI_TEXTURED, ghost, fx + 1, fy + 1, ICON, ICON, alpha);
+			// ゴーストアイコンは白ティントで（素のままだと暗くて見づらい）
+			context.drawGuiTexture(RenderPipelines.GUI_TEXTURED, ghost, fx + 1, fy + 1, ICON, ICON, tint);
 			return;
 		}
 
 		if (config.background == SlotBackground.FRAME) {
-			drawFrame(context, fx, fy, alpha);
+			// スプライトは16x16。アイテムと同じ基準位置に乗せる
+			context.drawGuiTexture(RenderPipelines.GUI_TEXTURED, SLOT_TEXTURE, fx, fy, ICON, ICON, tint);
 		}
 
 		if (!stack.isEmpty()) {
@@ -277,18 +283,6 @@ public class ArmorHudRenderer implements HudElement {
 		matrices.scale(INSIDE_TEXT_SCALE, INSIDE_TEXT_SCALE);
 		context.drawTextWithShadow(tr, text, -tr.getWidth(text), 0, color);
 		matrices.popMatrix();
-	}
-
-	// バニラのスロットっぽい枠をベタ塗りで再現（外周白・左上ダーク・中グレー）
-	private static void drawFrame(DrawContext context, int fx, int fy, float alpha) {
-		fillAlpha(context, fx, fy, fx + SLOT, fy + SLOT, 0xFFFFFF, alpha);
-		fillAlpha(context, fx, fy, fx + SLOT - 1, fy + SLOT - 1, 0x373737, alpha);
-		fillAlpha(context, fx + 1, fy + 1, fx + SLOT - 1, fy + SLOT - 1, 0x8B8B8B, alpha);
-	}
-
-	private static void fillAlpha(DrawContext context, int x1, int y1, int x2, int y2, int rgb, float alpha) {
-		int a = Math.round(alpha * 255.0F) & 0xFF;
-		context.fill(x1, y1, x2, y2, a << 24 | rgb);
 	}
 
 	private static boolean hasDurability(ItemStack stack) {

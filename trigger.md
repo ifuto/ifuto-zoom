@@ -15,4 +15,4 @@ java: 21
 workdir: armor-hud
 artifact_path: armor-hud/build/libs/*.jar
 
-note: v1.4.0 全機能（ui()で音）検証
+note: v1.4.1 RP枠と白アイコン

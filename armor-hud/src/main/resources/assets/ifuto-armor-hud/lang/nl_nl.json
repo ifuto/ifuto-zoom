@@ -1,75 +1,68 @@
 {
 	"key.category.ifuto-armor-hud.armor_hud": "Ifuto Armor HUD",
 	"key.ifuto-armor-hud.toggle": "Armor-HUD in-/uitschakelen",
-
 	"ifuto-armor-hud.join_notice": "§7[Armor HUD]§r Je past alles aan via het Config-scherm van de Mod Menu-mod (HUD met V schakelen)",
-
 	"ifuto-armor-hud.config.title": "Ifuto Armor HUD-instellingen",
 	"ifuto-armor-hud.config.hint": "Standaardtoets: V — HUD tonen of verbergen",
-
-	"ifuto-armor-hud.config.show_hud": "HUD tonen",
-
+	"ifuto-armor-hud.config.show_hud": "HUD",
+	"ifuto-armor-hud.config.show_hud.tooltip": "Toont of verbergt de hele HUD (de V-toets schakelt ook).",
 	"ifuto-armor-hud.config.position": "Positie",
-	"ifuto-armor-hud.config.position.hotbar_left": "Links van de hotbar",
-	"ifuto-armor-hud.config.position.hotbar_right": "Rechts van de hotbar",
-
+	"ifuto-armor-hud.config.position.tooltip": "Aan welke kant van de hotbar het paneel staat.",
+	"ifuto-armor-hud.config.position.hotbar_left": "Links",
+	"ifuto-armor-hud.config.position.hotbar_right": "Rechts",
 	"ifuto-armor-hud.config.layout": "Schikking",
+	"ifuto-armor-hud.config.layout.tooltip": "Of de slots verticaal of in een rij staan.",
 	"ifuto-armor-hud.config.layout.vertical": "Verticaal",
 	"ifuto-armor-hud.config.layout.horizontal": "Horizontaal",
-
-	"ifuto-armor-hud.config.background": "Vakachtergrond",
-	"ifuto-armor-hud.config.background.frame": "Rand",
-	"ifuto-armor-hud.config.background.ghost": "Spookiconen (zonder rand)",
-	"ifuto-armor-hud.config.background.tooltip": "Rand: tekent een vanilla-achtige rand. Spookiconen: geen rand; lege vakken tonen alleen een vaag icoon.",
-
-	"ifuto-armor-hud.config.empty": "Lege vakken",
-	"ifuto-armor-hud.config.empty.keep": "Zo laten",
-	"ifuto-armor-hud.config.empty.faded": "Doorzichtig",
+	"ifuto-armor-hud.config.background": "Achtergrond",
+	"ifuto-armor-hud.config.background.frame": "Kader",
+	"ifuto-armor-hud.config.background.ghost": "Iconen",
+	"ifuto-armor-hud.config.background.tooltip": "Kader: een vanilla slotkader (resourcepack-vriendelijk). Iconen: geen kader; lege slots tonen een wit icoon.",
+	"ifuto-armor-hud.config.empty": "Leeg",
+	"ifuto-armor-hud.config.empty.tooltip": "Wat te doen met slots zonder uitrusting.",
+	"ifuto-armor-hud.config.empty.keep": "Ongewijzigd",
+	"ifuto-armor-hud.config.empty.faded": "Vervaagd",
 	"ifuto-armor-hud.config.empty.hide": "Verbergen",
-
-	"ifuto-armor-hud.config.hotbar_gap": "Afstand tot hotbar: %s",
-	"ifuto-armor-hud.config.slot_gap": "Afstand tussen vakken: %s",
-
-	"ifuto-armor-hud.config.inside": "Duurzaamheid (binnen)",
+	"ifuto-armor-hud.config.hotbar_gap": "Afstand: %s",
+	"ifuto-armor-hud.config.hotbar_gap.tooltip": "Afstand tot de rand van de hotbar (18 px = één slot).",
+	"ifuto-armor-hud.config.slot_gap": "Tussenruimte: %s",
+	"ifuto-armor-hud.config.slot_gap.tooltip": "Ruimte tussen de slots.",
+	"ifuto-armor-hud.config.inside": "Binnen",
 	"ifuto-armor-hud.config.inside.tooltip": "Wat er onderin het vak wordt getoond (waar de balk zit).",
-	"ifuto-armor-hud.config.outside": "Duurzaamheid (buiten)",
-	"ifuto-armor-hud.config.outside.tooltip": "Horizontaal: boven het vak. Verticaal: naast het vak aan de gekozen zijde (de balk staat rechtop).",
+	"ifuto-armor-hud.config.outside": "Buiten",
+	"ifuto-armor-hud.config.outside.tooltip": "Verticaal: naast het slot; meter staat rechtop. Horizontaal: tekst boven het slot (geen meter).",
 	"ifuto-armor-hud.config.info.none": "Geen",
 	"ifuto-armor-hud.config.info.gauge": "Balk",
-	"ifuto-armor-hud.config.info.percent": "Resterend (%)",
-	"ifuto-armor-hud.config.info.number": "Resterend (aantal)",
-	"ifuto-armor-hud.config.info.lost": "Verloren duurzaamheid",
-
-	"ifuto-armor-hud.config.outside_side": "Buitenpositie",
+	"ifuto-armor-hud.config.info.percent": "Over %",
+	"ifuto-armor-hud.config.info.number": "Over",
+	"ifuto-armor-hud.config.info.lost": "Verbruikt",
+	"ifuto-armor-hud.config.outside_side": "Kant",
 	"ifuto-armor-hud.config.outside_side.tooltip": "Bij verticale schikking: aan welke zijde van de vakken de buiteninfo verschijnt. Richting de hotbar vormt dat een natuurlijke marge.",
-	"ifuto-armor-hud.config.side.left": "Links van de vakken",
-	"ifuto-armor-hud.config.side.right": "Rechts van de vakken",
-
-	"ifuto-armor-hud.config.warn_blink": "Knipperen bij lage duurzaamheid",
-	"ifuto-armor-hud.config.warn_percent": "Knipperdrempel: %s",
-
-	"ifuto-armor-hud.config.dynamic_contrast": "Automatisch contrast",
+	"ifuto-armor-hud.config.side.left": "Links",
+	"ifuto-armor-hud.config.side.right": "Rechts",
+	"ifuto-armor-hud.config.warn_blink": "Knipperen",
+	"ifuto-armor-hud.config.warn_blink.tooltip": "Pulseert een rode rand wanneer een stuk onder de drempel komt.",
+	"ifuto-armor-hud.config.warn_percent": "Drempel: %s",
+	"ifuto-armor-hud.config.warn_percent.tooltip": "Wordt gebruikt door het knipperen en de conditie „Kritiek”.",
+	"ifuto-armor-hud.config.dynamic_contrast": "Schaduw",
 	"ifuto-armor-hud.config.dynamic_contrast.tooltip": "Tekent een zachte schaduw achter tekst en balken zodat ze op lichte achtergronden leesbaar blijven.",
-
-	"ifuto-armor-hud.config.offset_x": "X-verschuiving: %s",
-	"ifuto-armor-hud.config.offset_y": "Y-verschuiving: %s",
-
+	"ifuto-armor-hud.config.offset_x": "X: %s",
+	"ifuto-armor-hud.config.offset_x.tooltip": "Fijne positiebijstelling (+ naar rechts).",
+	"ifuto-armor-hud.config.offset_y": "Y: %s",
+	"ifuto-armor-hud.config.offset_y.tooltip": "Fijne positiebijstelling (+ naar beneden).",
 	"ifuto-armor-hud.config.client_id": "Discord-client-ID (reserve)",
 	"ifuto-armor-hud.config.client_id.placeholder": "Gebruikt als het pakket geen client-ID heeft (leeg = uit)",
 	"ifuto-armor-hud.config.client_id.tooltip": "Als de server ifumods:server/discord stuurt, verschijnt de tekst als je Discord-status. Het pakket bevat normaal een eigen client-ID; dit veld is de reserve.",
-
-	"ifuto-armor-hud.config.info.lost_percent": "Verloren duurzaamheid (%)",
-
-	"ifuto-armor-hud.config.show_condition": "Weergavevoorwaarde",
+	"ifuto-armor-hud.config.info.lost_percent": "Verbruikt %",
+	"ifuto-armor-hud.config.show_condition": "Voorwaarde",
 	"ifuto-armor-hud.config.show_condition.always": "Altijd",
 	"ifuto-armor-hud.config.show_condition.when_damaged": "Bij schade",
-	"ifuto-armor-hud.config.show_condition.when_critical": "Bij kritiek",
+	"ifuto-armor-hud.config.show_condition.when_critical": "Kritiek",
 	"ifuto-armor-hud.config.show_condition.tooltip": "Kritiek: toont de HUD alleen zolang een stuk op of onder de knipperdrempel zit.",
-	"ifuto-armor-hud.config.break_alert": "Breekmelding",
+	"ifuto-armor-hud.config.break_alert": "Melding",
 	"ifuto-armor-hud.config.break_alert.tooltip": "Speelt een geluid en een chatbericht zodra een stuk kapotgaat.",
-	"ifuto-armor-hud.config.hud_scale": "HUD-grootte: %s",
-
+	"ifuto-armor-hud.config.hud_scale": "Grootte: %s",
+	"ifuto-armor-hud.config.hud_scale.tooltip": "Schaalt de hele HUD vanuit de hoek het dichtst bij de hotbar.",
 	"ifuto-armor-hud.break_notice": "§c[Armor HUD]§r %s is stuk!",
-
-	"ifuto-armor-hud.config.reset": "Standaard herstellen"
+	"ifuto-armor-hud.config.reset": "Herstellen"
 }

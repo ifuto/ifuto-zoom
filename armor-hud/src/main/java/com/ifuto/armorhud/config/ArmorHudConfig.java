@@ -26,7 +26,7 @@ public class ArmorHudConfig {
 	public boolean showHud = true;
 
 	/** ホットバーの左右どちらに置くか */
-	public HudPosition position = HudPosition.HOTBAR_LEFT;
+	public HudPosition position = HudPosition.HOTBAR_RIGHT;
 
 	/** アイコンの並べ方 */
 	public HudLayout layout = HudLayout.VERTICAL;
@@ -155,7 +155,7 @@ public class ArmorHudConfig {
 	/** 手書き編集や古いファイルで壊れていても落ちないように丸める */
 	public void validate() {
 		if (this.position == null) {
-			this.position = HudPosition.HOTBAR_LEFT;
+			this.position = HudPosition.HOTBAR_RIGHT;
 		}
 
 		if (this.layout == null) {
