@@ -15,4 +15,4 @@ java: 21
 workdir: armor-hud
 artifact_path: armor-hud/build/libs/*.jar
 
-note: 減った耐久%・HUDスケール・壊れ通知・表示条件の検証
+note: bisect4-1 壊れ検知を外す
