@@ -1,0 +1,62 @@
+{
+	"key.category.ifuto-armor-hud.armor_hud": "Ifuto Armor HUD",
+	"key.ifuto-armor-hud.toggle": "Attiva/disattiva HUD armatura",
+
+	"ifuto-armor-hud.join_notice": "§7[Armor HUD]§r Puoi regolare tutto dalla schermata Config aggiunta dalla mod Mod Menu (HUD con V)",
+
+	"ifuto-armor-hud.config.title": "Impostazioni Ifuto Armor HUD",
+	"ifuto-armor-hud.config.hint": "Tasto predefinito: V — mostra o nascondi l'HUD",
+
+	"ifuto-armor-hud.config.show_hud": "Mostra HUD",
+
+	"ifuto-armor-hud.config.position": "Posizione",
+	"ifuto-armor-hud.config.position.hotbar_left": "A sinistra della barra rapida",
+	"ifuto-armor-hud.config.position.hotbar_right": "A destra della barra rapida",
+
+	"ifuto-armor-hud.config.layout": "Disposizione",
+	"ifuto-armor-hud.config.layout.vertical": "Verticale",
+	"ifuto-armor-hud.config.layout.horizontal": "Orizzontale",
+
+	"ifuto-armor-hud.config.background": "Sfondo slot",
+	"ifuto-armor-hud.config.background.frame": "Cornice",
+	"ifuto-armor-hud.config.background.ghost": "Icone fantasma (senza cornice)",
+	"ifuto-armor-hud.config.background.tooltip": "Cornice: disegna una cornice in stile vanilla. Icone fantasma: niente cornice; gli slot vuoti mostrano solo un'icona tenue.",
+
+	"ifuto-armor-hud.config.empty": "Slot vuoti",
+	"ifuto-armor-hud.config.empty.keep": "Lascia così",
+	"ifuto-armor-hud.config.empty.faded": "Semitrasparente",
+	"ifuto-armor-hud.config.empty.hide": "Nascondi",
+
+	"ifuto-armor-hud.config.hotbar_gap": "Distanza dalla barra: %s",
+	"ifuto-armor-hud.config.slot_gap": "Spaziatura slot: %s",
+
+	"ifuto-armor-hud.config.inside": "Durabilità (dentro)",
+	"ifuto-armor-hud.config.inside.tooltip": "Cosa mostrare in basso dentro lo slot (dove sta l'indicatore).",
+	"ifuto-armor-hud.config.outside": "Durabilità (fuori)",
+	"ifuto-armor-hud.config.outside.tooltip": "Orizzontale: sopra lo slot. Verticale: accanto allo slot sul lato scelto (l'indicatore è verticale).",
+	"ifuto-armor-hud.config.info.none": "Niente",
+	"ifuto-armor-hud.config.info.gauge": "Indicatore",
+	"ifuto-armor-hud.config.info.percent": "Rimanente (%)",
+	"ifuto-armor-hud.config.info.number": "Rimanente (numero)",
+	"ifuto-armor-hud.config.info.lost": "Durabilità persa",
+
+	"ifuto-armor-hud.config.outside_side": "Posizione esterna",
+	"ifuto-armor-hud.config.outside_side.tooltip": "In verticale: su quale lato degli slot appare l'info esterna. Rivolta verso la barra, funge da margine naturale.",
+	"ifuto-armor-hud.config.side.left": "Sinistra degli slot",
+	"ifuto-armor-hud.config.side.right": "Destra degli slot",
+
+	"ifuto-armor-hud.config.warn_blink": "Lampeggia a bassa durabilità",
+	"ifuto-armor-hud.config.warn_percent": "Soglia lampeggio: %s",
+
+	"ifuto-armor-hud.config.dynamic_contrast": "Contrasto automatico",
+	"ifuto-armor-hud.config.dynamic_contrast.tooltip": "Disegna un'ombra leggera dietro testo e indicatori per restare leggibili su sfondi chiari.",
+
+	"ifuto-armor-hud.config.offset_x": "Offset X: %s",
+	"ifuto-armor-hud.config.offset_y": "Offset Y: %s",
+
+	"ifuto-armor-hud.config.client_id": "Client ID Discord (riserva)",
+	"ifuto-armor-hud.config.client_id.placeholder": "Usato se il pacchetto non ha un client ID (vuoto = off)",
+	"ifuto-armor-hud.config.client_id.tooltip": "Quando il server invia ifumods:server/discord, il testo appare come stato Discord. Il pacchetto porta di solito il proprio client ID; questo campo è la riserva.",
+
+	"ifuto-armor-hud.config.reset": "Ripristina predefiniti"
+}

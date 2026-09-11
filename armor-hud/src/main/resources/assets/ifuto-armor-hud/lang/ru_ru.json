@@ -1,0 +1,62 @@
+{
+	"key.category.ifuto-armor-hud.armor_hud": "Ifuto Armor HUD",
+	"key.ifuto-armor-hud.toggle": "Переключить HUD брони",
+
+	"ifuto-armor-hud.join_notice": "§7[Armor HUD]§r Всё настраивается на экране Config, который добавляет мод Mod Menu (HUD — клавиша V)",
+
+	"ifuto-armor-hud.config.title": "Настройки Ifuto Armor HUD",
+	"ifuto-armor-hud.config.hint": "Клавиша по умолчанию: V — показать или скрыть HUD",
+
+	"ifuto-armor-hud.config.show_hud": "Показывать HUD",
+
+	"ifuto-armor-hud.config.position": "Позиция",
+	"ifuto-armor-hud.config.position.hotbar_left": "Слева от хотбара",
+	"ifuto-armor-hud.config.position.hotbar_right": "Справа от хотбара",
+
+	"ifuto-armor-hud.config.layout": "Ориентация",
+	"ifuto-armor-hud.config.layout.vertical": "Вертикально",
+	"ifuto-armor-hud.config.layout.horizontal": "Горизонтально",
+
+	"ifuto-armor-hud.config.background": "Фон слота",
+	"ifuto-armor-hud.config.background.frame": "Рамка",
+	"ifuto-armor-hud.config.background.ghost": "Иконки-призраки (без рамки)",
+	"ifuto-armor-hud.config.background.tooltip": "Рамка: рисует рамку как в ванилле. Иконки-призраки: без рамки; пустые слоты показывают лишь бледную иконку.",
+
+	"ifuto-armor-hud.config.empty": "Пустые слоты",
+	"ifuto-armor-hud.config.empty.keep": "Оставить как есть",
+	"ifuto-armor-hud.config.empty.faded": "Полупрозрачные",
+	"ifuto-armor-hud.config.empty.hide": "Скрыть",
+
+	"ifuto-armor-hud.config.hotbar_gap": "Отступ от хотбара: %s",
+	"ifuto-armor-hud.config.slot_gap": "Интервал слотов: %s",
+
+	"ifuto-armor-hud.config.inside": "Прочность (внутри)",
+	"ifuto-armor-hud.config.inside.tooltip": "Что показывать внизу внутри слота (где полоска).",
+	"ifuto-armor-hud.config.outside": "Прочность (снаружи)",
+	"ifuto-armor-hud.config.outside.tooltip": "Горизонтально: над слотом. Вертикально: рядом со слотом с выбранной стороны (полоска стоит вертикально).",
+	"ifuto-armor-hud.config.info.none": "Нет",
+	"ifuto-armor-hud.config.info.gauge": "Полоска",
+	"ifuto-armor-hud.config.info.percent": "Осталось (%)",
+	"ifuto-armor-hud.config.info.number": "Осталось (число)",
+	"ifuto-armor-hud.config.info.lost": "Потерянная прочность",
+
+	"ifuto-armor-hud.config.outside_side": "Внешняя позиция",
+	"ifuto-armor-hud.config.outside_side.tooltip": "При вертикальной ориентации: с какой стороны слотов выводить внешнюю инфу. К хотбару — получается естественный отступ.",
+	"ifuto-armor-hud.config.side.left": "Слева от слотов",
+	"ifuto-armor-hud.config.side.right": "Справа от слотов",
+
+	"ifuto-armor-hud.config.warn_blink": "Мигание при низкой прочности",
+	"ifuto-armor-hud.config.warn_percent": "Порог мигания: %s",
+
+	"ifuto-armor-hud.config.dynamic_contrast": "Автоконтраст",
+	"ifuto-armor-hud.config.dynamic_contrast.tooltip": "Рисует лёгкую тень за текстом и полосками, чтобы было читаемо на светлом фоне.",
+
+	"ifuto-armor-hud.config.offset_x": "Смещение X: %s",
+	"ifuto-armor-hud.config.offset_y": "Смещение Y: %s",
+
+	"ifuto-armor-hud.config.client_id": "Client ID Discord (запасной)",
+	"ifuto-armor-hud.config.client_id.placeholder": "Используется, если в пакете нет Client ID (пусто = выкл.)",
+	"ifuto-armor-hud.config.client_id.tooltip": "Когда сервер присылает ifumods:server/discord, текст показывается как ваш статус в Discord. Обычно Client ID приходит в пакете; это поле — запасной вариант.",
+
+	"ifuto-armor-hud.config.reset": "Сбросить настройки"
+}

@@ -1,0 +1,62 @@
+{
+	"key.category.ifuto-armor-hud.armor_hud": "Ifuto Armor HUD",
+	"key.ifuto-armor-hud.toggle": "Przełącz HUD zbroi",
+
+	"ifuto-armor-hud.join_notice": "§7[Armor HUD]§r Wszystko ustawisz na ekranie Config dodawanym przez mod Mod Menu (HUD pod klawiszem V)",
+
+	"ifuto-armor-hud.config.title": "Ustawienia Ifuto Armor HUD",
+	"ifuto-armor-hud.config.hint": "Domyślny klawisz: V — pokaż lub ukryj HUD",
+
+	"ifuto-armor-hud.config.show_hud": "Pokaż HUD",
+
+	"ifuto-armor-hud.config.position": "Pozycja",
+	"ifuto-armor-hud.config.position.hotbar_left": "Po lewej stronie paska",
+	"ifuto-armor-hud.config.position.hotbar_right": "Po prawej stronie paska",
+
+	"ifuto-armor-hud.config.layout": "Układ",
+	"ifuto-armor-hud.config.layout.vertical": "Pionowy",
+	"ifuto-armor-hud.config.layout.horizontal": "Poziomowy",
+
+	"ifuto-armor-hud.config.background": "Tło komórki",
+	"ifuto-armor-hud.config.background.frame": "Ramka",
+	"ifuto-armor-hud.config.background.ghost": "Ikony-widma (bez ramki)",
+	"ifuto-armor-hud.config.background.tooltip": "Ramka: rysuje ramkę w stylu waniliowym. Ikony-widma: bez ramki; puste komórki pokazują tylko blade ikonki.",
+
+	"ifuto-armor-hud.config.empty": "Puste komórki",
+	"ifuto-armor-hud.config.empty.keep": "Zostaw jak jest",
+	"ifuto-armor-hud.config.empty.faded": "Półprzezroczyste",
+	"ifuto-armor-hud.config.empty.hide": "Ukryj",
+
+	"ifuto-armor-hud.config.hotbar_gap": "Odstęp od paska: %s",
+	"ifuto-armor-hud.config.slot_gap": "Odstęp komórek: %s",
+
+	"ifuto-armor-hud.config.inside": "Wytrzymałość (wewnątrz)",
+	"ifuto-armor-hud.config.inside.tooltip": "Co pokazać na dole wewnątrz komórki (tam, gdzie pasek).",
+	"ifuto-armor-hud.config.outside": "Wytrzymałość (na zewnątrz)",
+	"ifuto-armor-hud.config.outside.tooltip": "Poziomo: nad komórką. Pionowo: obok komórki po wybranej stronie (pasek stoi pionowo).",
+	"ifuto-armor-hud.config.info.none": "Brak",
+	"ifuto-armor-hud.config.info.gauge": "Pasek",
+	"ifuto-armor-hud.config.info.percent": "Pozostało (%)",
+	"ifuto-armor-hud.config.info.number": "Pozostało (liczba)",
+	"ifuto-armor-hud.config.info.lost": "Utracona wytrzymałość",
+
+	"ifuto-armor-hud.config.outside_side": "Pozycja zewnętrzna",
+	"ifuto-armor-hud.config.outside_side.tooltip": "W układzie pionowym: po której stronie komórek pokazywać info zewnętrzne. W stronę paska tworzy naturalny margines.",
+	"ifuto-armor-hud.config.side.left": "Po lewej od komórek",
+	"ifuto-armor-hud.config.side.right": "Po prawej od komórek",
+
+	"ifuto-armor-hud.config.warn_blink": "Miganie przy niskiej wytrzymałości",
+	"ifuto-armor-hud.config.warn_percent": "Próg migania: %s",
+
+	"ifuto-armor-hud.config.dynamic_contrast": "Auto kontrast",
+	"ifuto-armor-hud.config.dynamic_contrast.tooltip": "Rysuje delikatny cień za tekstem i paskami, by były czytelne na jasnym tle.",
+
+	"ifuto-armor-hud.config.offset_x": "Przesunięcie X: %s",
+	"ifuto-armor-hud.config.offset_y": "Przesunięcie Y: %s",
+
+	"ifuto-armor-hud.config.client_id": "Client ID Discorda (zapasowe)",
+	"ifuto-armor-hud.config.client_id.placeholder": "Używane, gdy pakiet nie ma Client ID (puste = wył.)",
+	"ifuto-armor-hud.config.client_id.tooltip": "Gdy serwer wyśle ifumods:server/discord, tekst pojawi się jako Twój status na Discordzie. Pakiet zwykle zawiera własne Client ID; to pole to zapas.",
+
+	"ifuto-armor-hud.config.reset": "Przywróć domyślne"
+}

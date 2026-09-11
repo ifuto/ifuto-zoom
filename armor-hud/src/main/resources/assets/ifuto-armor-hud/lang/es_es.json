@@ -1,0 +1,62 @@
+{
+	"key.category.ifuto-armor-hud.armor_hud": "Ifuto Armor HUD",
+	"key.ifuto-armor-hud.toggle": "Alternar HUD de armadura",
+
+	"ifuto-armor-hud.join_notice": "§7[Armor HUD]§r Puedes ajustar todo desde la pantalla de Config que añade el mod Mod Menu (alterna el HUD con V)",
+
+	"ifuto-armor-hud.config.title": "Ajustes de Ifuto Armor HUD",
+	"ifuto-armor-hud.config.hint": "Tecla por defecto: V — mostrar u ocultar el HUD",
+
+	"ifuto-armor-hud.config.show_hud": "Mostrar HUD",
+
+	"ifuto-armor-hud.config.position": "Posición",
+	"ifuto-armor-hud.config.position.hotbar_left": "Izquierda de la barra rápida",
+	"ifuto-armor-hud.config.position.hotbar_right": "Derecha de la barra rápida",
+
+	"ifuto-armor-hud.config.layout": "Orientación",
+	"ifuto-armor-hud.config.layout.vertical": "Vertical",
+	"ifuto-armor-hud.config.layout.horizontal": "Horizontal",
+
+	"ifuto-armor-hud.config.background": "Fondo de casilla",
+	"ifuto-armor-hud.config.background.frame": "Marco",
+	"ifuto-armor-hud.config.background.ghost": "Iconos fantasma (sin marco)",
+	"ifuto-armor-hud.config.background.tooltip": "Marco: dibuja un marco estilo vanilla. Iconos fantasma: sin marco; las casillas vacías solo muestran un icono tenue.",
+
+	"ifuto-armor-hud.config.empty": "Casillas vacías",
+	"ifuto-armor-hud.config.empty.keep": "Dejar como están",
+	"ifuto-armor-hud.config.empty.faded": "Semitransparente",
+	"ifuto-armor-hud.config.empty.hide": "Ocultar",
+
+	"ifuto-armor-hud.config.hotbar_gap": "Separación de la barra: %s",
+	"ifuto-armor-hud.config.slot_gap": "Separación de casillas: %s",
+
+	"ifuto-armor-hud.config.inside": "Durabilidad (dentro)",
+	"ifuto-armor-hud.config.inside.tooltip": "Qué mostrar abajo dentro de la casilla (donde va la barra).",
+	"ifuto-armor-hud.config.outside": "Durabilidad (fuera)",
+	"ifuto-armor-hud.config.outside.tooltip": "Horizontal: sobre la casilla. Vertical: al lado de la casilla en el lado elegido (la barra va en vertical).",
+	"ifuto-armor-hud.config.info.none": "Nada",
+	"ifuto-armor-hud.config.info.gauge": "Barra",
+	"ifuto-armor-hud.config.info.percent": "Restante (%)",
+	"ifuto-armor-hud.config.info.number": "Restante (número)",
+	"ifuto-armor-hud.config.info.lost": "Durabilidad perdida",
+
+	"ifuto-armor-hud.config.outside_side": "Posición exterior",
+	"ifuto-armor-hud.config.outside_side.tooltip": "En vertical: de qué lado de las casillas se muestra la info exterior. Hacia la barra sirve de margen natural.",
+	"ifuto-armor-hud.config.side.left": "Izquierda de las casillas",
+	"ifuto-armor-hud.config.side.right": "Derecha de las casillas",
+
+	"ifuto-armor-hud.config.warn_blink": "Parpadeo al quedar poca durabilidad",
+	"ifuto-armor-hud.config.warn_percent": "Umbral de parpadeo: %s",
+
+	"ifuto-armor-hud.config.dynamic_contrast": "Contraste automático",
+	"ifuto-armor-hud.config.dynamic_contrast.tooltip": "Dibuja una sombra suave tras el texto y las barras para que se lean sobre fondos claros.",
+
+	"ifuto-armor-hud.config.offset_x": "Desplazamiento X: %s",
+	"ifuto-armor-hud.config.offset_y": "Desplazamiento Y: %s",
+
+	"ifuto-armor-hud.config.client_id": "ID de cliente de Discord (reserva)",
+	"ifuto-armor-hud.config.client_id.placeholder": "Se usa si el paquete no trae ID de cliente (vacío = desactivado)",
+	"ifuto-armor-hud.config.client_id.tooltip": "Cuando el servidor envía ifumods:server/discord, su texto se muestra como tu estado de Discord. El paquete suele llevar su propio ID; este campo es la reserva por si no lo trae.",
+
+	"ifuto-armor-hud.config.reset": "Restablecer valores"
+}

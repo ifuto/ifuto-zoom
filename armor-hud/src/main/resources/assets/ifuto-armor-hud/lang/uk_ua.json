@@ -1,0 +1,62 @@
+{
+	"key.category.ifuto-armor-hud.armor_hud": "Ifuto Armor HUD",
+	"key.ifuto-armor-hud.toggle": "Перемкнути HUD обладунків",
+
+	"ifuto-armor-hud.join_notice": "§7[Armor HUD]§r Усе налаштовується на екрані Config від мода Mod Menu (HUD — клавіша V)",
+
+	"ifuto-armor-hud.config.title": "Налаштування Ifuto Armor HUD",
+	"ifuto-armor-hud.config.hint": "Клавіша за замовчуванням: V — показати або сховати HUD",
+
+	"ifuto-armor-hud.config.show_hud": "Показувати HUD",
+
+	"ifuto-armor-hud.config.position": "Позиція",
+	"ifuto-armor-hud.config.position.hotbar_left": "Ліворуч від панелі",
+	"ifuto-armor-hud.config.position.hotbar_right": "Праворуч від панелі",
+
+	"ifuto-armor-hud.config.layout": "Напрямок",
+	"ifuto-armor-hud.config.layout.vertical": "Вертикально",
+	"ifuto-armor-hud.config.layout.horizontal": "Горизонтально",
+
+	"ifuto-armor-hud.config.background": "Тло комірки",
+	"ifuto-armor-hud.config.background.frame": "Рамка",
+	"ifuto-armor-hud.config.background.ghost": "Іконки-примари (без рамки)",
+	"ifuto-armor-hud.config.background.tooltip": "Рамка: малює рамку у ванільному стилі. Іконки-примари: без рамки; порожні комірки показують лише бліду іконку.",
+
+	"ifuto-armor-hud.config.empty": "Порожні комірки",
+	"ifuto-armor-hud.config.empty.keep": "Лишити як є",
+	"ifuto-armor-hud.config.empty.faded": "Напівпрозорі",
+	"ifuto-armor-hud.config.empty.hide": "Сховати",
+
+	"ifuto-armor-hud.config.hotbar_gap": "Відступ від панелі: %s",
+	"ifuto-armor-hud.config.slot_gap": "Інтервал комірок: %s",
+
+	"ifuto-armor-hud.config.inside": "Міцність (всередині)",
+	"ifuto-armor-hud.config.inside.tooltip": "Що показувати внизу всередині комірки (де смужка).",
+	"ifuto-armor-hud.config.outside": "Міцність (ззовні)",
+	"ifuto-armor-hud.config.outside.tooltip": "Горизонтально: над коміркою. Вертикально: поруч із коміркою з вибраного боку (смужка стоїть вертикально).",
+	"ifuto-armor-hud.config.info.none": "Немає",
+	"ifuto-armor-hud.config.info.gauge": "Смужка",
+	"ifuto-armor-hud.config.info.percent": "Лишилось (%)",
+	"ifuto-armor-hud.config.info.number": "Лишилось (число)",
+	"ifuto-armor-hud.config.info.lost": "Втрачена міцність",
+
+	"ifuto-armor-hud.config.outside_side": "Зовнішня позиція",
+	"ifuto-armor-hud.config.outside_side.tooltip": "У вертикальному напрямку: з якого боку комірок показувати зовнішню інфу. До панелі — природний відступ.",
+	"ifuto-armor-hud.config.side.left": "Ліворуч від комірок",
+	"ifuto-armor-hud.config.side.right": "Праворуч від комірок",
+
+	"ifuto-armor-hud.config.warn_blink": "Блимання за низької міцності",
+	"ifuto-armor-hud.config.warn_percent": "Поріг блимання: %s",
+
+	"ifuto-armor-hud.config.dynamic_contrast": "Автоконтраст",
+	"ifuto-armor-hud.config.dynamic_contrast.tooltip": "Малює легку тінь за текстом і смужками, аби читалось на світлому тлі.",
+
+	"ifuto-armor-hud.config.offset_x": "Зсув X: %s",
+	"ifuto-armor-hud.config.offset_y": "Зсув Y: %s",
+
+	"ifuto-armor-hud.config.client_id": "Client ID Discord (запасний)",
+	"ifuto-armor-hud.config.client_id.placeholder": "Використовується, якщо в пакеті немає Client ID (порожньо = вимк.)",
+	"ifuto-armor-hud.config.client_id.tooltip": "Коли сервер надсилає ifumods:server/discord, текст показується як ваш статус у Discord. Зазвичай Client ID іде в пакеті; це поле — запасне.",
+
+	"ifuto-armor-hud.config.reset": "Скинути налаштування"
+}

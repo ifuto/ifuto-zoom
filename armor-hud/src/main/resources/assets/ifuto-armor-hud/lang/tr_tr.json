@@ -1,0 +1,62 @@
+{
+	"key.category.ifuto-armor-hud.armor_hud": "Ifuto Armor HUD",
+	"key.ifuto-armor-hud.toggle": "Zırh HUD'unu aç/kapat",
+
+	"ifuto-armor-hud.join_notice": "§7[Armor HUD]§r Her şeyi Mod Menu modunun eklediği Config ekranından ayarlayabilirsin (HUD V ile açılır/kapanır)",
+
+	"ifuto-armor-hud.config.title": "Ifuto Armor HUD Ayarları",
+	"ifuto-armor-hud.config.hint": "Varsayılan tuş: V — HUD'u göster veya gizle",
+
+	"ifuto-armor-hud.config.show_hud": "HUD'u göster",
+
+	"ifuto-armor-hud.config.position": "Konum",
+	"ifuto-armor-hud.config.position.hotbar_left": "Kısayol çubuğunun solu",
+	"ifuto-armor-hud.config.position.hotbar_right": "Kısayol çubuğunun sağı",
+
+	"ifuto-armor-hud.config.layout": "Yön",
+	"ifuto-armor-hud.config.layout.vertical": "Dikey",
+	"ifuto-armor-hud.config.layout.horizontal": "Yatay",
+
+	"ifuto-armor-hud.config.background": "Yuva arka planı",
+	"ifuto-armor-hud.config.background.frame": "Çerçeve",
+	"ifuto-armor-hud.config.background.ghost": "Hayalet simgeler (çerçevesiz)",
+	"ifuto-armor-hud.config.background.tooltip": "Çerçeve: vanilya tarzı bir çerçeve çizer. Hayalet simgeler: çerçeve yok; boş yuvalar yalnızca soluk bir simge gösterir.",
+
+	"ifuto-armor-hud.config.empty": "Boş yuvalar",
+	"ifuto-armor-hud.config.empty.keep": "Olduğu gibi bırak",
+	"ifuto-armor-hud.config.empty.faded": "Yarı saydam",
+	"ifuto-armor-hud.config.empty.hide": "Gizle",
+
+	"ifuto-armor-hud.config.hotbar_gap": "Kısayol çubuğu mesafesi: %s",
+	"ifuto-armor-hud.config.slot_gap": "Yuva aralığı: %s",
+
+	"ifuto-armor-hud.config.inside": "Dayanıklılık (içeride)",
+	"ifuto-armor-hud.config.inside.tooltip": "Yuvanın içinde altta (gösterge yeri) ne gösterileceği.",
+	"ifuto-armor-hud.config.outside": "Dayanıklılık (dışarıda)",
+	"ifuto-armor-hud.config.outside.tooltip": "Yatay: yuvanın üstünde göster. Dikey: seçilen tarafta yatay yazı ile göster (gösterge dik durur).",
+	"ifuto-armor-hud.config.info.none": "Yok",
+	"ifuto-armor-hud.config.info.gauge": "Gösterge",
+	"ifuto-armor-hud.config.info.percent": "Kalan (%)",
+	"ifuto-armor-hud.config.info.number": "Kalan (sayı)",
+	"ifuto-armor-hud.config.info.lost": "Kaybedilen dayanıklılık",
+
+	"ifuto-armor-hud.config.outside_side": "Dış konum",
+	"ifuto-armor-hud.config.outside_side.tooltip": "Dikey dizilimde dış bilginin yuvaların hangi yanında görüneceği. Kısayol çubuğuna bakması doğal bir boşluk olur.",
+	"ifuto-armor-hud.config.side.left": "Yuvaların solu",
+	"ifuto-armor-hud.config.side.right": "Yuvaların sağı",
+
+	"ifuto-armor-hud.config.warn_blink": "Dayanıklılık azalınca yanıp sön",
+	"ifuto-armor-hud.config.warn_percent": "Yanıp sönme eşiği: %s",
+
+	"ifuto-armor-hud.config.dynamic_contrast": "Otomatik kontrast",
+	"ifuto-armor-hud.config.dynamic_contrast.tooltip": "Metin ve göstergelerin arkasına ince bir gölge çizerek açık arka planda da okunur kılar.",
+
+	"ifuto-armor-hud.config.offset_x": "Yatay kaydırma: %s",
+	"ifuto-armor-hud.config.offset_y": "Dikey kaydırma: %s",
+
+	"ifuto-armor-hud.config.client_id": "Discord Client ID (yedek)",
+	"ifuto-armor-hud.config.client_id.placeholder": "Pakette Client ID yoksa kullanılır (boş = kapalı)",
+	"ifuto-armor-hud.config.client_id.tooltip": "Sunucu ifumods:server/discord gönderdiğinde o metin Discord durumunda görünür. Paket normalde kendi Client ID'sini taşır; bu alan yedektir.",
+
+	"ifuto-armor-hud.config.reset": "Varsayılanlara dön"
+}

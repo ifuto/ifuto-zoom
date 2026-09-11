@@ -1,0 +1,62 @@
+{
+	"key.category.ifuto-armor-hud.armor_hud": "Ifuto Armor HUD",
+	"key.ifuto-armor-hud.toggle": "Armor-HUD ein-/ausblenden",
+
+	"ifuto-armor-hud.join_notice": "§7[Armor HUD]§r Alle Einstellungen findest du im Config-Bildschirm der Mod „Mod Menu“ (HUD mit V umschalten)",
+
+	"ifuto-armor-hud.config.title": "Ifuto Armor HUD – Einstellungen",
+	"ifuto-armor-hud.config.hint": "Standardtaste: V — HUD ein-/ausblenden",
+
+	"ifuto-armor-hud.config.show_hud": "HUD anzeigen",
+
+	"ifuto-armor-hud.config.position": "Position",
+	"ifuto-armor-hud.config.position.hotbar_left": "Links von der Hotbar",
+	"ifuto-armor-hud.config.position.hotbar_right": "Rechts von der Hotbar",
+
+	"ifuto-armor-hud.config.layout": "Anordnung",
+	"ifuto-armor-hud.config.layout.vertical": "Vertikal",
+	"ifuto-armor-hud.config.layout.horizontal": "Horizontal",
+
+	"ifuto-armor-hud.config.background": "Slot-Hintergrund",
+	"ifuto-armor-hud.config.background.frame": "Slot-Rahmen",
+	"ifuto-armor-hud.config.background.ghost": "Rüstungs-Icons (ohne Rahmen)",
+	"ifuto-armor-hud.config.background.tooltip": "Slot-Rahmen: zeichnet einen vanilla-artigen Rahmen. Rüstungs-Icons: kein Rahmen; leere Slots zeigen nur ein blasses Icon.",
+
+	"ifuto-armor-hud.config.empty": "Leere Slots",
+	"ifuto-armor-hud.config.empty.keep": "Belassen",
+	"ifuto-armor-hud.config.empty.faded": "Halbtransparent",
+	"ifuto-armor-hud.config.empty.hide": "Ausblenden",
+
+	"ifuto-armor-hud.config.hotbar_gap": "Abstand zur Hotbar: %s",
+	"ifuto-armor-hud.config.slot_gap": "Slot-Abstand: %s",
+
+	"ifuto-armor-hud.config.inside": "Haltbarkeit (innen)",
+	"ifuto-armor-hud.config.inside.tooltip": "Was unten im Slot angezeigt wird (dort, wo die Leiste ist).",
+	"ifuto-armor-hud.config.outside": "Haltbarkeit (außen)",
+	"ifuto-armor-hud.config.outside.tooltip": "Horizontal: über dem Slot. Vertikal: neben dem Slot auf der gewählten Seite (die Leiste steht hochkant).",
+	"ifuto-armor-hud.config.info.none": "Keine",
+	"ifuto-armor-hud.config.info.gauge": "Leiste",
+	"ifuto-armor-hud.config.info.percent": "Verbleibend (%)",
+	"ifuto-armor-hud.config.info.number": "Verbleibend (Zahl)",
+	"ifuto-armor-hud.config.info.lost": "Verbrauchte Haltbarkeit",
+
+	"ifuto-armor-hud.config.outside_side": "Außenposition",
+	"ifuto-armor-hud.config.outside_side.tooltip": "Bei vertikaler Anordnung: auf welcher Seite der Slots die Außenanzeige erscheint. Richtung Hotbar ergibt einen natürlichen Abstand.",
+	"ifuto-armor-hud.config.side.left": "Links von den Slots",
+	"ifuto-armor-hud.config.side.right": "Rechts von den Slots",
+
+	"ifuto-armor-hud.config.warn_blink": "Blinken bei niedriger Haltbarkeit",
+	"ifuto-armor-hud.config.warn_percent": "Blink-Schwelle: %s",
+
+	"ifuto-armor-hud.config.dynamic_contrast": "Auto-Kontrast",
+	"ifuto-armor-hud.config.dynamic_contrast.tooltip": "Zeichnet einen weichen Schatten hinter Text und Leisten, damit sie auf hellen Hintergründen lesbar bleiben.",
+
+	"ifuto-armor-hud.config.offset_x": "X-Versatz: %s",
+	"ifuto-armor-hud.config.offset_y": "Y-Versatz: %s",
+
+	"ifuto-armor-hud.config.client_id": "Discord-Client-ID (Fallback)",
+	"ifuto-armor-hud.config.client_id.placeholder": "Wird genutzt, wenn das Paket keine Client-ID enthält (leer = aus)",
+	"ifuto-armor-hud.config.client_id.tooltip": "Wenn der Server ifumods:server/discord sendet, wird der Text als dein Discord-Status angezeigt. Das Paket bringt normalerweise die eigene Client-ID mit; dieses Feld ist der Fallback.",
+
+	"ifuto-armor-hud.config.reset": "Auf Standard zurücksetzen"
+}

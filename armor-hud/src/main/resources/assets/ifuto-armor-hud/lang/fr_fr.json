@@ -1,0 +1,62 @@
+{
+	"key.category.ifuto-armor-hud.armor_hud": "Ifuto Armor HUD",
+	"key.ifuto-armor-hud.toggle": "Afficher/masquer le HUD d'armure",
+
+	"ifuto-armor-hud.join_notice": "§7[Armor HUD]§r Tout se règle depuis l'écran Config ajouté par le mod Mod Menu (HUD : touche V)",
+
+	"ifuto-armor-hud.config.title": "Paramètres Ifuto Armor HUD",
+	"ifuto-armor-hud.config.hint": "Touche par défaut : V — afficher ou masquer le HUD",
+
+	"ifuto-armor-hud.config.show_hud": "Afficher le HUD",
+
+	"ifuto-armor-hud.config.position": "Position",
+	"ifuto-armor-hud.config.position.hotbar_left": "À gauche de la barre d'action",
+	"ifuto-armor-hud.config.position.hotbar_right": "À droite de la barre d'action",
+
+	"ifuto-armor-hud.config.layout": "Disposition",
+	"ifuto-armor-hud.config.layout.vertical": "Verticale",
+	"ifuto-armor-hud.config.layout.horizontal": "Horizontale",
+
+	"ifuto-armor-hud.config.background": "Fond des cases",
+	"ifuto-armor-hud.config.background.frame": "Cadre",
+	"ifuto-armor-hud.config.background.ghost": "Icônes fantômes (sans cadre)",
+	"ifuto-armor-hud.config.background.tooltip": "Cadre : dessine un cadre façon vanilla. Icônes fantômes : pas de cadre ; les cases vides n'affichent qu'une icône estompée.",
+
+	"ifuto-armor-hud.config.empty": "Cases vides",
+	"ifuto-armor-hud.config.empty.keep": "Laisser tel quel",
+	"ifuto-armor-hud.config.empty.faded": "Semi-transparent",
+	"ifuto-armor-hud.config.empty.hide": "Masquer",
+
+	"ifuto-armor-hud.config.hotbar_gap": "Écart avec la barre : %s",
+	"ifuto-armor-hud.config.slot_gap": "Espacement des cases : %s",
+
+	"ifuto-armor-hud.config.inside": "Durabilité (intérieur)",
+	"ifuto-armor-hud.config.inside.tooltip": "Ce qui s'affiche en bas dans la case (là où va la jauge).",
+	"ifuto-armor-hud.config.outside": "Durabilité (extérieur)",
+	"ifuto-armor-hud.config.outside.tooltip": "Horizontal : au-dessus de la case. Vertical : à côté de la case, du côté choisi (la jauge est verticale).",
+	"ifuto-armor-hud.config.info.none": "Aucun",
+	"ifuto-armor-hud.config.info.gauge": "Jauge",
+	"ifuto-armor-hud.config.info.percent": "Restant (%)",
+	"ifuto-armor-hud.config.info.number": "Restant (nombre)",
+	"ifuto-armor-hud.config.info.lost": "Durabilité perdue",
+
+	"ifuto-armor-hud.config.outside_side": "Position extérieure",
+	"ifuto-armor-hud.config.outside_side.tooltip": "En vertical : de quel côté des cases apparaît l'info extérieure. Orientée vers la barre, elle sert de marge naturelle.",
+	"ifuto-armor-hud.config.side.left": "Gauche des cases",
+	"ifuto-armor-hud.config.side.right": "Droite des cases",
+
+	"ifuto-armor-hud.config.warn_blink": "Clignoter si durabilité faible",
+	"ifuto-armor-hud.config.warn_percent": "Seuil de clignotement : %s",
+
+	"ifuto-armor-hud.config.dynamic_contrast": "Contraste auto",
+	"ifuto-armor-hud.config.dynamic_contrast.tooltip": "Ajoute une ombre légère derrière le texte et les jauges pour rester lisible sur fond clair.",
+
+	"ifuto-armor-hud.config.offset_x": "Décalage X : %s",
+	"ifuto-armor-hud.config.offset_y": "Décalage Y : %s",
+
+	"ifuto-armor-hud.config.client_id": "ID client Discord (secours)",
+	"ifuto-armor-hud.config.client_id.placeholder": "Utilisé si le paquet n'a pas d'ID client (vide = désactivé)",
+	"ifuto-armor-hud.config.client_id.tooltip": "Quand le serveur envoie ifumods:server/discord, le texte s'affiche comme statut Discord. Le paquet contient normalement son propre ID client ; ce champ sert de secours.",
+
+	"ifuto-armor-hud.config.reset": "Réinitialiser"
+}

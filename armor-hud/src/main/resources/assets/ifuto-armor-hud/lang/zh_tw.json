@@ -1,0 +1,62 @@
+{
+	"key.category.ifuto-armor-hud.armor_hud": "Ifuto Armor HUD",
+	"key.ifuto-armor-hud.toggle": "切換盔甲 HUD 顯示",
+
+	"ifuto-armor-hud.join_notice": "§7[Armor HUD]§r 可在 Mod Menu 模組新增的 Config 畫面調整所有設定（按 V 鍵切換 HUD）",
+
+	"ifuto-armor-hud.config.title": "Ifuto Armor HUD 設定",
+	"ifuto-armor-hud.config.hint": "預設按鍵：V — 顯示或隱藏 HUD",
+
+	"ifuto-armor-hud.config.show_hud": "顯示 HUD",
+
+	"ifuto-armor-hud.config.position": "顯示位置",
+	"ifuto-armor-hud.config.position.hotbar_left": "快捷欄左側",
+	"ifuto-armor-hud.config.position.hotbar_right": "快捷欄右側",
+
+	"ifuto-armor-hud.config.layout": "排列方向",
+	"ifuto-armor-hud.config.layout.vertical": "直向",
+	"ifuto-armor-hud.config.layout.horizontal": "橫向",
+
+	"ifuto-armor-hud.config.background": "欄位背景",
+	"ifuto-armor-hud.config.background.frame": "物品邊框",
+	"ifuto-armor-hud.config.background.ghost": "幽靈圖示（無邊框）",
+	"ifuto-armor-hud.config.background.tooltip": "物品邊框：繪製原版風格邊框。幽靈圖示：不畫邊框，空欄位只顯示淡淡的裝備圖示。",
+
+	"ifuto-armor-hud.config.empty": "空欄位",
+	"ifuto-armor-hud.config.empty.keep": "保持原樣",
+	"ifuto-armor-hud.config.empty.faded": "半透明",
+	"ifuto-armor-hud.config.empty.hide": "隱藏",
+
+	"ifuto-armor-hud.config.hotbar_gap": "與快捷欄的距離: %s",
+	"ifuto-armor-hud.config.slot_gap": "欄位間距: %s",
+
+	"ifuto-armor-hud.config.inside": "耐久（框內）",
+	"ifuto-armor-hud.config.inside.tooltip": "在欄位內下方（計量條位置）顯示的內容。",
+	"ifuto-armor-hud.config.outside": "耐久（框外）",
+	"ifuto-armor-hud.config.outside.tooltip": "橫向：顯示在欄位上方。直向：在所選一側橫排顯示（計量條直立）。",
+	"ifuto-armor-hud.config.info.none": "無",
+	"ifuto-armor-hud.config.info.gauge": "計量條",
+	"ifuto-armor-hud.config.info.percent": "剩餘耐久（%）",
+	"ifuto-armor-hud.config.info.number": "剩餘耐久（數值）",
+	"ifuto-armor-hud.config.info.lost": "已耗損耐久",
+
+	"ifuto-armor-hud.config.outside_side": "外部顯示位置",
+	"ifuto-armor-hud.config.outside_side.tooltip": "直向排列時，框外顯示要放在欄位左右哪一側。朝向快捷欄可形成自然的留白。",
+	"ifuto-armor-hud.config.side.left": "欄位左側",
+	"ifuto-armor-hud.config.side.right": "欄位右側",
+
+	"ifuto-armor-hud.config.warn_blink": "耐久不足時邊框閃爍",
+	"ifuto-armor-hud.config.warn_percent": "閃爍閾值: %s",
+
+	"ifuto-armor-hud.config.dynamic_contrast": "自動對比",
+	"ifuto-armor-hud.config.dynamic_contrast.tooltip": "在文字與計量條後面鋪一層淡淡的陰影，亮色背景下也看得清。",
+
+	"ifuto-armor-hud.config.offset_x": "橫向位移: %s",
+	"ifuto-armor-hud.config.offset_y": "直向位移: %s",
+
+	"ifuto-armor-hud.config.client_id": "Discord Client ID（備用）",
+	"ifuto-armor-hud.config.client_id.placeholder": "封包未帶 Client ID 時使用（留空 = 關閉）",
+	"ifuto-armor-hud.config.client_id.tooltip": "當伺服器送出 ifumods:server/discord 時，該文字會顯示為你的 Discord 狀態。封包通常自帶 Client ID，此欄為備用。",
+
+	"ifuto-armor-hud.config.reset": "還原預設"
+}
