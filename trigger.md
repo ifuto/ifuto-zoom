@@ -15,4 +15,4 @@ java: 21
 workdir: armor-hud
 artifact_path: armor-hud/build/libs/*.jar
 
-note: bisect4-3 config+enum系だけ復活
+note: bisect4-4 描画を復活（画面は旧版）
