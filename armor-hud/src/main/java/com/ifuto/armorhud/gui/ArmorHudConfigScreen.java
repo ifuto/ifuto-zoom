@@ -19,7 +19,7 @@ import net.minecraft.client.gui.tooltip.Tooltip;
 import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.client.gui.widget.ClickableWidget;
 import net.minecraft.client.gui.widget.CyclingButtonWidget;
-import net.minecraft.client.gui.widget.ElementListWidget;
+import net.minecraft.client.gui.widget.EntryListWidget;
 import net.minecraft.client.gui.widget.SliderWidget;
 import net.minecraft.client.gui.widget.TextFieldWidget;
 import net.minecraft.text.Text;
@@ -209,18 +209,13 @@ public class ArmorHudConfigScreen extends Screen {
 	}
 
 	// バニラのオプション画面と同じ、スクロールするリスト
-	private static class HudOptionsList extends ElementListWidget<HudOptionsList.Row> {
+	private static class HudOptionsList extends EntryListWidget {
 
 		HudOptionsList(MinecraftClient client, int width, int height, int y, int itemHeight) {
 			super(client, width, height, y, itemHeight);
 		}
 
-		@Override
-		public int addEntry(Row entry) {
-			return super.addEntry(entry);
-		}
-
-		private static class Row extends ElementListWidget.Entry<Row> {
+		private static class Row extends EntryListWidget.Entry {
 			private final List<ClickableWidget> widgets = new ArrayList<>();
 
 			private Row(ClickableWidget... widgets) {
@@ -242,19 +237,16 @@ public class ArmorHudConfigScreen extends Screen {
 			}
 
 			@Override
-			public void render(DrawContext context, int index, int y, int x, int entryWidth, int entryHeight,
-							   int mouseX, int mouseY, boolean hovered, float tickDelta) {
-				// 2列グリッド式に中央へ並べる。全幅の場合は1つだけ引き伸ばす
-				int contentWidth = this.widgets.size() == 1
-						? WIDGET_WIDTH * 2 + COLUMN_GAP
-						: WIDGET_WIDTH;
-				int left = x + entryWidth / 2 - WIDGET_WIDTH - COLUMN_GAP / 2;
+			public void render(DrawContext context, int mouseX, int mouseY, boolean hovered, float tickDelta) {
+				// 行の中に2列グリッド式に並べる。全幅の部品は1つだけ引き伸ばす
+				int widgetWidth = this.widgets.size() == 1 ? WIDGET_WIDTH * 2 + COLUMN_GAP : WIDGET_WIDTH;
+				int left = this.getContentMiddleX() - (WIDGET_WIDTH * 2 + COLUMN_GAP) / 2;
+				int yy = this.getContentMiddleY() - WIDGET_HEIGHT / 2;
 				for (int i = 0; i < this.widgets.size(); i++) {
 					ClickableWidget widget = this.widgets.get(i);
 					int wx = this.widgets.size() == 1 || i == 0 ? left : left + WIDGET_WIDTH + COLUMN_GAP;
-					int wy = y + (entryHeight - WIDGET_HEIGHT) / 2;
-					widget.setWidth(contentWidth);
-					widget.setPosition(wx, wy);
+					widget.setWidth(widgetWidth);
+					widget.setPosition(wx, yy);
 					widget.render(context, mouseX, mouseY, tickDelta);
 				}
 			}
