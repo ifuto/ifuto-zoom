@@ -58,5 +58,18 @@
 	"ifuto-armor-hud.config.client_id.placeholder": "Used when the packet has no client ID (blank = off)",
 	"ifuto-armor-hud.config.client_id.tooltip": "When the server sends ifumods:server/discord, its text is shown as your Discord status. The packet normally carries its own client ID; this field is the fallback for when it doesn't.",
 
+	"ifuto-armor-hud.config.info.lost_percent": "Lost Durability (%)",
+
+	"ifuto-armor-hud.config.show_condition": "Show Condition",
+	"ifuto-armor-hud.config.show_condition.always": "Always",
+	"ifuto-armor-hud.config.show_condition.when_damaged": "When Damaged",
+	"ifuto-armor-hud.config.show_condition.when_critical": "When Critical",
+	"ifuto-armor-hud.config.show_condition.tooltip": "Critical: only shows the HUD while some armor is at or below the blink threshold.",
+	"ifuto-armor-hud.config.break_alert": "Break Alert",
+	"ifuto-armor-hud.config.break_alert.tooltip": "Plays a sound and a chat message the moment an armor piece breaks.",
+	"ifuto-armor-hud.config.hud_scale": "HUD Scale: %s",
+
+	"ifuto-armor-hud.break_notice": "§c[Armor HUD]§r %s has broken!",
+
 	"ifuto-armor-hud.config.reset": "Reset to Defaults"
 }

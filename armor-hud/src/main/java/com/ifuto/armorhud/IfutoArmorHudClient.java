@@ -14,6 +14,9 @@ import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
 import net.minecraft.client.option.KeyBinding;
 import net.minecraft.client.util.InputUtil;
+import net.minecraft.entity.EquipmentSlot;
+import net.minecraft.item.ItemStack;
+import net.minecraft.sound.SoundEvents;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 import org.lwjgl.glfw.GLFW;
@@ -36,8 +39,18 @@ public class IfutoArmorHudClient implements ClientModInitializer {
 	/** 案内チャットをこのセッションで送ったか */
 	private static boolean joinNoticeSent;
 
+	/** 壊れ通知用に、前 tick の装備状態（耐久ありのものだけ） */
+	private static final BreakWatch[] breakWatch = new BreakWatch[ArmorHudRenderer.SLOTS.length];
+
 	public static KeyBinding getToggleKey() {
 		return toggleKey;
+	}
+
+	// 直前の耐久・名前を覚えておくための軽いメモ
+	private record BreakWatch(String name, int maxDamage, int lastDamage) {
+		static BreakWatch of(ItemStack stack) {
+			return new BreakWatch(stack.getName().getString(), stack.getMaxDamage(), stack.getDamage());
+		}
 	}
 
 	@Override
@@ -78,6 +91,11 @@ public class IfutoArmorHudClient implements ClientModInitializer {
 					client.player.sendMessage(Text.translatable("ifuto-armor-hud.join_notice"), false);
 				}
 			}
+
+			// 装備が壊れた瞬間を検知して音とチャットで知らせる
+			if (ArmorHudConfig.get().breakAlert) {
+				checkBrokenArmor(client.player);
+			}
 		});
 
 		// 常に最後に描けば他の MOD の HUD とだいたい共存できる
@@ -93,5 +111,34 @@ public class IfutoArmorHudClient implements ClientModInitializer {
 		ClientLifecycleEvents.CLIENT_STOPPING.register(client -> DiscordRichPresence.get().shutdown());
 
 		LOGGER.info("[ifuto-armor-hud] initialized");
+	}
+
+	// 前 tick は装備していた耐久アイテムが消えたら「壊れた」とみなす。
+	// 手持ちに戻しただけの場合は lastDamage < 最大直前なので誤爆しない（最大-1 まで削れたものが消えたら壊れ判定）
+	private static void checkBrokenArmor(net.minecraft.client.network.ClientPlayerEntity player) {
+		if (player == null) {
+			for (int i = 0; i < breakWatch.length; i++) {
+				breakWatch[i] = null;
+			}
+			return;
+		}
+
+		for (int i = 0; i < ArmorHudRenderer.SLOTS.length; i++) {
+			EquipmentSlot slot = ArmorHudRenderer.SLOTS[i];
+			ItemStack stack = player.getEquippedStack(slot);
+
+			if (stack.isEmpty() || !stack.isDamageable()) {
+				BreakWatch watched = breakWatch[i];
+
+				if (stack.isEmpty() && watched != null && watched.lastDamage() >= watched.maxDamage() - 1) {
+					player.playSound(SoundEvents.ENTITY_ITEM_BREAK, 1.0F, 1.0F);
+					player.sendMessage(Text.translatable("ifuto-armor-hud.break_notice", watched.name()), false);
+				}
+
+				breakWatch[i] = null;
+			} else {
+				breakWatch[i] = BreakWatch.of(stack);
+			}
+		}
 	}
 }

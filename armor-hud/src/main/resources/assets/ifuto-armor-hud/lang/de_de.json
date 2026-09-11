@@ -58,5 +58,18 @@
 	"ifuto-armor-hud.config.client_id.placeholder": "Wird genutzt, wenn das Paket keine Client-ID enthält (leer = aus)",
 	"ifuto-armor-hud.config.client_id.tooltip": "Wenn der Server ifumods:server/discord sendet, wird der Text als dein Discord-Status angezeigt. Das Paket bringt normalerweise die eigene Client-ID mit; dieses Feld ist der Fallback.",
 
+	"ifuto-armor-hud.config.info.lost_percent": "Verbrauchte Haltbarkeit (%)",
+
+	"ifuto-armor-hud.config.show_condition": "Anzeigebedingung",
+	"ifuto-armor-hud.config.show_condition.always": "Immer",
+	"ifuto-armor-hud.config.show_condition.when_damaged": "Bei Schaden",
+	"ifuto-armor-hud.config.show_condition.when_critical": "Kritisch",
+	"ifuto-armor-hud.config.show_condition.tooltip": "Kritisch: zeigt das HUD nur, solange ein Rüstungsteil die Blink-Schwelle erreicht oder unterschreitet.",
+	"ifuto-armor-hud.config.break_alert": "Bruchalarm",
+	"ifuto-armor-hud.config.break_alert.tooltip": "Spielt einen Sound und eine Chat-Nachricht, sobald ein Rüstungsteil zerbricht.",
+	"ifuto-armor-hud.config.hud_scale": "HUD-Größe: %s",
+
+	"ifuto-armor-hud.break_notice": "§c[Armor HUD]§r %s ist zerbrochen!",
+
 	"ifuto-armor-hud.config.reset": "Auf Standard zurücksetzen"
 }

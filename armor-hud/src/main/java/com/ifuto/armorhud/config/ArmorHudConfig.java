@@ -61,6 +61,15 @@ public class ArmorHudConfig {
 	/** 文字とゲージの後ろに薄い影を敷いて見やすくする */
 	public boolean dynamicContrast = false;
 
+	/** HUD 全体の大きさ（%） */
+	public int hudScale = 100;
+
+	/** どういうとき HUD を出すか（常時 / 傷あり / ピンチ） */
+	public ShowCondition showCondition = ShowCondition.ALWAYS;
+
+	/** 装備が壊れた瞬間に音とチャットで知らせる */
+	public boolean breakAlert = true;
+
 	/** 最終調整用のオフセット（+が右/下） */
 	public int offsetX = 0;
 	public int offsetY = 0;
@@ -135,6 +144,9 @@ public class ArmorHudConfig {
 		this.warnBlink = defaults.warnBlink;
 		this.warnPercent = defaults.warnPercent;
 		this.dynamicContrast = defaults.dynamicContrast;
+		this.hudScale = defaults.hudScale;
+		this.showCondition = defaults.showCondition;
+		this.breakAlert = defaults.breakAlert;
 		this.offsetX = defaults.offsetX;
 		this.offsetY = defaults.offsetY;
 		// discordClientId と joinCount はリセット対象外（ユーザー固有の値なので残す）
@@ -170,6 +182,10 @@ public class ArmorHudConfig {
 			this.outsideSide = OutsideSide.LEFT;
 		}
 
+		if (this.showCondition == null) {
+			this.showCondition = ShowCondition.ALWAYS;
+		}
+
 		if (this.discordClientId == null) {
 			this.discordClientId = "";
 		}
@@ -177,6 +193,7 @@ public class ArmorHudConfig {
 		this.hotbarGap = clamp(this.hotbarGap, 0, 64);
 		this.slotGap = clamp(this.slotGap, 0, 16);
 		this.warnPercent = clamp(this.warnPercent, 1, 50);
+		this.hudScale = clamp(this.hudScale, 25, 200);
 		this.offsetX = clamp(this.offsetX, -500, 500);
 		this.offsetY = clamp(this.offsetY, -500, 500);
 

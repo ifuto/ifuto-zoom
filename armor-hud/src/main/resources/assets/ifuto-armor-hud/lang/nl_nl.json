@@ -58,5 +58,18 @@
 	"ifuto-armor-hud.config.client_id.placeholder": "Gebruikt als het pakket geen client-ID heeft (leeg = uit)",
 	"ifuto-armor-hud.config.client_id.tooltip": "Als de server ifumods:server/discord stuurt, verschijnt de tekst als je Discord-status. Het pakket bevat normaal een eigen client-ID; dit veld is de reserve.",
 
+	"ifuto-armor-hud.config.info.lost_percent": "Verloren duurzaamheid (%)",
+
+	"ifuto-armor-hud.config.show_condition": "Weergavevoorwaarde",
+	"ifuto-armor-hud.config.show_condition.always": "Altijd",
+	"ifuto-armor-hud.config.show_condition.when_damaged": "Bij schade",
+	"ifuto-armor-hud.config.show_condition.when_critical": "Bij kritiek",
+	"ifuto-armor-hud.config.show_condition.tooltip": "Kritiek: toont de HUD alleen zolang een stuk op of onder de knipperdrempel zit.",
+	"ifuto-armor-hud.config.break_alert": "Breekmelding",
+	"ifuto-armor-hud.config.break_alert.tooltip": "Speelt een geluid en een chatbericht zodra een stuk kapotgaat.",
+	"ifuto-armor-hud.config.hud_scale": "HUD-grootte: %s",
+
+	"ifuto-armor-hud.break_notice": "§c[Armor HUD]§r %s is stuk!",
+
 	"ifuto-armor-hud.config.reset": "Standaard herstellen"
 }

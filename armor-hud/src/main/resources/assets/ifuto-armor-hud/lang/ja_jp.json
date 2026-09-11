@@ -58,5 +58,18 @@
 	"ifuto-armor-hud.config.client_id.placeholder": "パケットに Client ID が無いとき用（空欄 = 連携オフ）",
 	"ifuto-armor-hud.config.client_id.tooltip": "サーバーから ifumods:server/discord が飛んできたら、その文字を Discord のステータスに表示します。Client ID はふつうパケットに付いてくるので、ここは付いてこない場合の予備です。",
 
+	"ifuto-armor-hud.config.info.lost_percent": "減った耐久（%）",
+
+	"ifuto-armor-hud.config.show_condition": "表示条件",
+	"ifuto-armor-hud.config.show_condition.always": "常に表示",
+	"ifuto-armor-hud.config.show_condition.when_damaged": "傷があるとき",
+	"ifuto-armor-hud.config.show_condition.when_critical": "ピンチのとき",
+	"ifuto-armor-hud.config.show_condition.tooltip": "ピンチ: 残り耐久が点滅しきい値以下の装備があるときだけ表示します。",
+	"ifuto-armor-hud.config.break_alert": "壊れたら通知",
+	"ifuto-armor-hud.config.break_alert.tooltip": "装備が壊れた瞬間に音とチャットで知らせます。",
+	"ifuto-armor-hud.config.hud_scale": "HUDの大きさ: %s",
+
+	"ifuto-armor-hud.break_notice": "§c[Armor HUD]§r %s が壊れました！",
+
 	"ifuto-armor-hud.config.reset": "初期設定に戻す"
 }

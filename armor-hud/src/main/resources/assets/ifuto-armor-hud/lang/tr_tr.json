@@ -58,5 +58,18 @@
 	"ifuto-armor-hud.config.client_id.placeholder": "Pakette Client ID yoksa kullanılır (boş = kapalı)",
 	"ifuto-armor-hud.config.client_id.tooltip": "Sunucu ifumods:server/discord gönderdiğinde o metin Discord durumunda görünür. Paket normalde kendi Client ID'sini taşır; bu alan yedektir.",
 
+	"ifuto-armor-hud.config.info.lost_percent": "Kaybedilen dayanıklılık (%)",
+
+	"ifuto-armor-hud.config.show_condition": "Gösterim koşulu",
+	"ifuto-armor-hud.config.show_condition.always": "Her zaman",
+	"ifuto-armor-hud.config.show_condition.when_damaged": "Hasarlıysa",
+	"ifuto-armor-hud.config.show_condition.when_critical": "Kritikse",
+	"ifuto-armor-hud.config.show_condition.tooltip": "Kritik: HUD'u yalnızca bir parça yanıp sönme eşiğinde veya altındayken gösterir.",
+	"ifuto-armor-hud.config.break_alert": "Kırılma uyarısı",
+	"ifuto-armor-hud.config.break_alert.tooltip": "Donanım parçası kırıldığı an ses ve sohbet mesajı ile bildirir.",
+	"ifuto-armor-hud.config.hud_scale": "HUD boyutu: %s",
+
+	"ifuto-armor-hud.break_notice": "§c[Armor HUD]§r %s kırıldı!",
+
 	"ifuto-armor-hud.config.reset": "Varsayılanlara dön"
 }

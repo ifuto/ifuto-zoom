@@ -58,5 +58,18 @@
 	"ifuto-armor-hud.config.client_id.placeholder": "Utilisé si le paquet n'a pas d'ID client (vide = désactivé)",
 	"ifuto-armor-hud.config.client_id.tooltip": "Quand le serveur envoie ifumods:server/discord, le texte s'affiche comme statut Discord. Le paquet contient normalement son propre ID client ; ce champ sert de secours.",
 
+	"ifuto-armor-hud.config.info.lost_percent": "Durabilité perdue (%)",
+
+	"ifuto-armor-hud.config.show_condition": "Condition d'affichage",
+	"ifuto-armor-hud.config.show_condition.always": "Toujours",
+	"ifuto-armor-hud.config.show_condition.when_damaged": "Si endommagé",
+	"ifuto-armor-hud.config.show_condition.when_critical": "Si critique",
+	"ifuto-armor-hud.config.show_condition.tooltip": "Critique : n'affiche le HUD que tant qu'une pièce est sous le seuil de clignotement.",
+	"ifuto-armor-hud.config.break_alert": "Alerte de casse",
+	"ifuto-armor-hud.config.break_alert.tooltip": "Joue un son et un message dans le chat au moment où une pièce se casse.",
+	"ifuto-armor-hud.config.hud_scale": "Taille du HUD : %s",
+
+	"ifuto-armor-hud.break_notice": "§c[Armor HUD]§r %s est cassé !",
+
 	"ifuto-armor-hud.config.reset": "Réinitialiser"
 }

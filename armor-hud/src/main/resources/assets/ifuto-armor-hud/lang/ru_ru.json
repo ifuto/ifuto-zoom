@@ -58,5 +58,18 @@
 	"ifuto-armor-hud.config.client_id.placeholder": "Используется, если в пакете нет Client ID (пусто = выкл.)",
 	"ifuto-armor-hud.config.client_id.tooltip": "Когда сервер присылает ifumods:server/discord, текст показывается как ваш статус в Discord. Обычно Client ID приходит в пакете; это поле — запасной вариант.",
 
+	"ifuto-armor-hud.config.info.lost_percent": "Потерянная прочность (%)",
+
+	"ifuto-armor-hud.config.show_condition": "Условие показа",
+	"ifuto-armor-hud.config.show_condition.always": "Всегда",
+	"ifuto-armor-hud.config.show_condition.when_damaged": "При износе",
+	"ifuto-armor-hud.config.show_condition.when_critical": "Критический износ",
+	"ifuto-armor-hud.config.show_condition.tooltip": "Критический: показывает HUD, только пока какая-то броня на пороге мигания или ниже.",
+	"ifuto-armor-hud.config.break_alert": "Оповещение о поломке",
+	"ifuto-armor-hud.config.break_alert.tooltip": "Издаёт звук и сообщение в чат в момент поломки элемента брони.",
+	"ifuto-armor-hud.config.hud_scale": "Размер HUD: %s",
+
+	"ifuto-armor-hud.break_notice": "§c[Armor HUD]§r %s сломано!",
+
 	"ifuto-armor-hud.config.reset": "Сбросить настройки"
 }

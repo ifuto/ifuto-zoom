@@ -15,4 +15,4 @@ java: 21
 workdir: armor-hud
 artifact_path: armor-hud/build/libs/*.jar
 
-note: 多言語13件追加の検証
+note: 減った耐久%・HUDスケール・壊れ通知・表示条件の検証

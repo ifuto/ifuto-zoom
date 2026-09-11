@@ -58,5 +58,18 @@
 	"ifuto-armor-hud.config.client_id.placeholder": "패킷에 Client ID가 없을 때 사용 (빈칸 = 끔)",
 	"ifuto-armor-hud.config.client_id.tooltip": "서버가 ifumods:server/discord 를 볼 때 그 문자열이 Discord 상태에 표시됩니다. 보통 패킷에 Client ID가 포함되므로, 여기는 포함되지 않을 때의 예비입니다.",
 
+	"ifuto-armor-hud.config.info.lost_percent": "소모된 내구도(%)",
+
+	"ifuto-armor-hud.config.show_condition": "표시 조건",
+	"ifuto-armor-hud.config.show_condition.always": "항상",
+	"ifuto-armor-hud.config.show_condition.when_damaged": "손상 있을 때",
+	"ifuto-armor-hud.config.show_condition.when_critical": "위험할 때",
+	"ifuto-armor-hud.config.show_condition.tooltip": "위험: 남은 내구도가 깜빡임 임계값 이하인 장비가 있을 때만 HUD를 표시합니다.",
+	"ifuto-armor-hud.config.break_alert": "파괴 알림",
+	"ifuto-armor-hud.config.break_alert.tooltip": "장비가 부서지는 순간 소리와 채팅으로 알립니다.",
+	"ifuto-armor-hud.config.hud_scale": "HUD 크기: %s",
+
+	"ifuto-armor-hud.break_notice": "§c[Armor HUD]§r %s 이(가) 파괴되었습니다!",
+
 	"ifuto-armor-hud.config.reset": "기본값으로 되돌리기"
 }

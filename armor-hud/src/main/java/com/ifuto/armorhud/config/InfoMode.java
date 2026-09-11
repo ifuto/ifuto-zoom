@@ -19,7 +19,9 @@ public enum InfoMode {
 	/** 残り耐久を数値で */
 	NUMBER("number"),
 	/** 満タンから減った耐久を数値で */
-	LOST("lost");
+	LOST("lost"),
+	/** 満タンから減った耐久を % 表記（%記号付き） */
+	LOST_PERCENT("lost_percent");
 
 	private final String name;
 
@@ -28,7 +30,7 @@ public enum InfoMode {
 	}
 
 	public boolean isText() {
-		return this == PERCENT || this == NUMBER || this == LOST;
+		return this == PERCENT || this == NUMBER || this == LOST || this == LOST_PERCENT;
 	}
 
 	public String getTranslationKey() {

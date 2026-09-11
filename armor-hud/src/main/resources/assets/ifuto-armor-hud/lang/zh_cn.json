@@ -58,5 +58,18 @@
 	"ifuto-armor-hud.config.client_id.placeholder": "数据包未带 Client ID 时使用（留空 = 关闭）",
 	"ifuto-armor-hud.config.client_id.tooltip": "当服务器发送 ifumods:server/discord 时，该文字会显示为你的 Discord 状态。数据包通常自带 Client ID，此栏为备用。",
 
+	"ifuto-armor-hud.config.info.lost_percent": "已损耗耐久（%）",
+
+	"ifuto-armor-hud.config.show_condition": "显示条件",
+	"ifuto-armor-hud.config.show_condition.always": "总是显示",
+	"ifuto-armor-hud.config.show_condition.when_damaged": "有磨损时",
+	"ifuto-armor-hud.config.show_condition.when_critical": "耐久告急时",
+	"ifuto-armor-hud.config.show_condition.tooltip": "告急：仅当有装备的剩余耐久低于闪烁阈值时显示 HUD。",
+	"ifuto-armor-hud.config.break_alert": "损坏通知",
+	"ifuto-armor-hud.config.break_alert.tooltip": "装备损坏的瞬间播放音效并发送聊天提示。",
+	"ifuto-armor-hud.config.hud_scale": "HUD 大小: %s",
+
+	"ifuto-armor-hud.break_notice": "§c[Armor HUD]§r %s 已损坏！",
+
 	"ifuto-armor-hud.config.reset": "恢复默认设置"
 }

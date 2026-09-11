@@ -58,5 +58,18 @@
 	"ifuto-armor-hud.config.client_id.placeholder": "Se usa si el paquete no trae ID de cliente (vacío = desactivado)",
 	"ifuto-armor-hud.config.client_id.tooltip": "Cuando el servidor envía ifumods:server/discord, su texto se muestra como tu estado de Discord. El paquete suele llevar su propio ID; este campo es la reserva por si no lo trae.",
 
+	"ifuto-armor-hud.config.info.lost_percent": "Durabilidad perdida (%)",
+
+	"ifuto-armor-hud.config.show_condition": "Condición de visibilidad",
+	"ifuto-armor-hud.config.show_condition.always": "Siempre",
+	"ifuto-armor-hud.config.show_condition.when_damaged": "Si hay daño",
+	"ifuto-armor-hud.config.show_condition.when_critical": "En crítico",
+	"ifuto-armor-hud.config.show_condition.tooltip": "Crítico: muestra el HUD solo mientras alguna armadura está en el umbral de parpadeo o por debajo.",
+	"ifuto-armor-hud.config.break_alert": "Aviso de rotura",
+	"ifuto-armor-hud.config.break_alert.tooltip": "Reproduce un sonido y un mensaje de chat en el momento en que una pieza se rompe.",
+	"ifuto-armor-hud.config.hud_scale": "Tamaño del HUD: %s",
+
+	"ifuto-armor-hud.break_notice": "§c[Armor HUD]§r ¡%s se ha roto!",
+
 	"ifuto-armor-hud.config.reset": "Restablecer valores"
 }
