@@ -15,4 +15,4 @@ java: 21
 workdir: armor-hud
 artifact_path: armor-hud/build/libs/*.jar
 
-note: v1.4.5 反映漏れを再適用
+note: v1.4.6 バニラオーバーレイと位置調整

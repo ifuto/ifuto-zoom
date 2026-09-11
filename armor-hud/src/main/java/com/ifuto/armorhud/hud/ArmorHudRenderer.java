@@ -56,7 +56,6 @@ public class ArmorHudRenderer implements HudElement {
 	private static final int ICON = 16;
 	private static final int TEXT_H = 9;
 	private static final int HOTBAR_HALF = 91; // ホットバーは中央に幅182px
-	private static final float INSIDE_TEXT_SCALE = 0.55F;
 
 	@Override
 	public void render(DrawContext context, RenderTickCounter tickCounter) {
@@ -143,8 +142,8 @@ public class ArmorHudRenderer implements HudElement {
 				: screenW / 2 - HOTBAR_HALF - sidePad - config.hotbarGap - panelW;
 		x0 += config.offsetX;
 
-		// 下端をホットバーに揃える（ホットバーの底は screenH - 2 くらい）
-		int y0 = screenH - 2 - panelH + config.offsetY;
+		// 下端は画面端に揃える（ホットバーの底と同じ高さ）
+		int y0 = screenH - panelH + config.offsetY;
 		int yFrame0 = y0 + topExtra;
 
 		boolean sideStripLeft = !horizontal && outside != InfoMode.NONE && config.outsideSide == OutsideSide.LEFT;
@@ -186,15 +185,11 @@ public class ArmorHudRenderer implements HudElement {
 				float ratio = durabilityRatio(stack);
 				int color = durabilityColor(ratio);
 
-				// 枠の中
+				// 枠の中: バニラのアイテムオーバーレイ（耐久バーや個数と同じ描画）に任せる
 				if (inside == InfoMode.GAUGE) {
-					int barW = Math.round(12.0F * ratio);
-					context.fill(fx + 4, fy + 15, fx + 16, fy + 17, 0xFF1F1F1F);
-					if (barW > 0) {
-						context.fill(fx + 4, fy + 15, fx + 4 + barW, fy + 16, color);
-					}
+					context.drawStackOverlay(tr, stack, fx + ICON_OFF, fy + ICON_OFF);
 				} else if (inside.isText()) {
-					drawInsideText(context, tr, infoText(inside, stack), fx, fy, color);
+					context.drawStackOverlay(tr, stack, fx + ICON_OFF, fy + ICON_OFF, infoText(inside, stack));
 				}
 
 				// 枠の外
@@ -297,16 +292,6 @@ public class ArmorHudRenderer implements HudElement {
 		}
 
 		context.drawTextWithShadow(tr, text, tx, ty, color);
-	}
-
-	private void drawInsideText(DrawContext context, TextRenderer tr, String text, int fx, int fy, int color) {
-		// 枠の内側に収まるよう、縮めて右下寄せにする
-		var matrices = context.getMatrices();
-		matrices.pushMatrix();
-		matrices.translate(fx + CELL - 2, fy + 11);
-		matrices.scale(INSIDE_TEXT_SCALE, INSIDE_TEXT_SCALE);
-		context.drawTextWithShadow(tr, text, -tr.getWidth(text), 0, color);
-		matrices.popMatrix();
 	}
 
 	private static boolean hasDurability(ItemStack stack) {
