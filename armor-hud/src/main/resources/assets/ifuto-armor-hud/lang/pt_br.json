@@ -30,7 +30,7 @@
 	"ifuto-armor-hud.config.inside": "Dentro",
 	"ifuto-armor-hud.config.inside.tooltip": "O que mostrar embaixo dentro do espaço (onde fica a barra).",
 	"ifuto-armor-hud.config.outside": "Fora",
-	"ifuto-armor-hud.config.outside.tooltip": "Vertical: ao lado do slot; o medidor fica vertical. Horizontal: texto acima do slot (sem medidor). A barra some quando a durabilidade está cheia.",
+	"ifuto-armor-hud.config.outside.tooltip": "Vertical: ao lado do slot; o medidor fica vertical. Horizontal: texto acima do slot (sem medidor). A barra some com a durabilidade cheia ou quase cheia.",
 	"ifuto-armor-hud.config.info.none": "Nenhum",
 	"ifuto-armor-hud.config.info.gauge": "Barra",
 	"ifuto-armor-hud.config.info.percent": "Restante %",

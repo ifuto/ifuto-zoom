@@ -30,7 +30,7 @@
 	"ifuto-armor-hud.config.inside": "Dentro",
 	"ifuto-armor-hud.config.inside.tooltip": "Cosa mostrare in basso dentro lo slot (dove sta l'indicatore).",
 	"ifuto-armor-hud.config.outside": "Fuori",
-	"ifuto-armor-hud.config.outside.tooltip": "Orizzontale: testo sopra lo slot (niente barra). Verticale: accanto allo slot; la barra è verticale. L'indicatore si nasconde quando la durabilità è piena.",
+	"ifuto-armor-hud.config.outside.tooltip": "Orizzontale: testo sopra lo slot (niente barra). Verticale: accanto allo slot; la barra è verticale. L'indicatore si nasconde quando la durabilità è piena o quasi piena.",
 	"ifuto-armor-hud.config.info.none": "Niente",
 	"ifuto-armor-hud.config.info.gauge": "Indicatore",
 	"ifuto-armor-hud.config.info.percent": "Rimanente %",

@@ -30,7 +30,7 @@
 	"ifuto-armor-hud.config.inside": "Inside",
 	"ifuto-armor-hud.config.inside.tooltip": "What to show at the bottom inside the slot (where the gauge goes).",
 	"ifuto-armor-hud.config.outside": "Outside",
-	"ifuto-armor-hud.config.outside.tooltip": "Horizontal: text above the slot (gauge unavailable). Vertical: beside the slot; the gauge stands upright. The gauge hides while durability is full.",
+	"ifuto-armor-hud.config.outside.tooltip": "Horizontal: text above the slot (gauge unavailable). Vertical: beside the slot; the gauge stands upright. The gauge hides while durability is full or barely worn.",
 	"ifuto-armor-hud.config.info.none": "None",
 	"ifuto-armor-hud.config.info.gauge": "Gauge",
 	"ifuto-armor-hud.config.info.percent": "Left %",

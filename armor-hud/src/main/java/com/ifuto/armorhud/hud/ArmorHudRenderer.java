@@ -200,7 +200,10 @@ public class ArmorHudRenderer implements HudElement {
 
 				// 枠の中: バニラのアイテムオーバーレイ（耐久バーや個数と同じ描画）に任せる
 				if (inside == InfoMode.GAUGE) {
-					context.drawStackOverlay(tr, stack, fx + iconOff, fy + iconOff);
+					// ほぼ満タン(削れ1以下)までは出さない。プラグイン配布の見掛け新装備も対象
+					if (stack.getDamage() > 1) {
+						context.drawStackOverlay(tr, stack, fx + iconOff, fy + iconOff);
+					}
 				} else if (inside.isText()) {
 					context.drawStackOverlay(tr, stack, fx + iconOff, fy + iconOff, infoText(inside, stack));
 				}
@@ -280,8 +283,8 @@ public class ArmorHudRenderer implements HudElement {
 							 InfoMode outside, float ratio, int color, int fx, int fy, int cell, boolean horizontal) {
 		if (outside == InfoMode.GAUGE) {
 			// 縦ゲージ用。縦向きのときだけ有効（横向きは呼ばれない）
-			// バニラに合わせて、満タンのときは出さない
-			if (ratio >= 1.0F) {
+			// バニラに合わせて、ほぼ満タン(削れ1以下)のときは出さない
+			if (stack.getDamage() <= 1) {
 				return;
 			}
 

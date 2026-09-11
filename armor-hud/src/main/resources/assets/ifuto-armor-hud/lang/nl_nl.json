@@ -30,7 +30,7 @@
 	"ifuto-armor-hud.config.inside": "Binnen",
 	"ifuto-armor-hud.config.inside.tooltip": "Wat er onderin het vak wordt getoond (waar de balk zit).",
 	"ifuto-armor-hud.config.outside": "Buiten",
-	"ifuto-armor-hud.config.outside.tooltip": "Verticaal: naast het slot; meter staat rechtop. Horizontaal: tekst boven het slot (geen meter). De balk is verborgen zolang de duurzaamheid vol is.",
+	"ifuto-armor-hud.config.outside.tooltip": "Verticaal: naast het slot; meter staat rechtop. Horizontaal: tekst boven het slot (geen meter). De balk is verborgen zolang de duurzaamheid vol of bijna vol is.",
 	"ifuto-armor-hud.config.info.none": "Geen",
 	"ifuto-armor-hud.config.info.gauge": "Balk",
 	"ifuto-armor-hud.config.info.percent": "Over %",

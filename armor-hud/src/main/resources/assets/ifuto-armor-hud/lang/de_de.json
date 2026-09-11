@@ -30,7 +30,7 @@
 	"ifuto-armor-hud.config.inside": "Innen",
 	"ifuto-armor-hud.config.inside.tooltip": "Was unten im Slot angezeigt wird (dort, wo die Leiste ist).",
 	"ifuto-armor-hud.config.outside": "Außen",
-	"ifuto-armor-hud.config.outside.tooltip": "Vertikal: neben dem Slot, Gauge steht aufrecht. Horizontal: Text über dem Slot (keine Gauge). Die Anzeige wird bei voller Haltbarkeit ausgeblendet.",
+	"ifuto-armor-hud.config.outside.tooltip": "Vertikal: neben dem Slot, Gauge steht aufrecht. Horizontal: Text über dem Slot (keine Gauge). Die Anzeige wird bei voller oder fast voller Haltbarkeit ausgeblendet.",
 	"ifuto-armor-hud.config.info.none": "Keine",
 	"ifuto-armor-hud.config.info.gauge": "Leiste",
 	"ifuto-armor-hud.config.info.percent": "Rest %",

@@ -30,7 +30,7 @@
 	"ifuto-armor-hud.config.inside": "İçte",
 	"ifuto-armor-hud.config.inside.tooltip": "Yuvanın içinde altta (gösterge yeri) ne gösterileceği.",
 	"ifuto-armor-hud.config.outside": "Dışta",
-	"ifuto-armor-hud.config.outside.tooltip": "Yatay: yuvanın üstünde metin (gösterge yok). Dikey: yuvanın yanında; gösterge dik durur. Dayanıklılık doluyken gösterge gizlenir.",
+	"ifuto-armor-hud.config.outside.tooltip": "Yatay: yuvanın üstünde metin (gösterge yok). Dikey: yuvanın yanında; gösterge dik durur. Dayanıklılık dolu ya da doluya yakınken gösterge gizlenir.",
 	"ifuto-armor-hud.config.info.none": "Yok",
 	"ifuto-armor-hud.config.info.gauge": "Gösterge",
 	"ifuto-armor-hud.config.info.percent": "Kalan %",

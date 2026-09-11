@@ -30,7 +30,7 @@
 	"ifuto-armor-hud.config.inside": "Wewnątrz",
 	"ifuto-armor-hud.config.inside.tooltip": "Co pokazać na dole wewnątrz komórki (tam, gdzie pasek).",
 	"ifuto-armor-hud.config.outside": "Na zewnątrz",
-	"ifuto-armor-hud.config.outside.tooltip": "Poziomo: tekst nad slotem (bez paska). Pionowo: obok slotu; pasek stoi pionowo. Pasek jest ukryty przy pełnej wytrzymałości.",
+	"ifuto-armor-hud.config.outside.tooltip": "Poziomo: tekst nad slotem (bez paska). Pionowo: obok slotu; pasek stoi pionowo. Pasek jest ukryty przy pełnej lub niemal pełnej wytrzymałości.",
 	"ifuto-armor-hud.config.info.none": "Brak",
 	"ifuto-armor-hud.config.info.gauge": "Pasek",
 	"ifuto-armor-hud.config.info.percent": "Pozostało %",

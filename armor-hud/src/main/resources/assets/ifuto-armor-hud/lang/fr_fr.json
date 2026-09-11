@@ -30,7 +30,7 @@
 	"ifuto-armor-hud.config.inside": "Dedans",
 	"ifuto-armor-hud.config.inside.tooltip": "Ce qui s'affiche en bas dans la case (là où va la jauge).",
 	"ifuto-armor-hud.config.outside": "Dehors",
-	"ifuto-armor-hud.config.outside.tooltip": "Horizontal : texte au-dessus (pas de jauge). Vertical : à côté de la case, jauge verticale. La jauge est masquée quand la durabilité est pleine.",
+	"ifuto-armor-hud.config.outside.tooltip": "Horizontal : texte au-dessus (pas de jauge). Vertical : à côté de la case, jauge verticale. La jauge est masquée quand la durabilité est pleine ou presque pleine.",
 	"ifuto-armor-hud.config.info.none": "Aucun",
 	"ifuto-armor-hud.config.info.gauge": "Jauge",
 	"ifuto-armor-hud.config.info.percent": "Reste %",
