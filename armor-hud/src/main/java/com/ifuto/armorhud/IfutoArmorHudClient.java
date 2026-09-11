@@ -12,6 +12,7 @@ import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
+import net.fabricmc.fabric.api.client.rendering.v1.hud.VanillaHudElements;
 import net.minecraft.client.option.KeyBinding;
 import net.minecraft.client.sound.PositionedSoundInstance;
 import net.minecraft.client.util.InputUtil;
@@ -100,7 +101,9 @@ public class IfutoArmorHudClient implements ClientModInitializer {
 		});
 
 		// 常に最後に描けば他の MOD の HUD とだいたい共存できる
-		HudElementRegistry.addLast(Identifier.of(MOD_ID, "armor_hud"), new ArmorHudRenderer());
+		// ホットバーの直後に載せる（addLastだと字幕レイヤー＝画面を開いたときブラーより手前になってしまう）
+		HudElementRegistry.attachElementAfter(VanillaHudElements.HOTBAR,
+				Identifier.of(MOD_ID, "armor_hud"), new ArmorHudRenderer());
 
 
 		// Discord 連携用チャンネル（他modと共有。登録済みならそのまま使う）
