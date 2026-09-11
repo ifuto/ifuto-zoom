@@ -30,7 +30,7 @@
 	"ifuto-armor-hud.config.inside": "안쪽",
 	"ifuto-armor-hud.config.inside.tooltip": "슬롯 안쪽 아래(게이지 위치)에 표시할 내용입니다.",
 	"ifuto-armor-hud.config.outside": "바깥쪽",
-	"ifuto-armor-hud.config.outside.tooltip": "가로: 슬롯 위에 표시(게이지 불가). 세로: 지정한 쪽에 표시. 게이지는 세로로 표시됩니다.",
+	"ifuto-armor-hud.config.outside.tooltip": "가로: 슬롯 위에 표시(게이지 불가). 세로: 지정한 쪽에 표시. 게이지는 세로로 표시됩니다. 내구도가 가득 차 있으면 게이지가 표시되지 않습니다.",
 	"ifuto-armor-hud.config.info.none": "없음",
 	"ifuto-armor-hud.config.info.gauge": "게이지",
 	"ifuto-armor-hud.config.info.percent": "남은 %",

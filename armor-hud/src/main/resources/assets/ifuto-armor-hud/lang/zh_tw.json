@@ -30,7 +30,7 @@
 	"ifuto-armor-hud.config.inside": "框內",
 	"ifuto-armor-hud.config.inside.tooltip": "在欄位內下方（計量條位置）顯示的內容。",
 	"ifuto-armor-hud.config.outside": "框外",
-	"ifuto-armor-hud.config.outside.tooltip": "橫向：顯示在槽位上方（無計量條）。縱向：顯示在指定一側，計量條直放。",
+	"ifuto-armor-hud.config.outside.tooltip": "橫向：顯示在槽位上方（無計量條）。縱向：顯示在指定一側，計量條直放。 耐久滿時不顯示儀表。",
 	"ifuto-armor-hud.config.info.none": "無",
 	"ifuto-armor-hud.config.info.gauge": "計量條",
 	"ifuto-armor-hud.config.info.percent": "剩餘%",

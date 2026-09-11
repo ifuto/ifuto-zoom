@@ -280,6 +280,11 @@ public class ArmorHudRenderer implements HudElement {
 							 InfoMode outside, float ratio, int color, int fx, int fy, int cell, boolean horizontal) {
 		if (outside == InfoMode.GAUGE) {
 			// 縦ゲージ用。縦向きのときだけ有効（横向きは呼ばれない）
+			// バニラに合わせて、満タンのときは出さない
+			if (ratio >= 1.0F) {
+				return;
+			}
+
 			int gx = config.outsideSide == OutsideSide.LEFT ? fx - 3 : fx + cell + 1;
 
 			if (config.dynamicContrast) {

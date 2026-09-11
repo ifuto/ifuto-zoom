@@ -30,7 +30,7 @@
 	"ifuto-armor-hud.config.inside": "Всередині",
 	"ifuto-armor-hud.config.inside.tooltip": "Що показувати внизу всередині комірки (де смужка).",
 	"ifuto-armor-hud.config.outside": "Ззовні",
-	"ifuto-armor-hud.config.outside.tooltip": "Горизонтально: текст над коміркою (без шкали). Вертикально: поруч із коміркою; шкала стоїть вертикально.",
+	"ifuto-armor-hud.config.outside.tooltip": "Горизонтально: текст над коміркою (без шкали). Вертикально: поруч із коміркою; шкала стоїть вертикально. Смуга ховається за повної міцності.",
 	"ifuto-armor-hud.config.info.none": "Немає",
 	"ifuto-armor-hud.config.info.gauge": "Смужка",
 	"ifuto-armor-hud.config.info.percent": "Залишок %",

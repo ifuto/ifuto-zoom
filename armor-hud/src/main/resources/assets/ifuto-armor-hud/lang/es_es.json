@@ -30,7 +30,7 @@
 	"ifuto-armor-hud.config.inside": "Dentro",
 	"ifuto-armor-hud.config.inside.tooltip": "Qué mostrar abajo dentro de la casilla (donde va la barra).",
 	"ifuto-armor-hud.config.outside": "Fuera",
-	"ifuto-armor-hud.config.outside.tooltip": "Horizontal: texto sobre el hueco (sin indicador). Vertical: junto al hueco; el indicador va vertical.",
+	"ifuto-armor-hud.config.outside.tooltip": "Horizontal: texto sobre el hueco (sin indicador). Vertical: junto al hueco; el indicador va vertical. La barra se oculta cuando la durabilidad está llena.",
 	"ifuto-armor-hud.config.info.none": "Nada",
 	"ifuto-armor-hud.config.info.gauge": "Barra",
 	"ifuto-armor-hud.config.info.percent": "Restante %",

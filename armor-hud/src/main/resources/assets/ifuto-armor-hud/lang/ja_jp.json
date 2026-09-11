@@ -30,7 +30,7 @@
 	"ifuto-armor-hud.config.inside": "中",
 	"ifuto-armor-hud.config.inside.tooltip": "枠の中の下部（ゲージの場所）に出すものです。",
 	"ifuto-armor-hud.config.outside": "外",
-	"ifuto-armor-hud.config.outside.tooltip": "横向き: 枠の上に表示（ゲージは使えません）。縦向き: 指定した側に表示。ゲージは縦になります。",
+	"ifuto-armor-hud.config.outside.tooltip": "横向き: 枠の上に表示（ゲージは使えません）。縦向き: 指定した側に表示。ゲージは縦になります。ゲージは満タンのとき非表示。",
 	"ifuto-armor-hud.config.info.none": "なし",
 	"ifuto-armor-hud.config.info.gauge": "ゲージ",
 	"ifuto-armor-hud.config.info.percent": "残り%",

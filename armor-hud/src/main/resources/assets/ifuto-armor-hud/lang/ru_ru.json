@@ -30,7 +30,7 @@
 	"ifuto-armor-hud.config.inside": "Внутри",
 	"ifuto-armor-hud.config.inside.tooltip": "Что показывать внизу внутри слота (где полоска).",
 	"ifuto-armor-hud.config.outside": "Снаружи",
-	"ifuto-armor-hud.config.outside.tooltip": "Горизонтально: текст над ячейкой (без шкалы). Вертикально: рядом с ячейкой; шкала стоит вертикально.",
+	"ifuto-armor-hud.config.outside.tooltip": "Горизонтально: текст над ячейкой (без шкалы). Вертикально: рядом с ячейкой; шкала стоит вертикально. Полоска скрывается при полной прочности.",
 	"ifuto-armor-hud.config.info.none": "Нет",
 	"ifuto-armor-hud.config.info.gauge": "Полоска",
 	"ifuto-armor-hud.config.info.percent": "Остаток %",

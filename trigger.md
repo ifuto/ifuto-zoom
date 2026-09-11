@@ -15,4 +15,4 @@ java: 21
 workdir: armor-hud
 artifact_path: armor-hud/build/libs/*.jar
 
-note: v1.4.8 ホットバー直後のレイヤーへ
+note: v1.4.9 満タン時ゲージ非表示
