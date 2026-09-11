@@ -39,10 +39,6 @@ public class ArmorHudRenderer implements HudElement {
 	// バニラのスロット枠スプライト（リソパで上書き可）。18x18 で外側の囲いも一体
 	private static final Identifier SLOT_TEXTURE = Identifier.ofVanilla("container/slot");
 
-	// 常設の囲い枠スプライト（80x80、中央は透明）。小さく縮めて枠の外側に被せる
-	private static final Identifier SLOT_FRAME = Identifier.ofVanilla("widget/slot_frame");
-	private static final int FRAME_SIZE = SLOT + 4; // 周囲2pxずつはみ出す
-
 	// バニラの空き装備スロットに出るミニアイコンと同じやつ
 	private static final Identifier[] GHOST_ICONS = {
 			Identifier.ofVanilla("container/slot/helmet"),
@@ -53,6 +49,10 @@ public class ArmorHudRenderer implements HudElement {
 
 	private static final int ICON = 16;
 	private static final int SLOT = 18;       // 枠の外寸（アイコン + 1px の枠）
+
+	// 常設の囲い枠スプライト（80x80、中央は透明）。小さく縮めて枠の外側に被せる
+	private static final Identifier SLOT_FRAME = Identifier.ofVanilla("widget/slot_frame");
+	private static final int FRAME_SIZE = SLOT + 4; // 周囲2pxずつはみ出す
 	private static final int TEXT_H = 9;
 	private static final int HOTBAR_HALF = 91; // ホットバーは中央に幅182px
 	private static final float INSIDE_TEXT_SCALE = 0.55F;
