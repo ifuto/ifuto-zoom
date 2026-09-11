@@ -15,4 +15,4 @@ java: 21
 workdir: armor-hud
 artifact_path: armor-hud/build/libs/*.jar
 
-note: bisect4-5 最小差分（SLOTS公開+LOST_PERCENT）
+note: bisect4-6 画面を外してクライアント検知のみ
