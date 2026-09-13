@@ -12,7 +12,7 @@ loader:
 fabric_api:
 modmenu:
 java: 21
-workdir: armor-hud
-artifact_path: armor-hud/build/libs/*.jar
+workdir: ifuto-replay
+artifact_path: ifuto-replay/build/libs/*.jar
 
-note: v1.4.11 アイテム位置の計算ミス
+note: 再生プレビュー（ポーズ/倍速/シーク/しおり/リソースパック/Iris）を追加
