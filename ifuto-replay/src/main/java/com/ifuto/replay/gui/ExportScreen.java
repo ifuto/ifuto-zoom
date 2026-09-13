@@ -400,7 +400,7 @@ public class ExportScreen extends Screen {
 
 		@Override
 		protected void applyValue() {
-			this.setter.accept(this.min + Math.round((this.max - this.min) * this.value));
+			this.setter.accept((int) Math.round(this.min + (this.max - this.min) * this.value));
 		}
 	}
 }
