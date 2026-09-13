@@ -177,6 +177,10 @@ public class ReplayPreviewScreen extends Screen {
 			return Text.translatable("ifuto-replay.preview.finished").formatted(Formatting.GRAY);
 		}
 
+		if (!this.playback.header().hasC2S()) {
+			return Text.translatable("ifuto-replay.preview.no_input").formatted(Formatting.GRAY);
+		}
+
 		return Text.translatable("ifuto-replay.preview.playing");
 	}
 
@@ -341,7 +345,10 @@ public class ReplayPreviewScreen extends Screen {
 			client.setScreen(new ReplayPreviewScreen(playback));
 		} catch (Exception e) {
 			IfutoReplayClient.LOGGER.error("[ifuto-replay] 再生を始められませんでした", e);
-			client.setScreen(new RecordingListScreen(parent == null ? new TitleScreen() : parent));
+			Screen back = parent == null ? new TitleScreen() : parent;
+			client.setScreen(new NoticeScreen(new RecordingListScreen(back),
+					Text.translatable("ifuto-replay.preview.error_title"),
+					Text.translatable("ifuto-replay.preview.error_no_join")));
 		}
 	}
 }

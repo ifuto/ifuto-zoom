@@ -62,6 +62,7 @@
 	"ifuto-replay.message.saved": "§7[Replay]§r Saved %1$s (%2$s / %3$s / %4$s packets)",
 	"ifuto-replay.message.not_in_game": "§7[Replay]§r Join a world before starting a recording",
 	"ifuto-replay.message.io_error": "§7[Replay]§r Could not open the save folder (check the save folder setting)",
+	"ifuto-replay.message.partial_start": "§7[Replay]§r Recording started mid-session, so this file cannot be played back (rejoin the server or turn on \"Auto record\")",
 	"ifuto-replay.message.marker": "§7[Replay]§r Marker added",
 	"ifuto-replay.preview.title": "Replay",
 	"ifuto-replay.preview.restart": "Restart from the beginning",
@@ -75,8 +76,11 @@
 	"ifuto-replay.preview.perspective.third_person_front": "View: Third person (front)",
 	"ifuto-replay.preview.address_hidden": "Address: ********",
 	"ifuto-replay.preview.address_shown": "Address: shown",
+	"ifuto-replay.preview.no_input": "No input recorded (camera is static)",
 	"ifuto-replay.preview.close": "Close",
 	"ifuto-replay.preview.seeking": "Fast forwarding...",
 	"ifuto-replay.preview.finished": "Reached the end",
+	"ifuto-replay.preview.error_title": "Cannot play back",
+	"ifuto-replay.preview.error_no_join": "This recording starts mid-session, so the world cannot be rebuilt. Rejoin the server before recording, or turn on \"Auto record\".",
 	"ifuto-replay.preview.playing": "Playing"
 }

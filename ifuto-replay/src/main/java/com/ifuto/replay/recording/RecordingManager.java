@@ -28,6 +28,9 @@ public final class RecordingManager {
 
 	private volatile RecordingSession session;
 
+	/** 最後にワールド/サーバーに入った時刻（途中から録り始めたかを判定するため） */
+	private volatile long lastJoinTimeMs;
+
 	private RecordingManager() {
 	}
 
@@ -75,6 +78,8 @@ public final class RecordingManager {
 
 	/** サーバーに入ったとき。自動録画がオンなら開始する */
 	public void onJoin(MinecraftClient client, ClientPlayNetworkHandler handler) {
+		this.lastJoinTimeMs = System.currentTimeMillis();
+
 		if (ReplayConfig.get().autoRecord) {
 			start(client, handler);
 		}
@@ -116,6 +121,13 @@ public final class RecordingManager {
 			}
 
 			created.start();
+
+			if (System.currentTimeMillis() - this.lastJoinTimeMs > 5000L) {
+				// GameJoin から録れていないので、このファイルでは世界を作れない（= 再生できない）
+				IfutoReplayClient.LOGGER.warn("[ifuto-replay] 途中から録り始めました。このファイルは再生できません"
+						+ "（サーバーに入り直してから録るか、設定の「自動録画」を ON にしてください）");
+				notify(client, "ifuto-replay.message.partial_start");
+			}
 		} catch (IOException e) {
 			IfutoReplayClient.LOGGER.error("[ifuto-replay] {} を開けませんでした", file, e);
 			notify(client, "ifuto-replay.message.io_error");

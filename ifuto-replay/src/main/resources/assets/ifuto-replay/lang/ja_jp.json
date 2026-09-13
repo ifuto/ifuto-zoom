@@ -62,6 +62,7 @@
 	"ifuto-replay.message.saved": "§7[Replay]§r %1$s を保存しました（%2$s / %3$s / %4$s パケット）",
 	"ifuto-replay.message.not_in_game": "§7[Replay]§r ワールドに入ってから録画を開始してください",
 	"ifuto-replay.message.io_error": "§7[Replay]§r 保存先を開けませんでした（設定の保存先フォルダを確認してください）",
+	"ifuto-replay.message.partial_start": "§7[Replay]§r 途中から録り始めたので、このファイルは再生できません（サーバーに入り直すか、設定の「自動録画」を ON にしてください）",
 	"ifuto-replay.message.marker": "§7[Replay]§r しおりを付けました",
 	"ifuto-replay.preview.title": "再生",
 	"ifuto-replay.preview.restart": "最初からやり直す",
@@ -75,8 +76,11 @@
 	"ifuto-replay.preview.perspective.third_person_front": "視点: 三人称(前)",
 	"ifuto-replay.preview.address_hidden": "住所: ********",
 	"ifuto-replay.preview.address_shown": "住所: 表示",
+	"ifuto-replay.preview.no_input": "操作なし（カメラは動きません）",
 	"ifuto-replay.preview.close": "閉じる",
 	"ifuto-replay.preview.seeking": "早送り中…",
 	"ifuto-replay.preview.finished": "最後まで再生しました",
+	"ifuto-replay.preview.error_title": "再生できません",
+	"ifuto-replay.preview.error_no_join": "この録画は途中から始まっているため、世界を作れませんでした。サーバーに入り直してから録り始めるか、設定の「自動録画」を ON にしてください。",
 	"ifuto-replay.preview.playing": "再生中"
 }

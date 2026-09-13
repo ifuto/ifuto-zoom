@@ -15,4 +15,4 @@ java: 21
 workdir: ifuto-replay
 artifact_path: ifuto-replay/build/libs/*.jar
 
-note: NBTのOptional APIとレジストリの型を修正
+note: 再生できないときの案内画面と途中録画の警告を追加
