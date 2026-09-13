@@ -15,4 +15,4 @@ java: 21
 workdir: ifuto-replay
 artifact_path: ifuto-replay/build/libs/*.jar
 
-note: ScreenTexts の場所と hasC2S の公開範囲を修正
+note: 再生プレビュー（0.3.0）の説明文を整備

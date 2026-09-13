@@ -17,8 +17,8 @@ optionally, the ones you send back) while you play — so recording costs almost
 finished recording is still the world itself: **playback and export can use any FPS, any resolution and
 any camera angle you want.**
 
-> **Status: recording core only.** Playback and video export land in the next updates — see the roadmap
-> at the bottom.
+> **Status: recording core + preview playback.** Video export (any FPS / resolution / bitrate) lands in
+> the next update — see the roadmap at the bottom.
 
 ## Why packet recording?
 
@@ -63,6 +63,37 @@ shows the elapsed time and file size while recording.
 The recordings screen only reads file headers plus the last 12 bytes of each file, so it stays instant
 even with gigabytes of recordings.
 
+## Playback preview
+
+Hit **Play** in the recordings list to rebuild the world from the stored packets and watch it.
+A control bar appears at the bottom of the screen (the world keeps running behind it):
+
+| Control | What it does |
+| --- | --- |
+| `⏮` | Restart from the beginning |
+| `❚❚` / `▶` | Pause / resume |
+| `1×` | Playback speed (0.25× → 8×) |
+| `⚑ ◀` / `⚑ ▶` | Jump to the previous / next marker |
+| timeline | Drag anywhere; markers show as yellow ticks |
+| `Resource Packs` | Opens the vanilla pack screen — **switch packs while the replay is running** |
+| `Shaders` | Opens **Iris**' shader selection screen (disabled when Iris is not installed) |
+| `View` | First person / third person / third person (front) |
+| `Address` | Toggle hiding the server address (`********`) |
+| `✕` | Leave the replay and go back to the recordings list |
+
+How it works: the saved S2C packets are handed straight to vanilla's own `ClientPlayNetworkHandler`,
+so the client builds the world, the entities and the weather itself. Nothing is sent (the replay uses a
+connection whose `send` is a no-op), the camera is reconstructed from your own recorded movement
+packets and interpolated every frame, and the dynamic registries stored at the top of the file let a
+single `.ifreplay` file be played back on its own.
+
+Because it is just a normal world being rendered, **Iris shaders and resource packs apply to the replay** —
+change them mid-playback and you see the result immediately.
+
+> **Important:** a replay can only be played back if it was recorded **from the moment you joined** the
+> world/server (the file needs the packet that creates the world). Turn on **Auto Record**, or rejoin
+> before you start recording.
+
 ## Settings (Mod Menu)
 
 | Setting | Description | Default |
@@ -70,12 +101,14 @@ even with gigabytes of recordings.
 | Auto Record | Start recording as soon as you join a world | Off |
 | Record Input | Also store the packets you send (C2S) | On |
 | Skip Keep-Alives | Leave out keep-alive and ping packets | On |
+| Store Registries | Keep a copy of the dynamic registries in the file, so a recording can be played back on its own | On |
 | Compression | Off / Fast / Balanced (runs on the writer thread) | Off |
 | Size Limit | Stop and save past this size (0 = unlimited) | Unlimited |
 | Time Limit | Stop and save after this long (0 = unlimited) | Unlimited |
 | Recording HUD | Corner indicator with elapsed time and size | On |
 | HUD Position | Which corner | Top Left |
 | Chat Notices | Print start / save / marker to chat | On |
+| Hide Server Address | Show the address as `********` in preview and export (remembered once enabled) | Off |
 | Save Folder | Relative to the game directory | `ifuto-replay` |
 
 Settings live in `config/ifuto-replay.json`, so they can be edited without Mod Menu too. The file already
@@ -102,7 +135,8 @@ Things to keep in mind:
 2. **"Record Input"** stores the packets you send locally. Nothing is uploaded, but serializing them adds
    a tiny delay to outgoing packets. Turn it off if you prefer S2C-only recording.
 3. **Recordings contain your account name, the server address and chat messages.** Be careful when sharing.
-4. The upcoming playback is **fully local** (no server connection), so it will not send anything either.
+4. **Playback is fully local** (no server connection): it feeds the stored packets into a connection that
+   never sends, so nothing goes out during a replay either.
 
 ## File format
 
@@ -111,11 +145,12 @@ The `.ifreplay` format is append-only (no seeking while recording), self-describ
 
 ## Roadmap
 
-1. ✅ **Recording core** (this release) — lossless packet capture, async writer, markers, HUD
-2. ⬜ **Playback** — decode the saved packets through an `EmbeddedChannel` and feed them into a replay
-   world, seeking with the index stored in the file
-3. ⬜ **Export** — interpolate the packet timeline, render offscreen at **any FPS and resolution**, and
-   pipe raw frames to ffmpeg
+1. ✅ **Recording core** — lossless packet capture, async writer, markers, HUD
+2. ✅ **Preview playback** (this release) — packets fed into a vanilla world, pause / speed / marker
+   jumps / drag-to-seek, live resource pack and Iris shader switching
+3. ⬜ **Export** — render at **any FPS and resolution**, pipe raw frames to ffmpeg
+4. ⬜ **Mid-session recordings** — snapshot the world state when you start recording, so every recording
+   is playable no matter when you hit record
 
 ## Requirements
 
