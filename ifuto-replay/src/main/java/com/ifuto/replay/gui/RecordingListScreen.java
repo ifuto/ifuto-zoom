@@ -34,8 +34,8 @@ import java.util.Locale;
  */
 @Environment(EnvType.CLIENT)
 public class RecordingListScreen extends Screen {
-	private static final int LIST_WIDTH = 320;
-	private static final int LABEL_WIDTH = 176;
+	private static final int LIST_WIDTH = 384;
+	private static final int LABEL_WIDTH = 168;
 	private static final int SMALL_BUTTON_WIDTH = 62;
 	private static final int BUTTON_HEIGHT = 20;
 	private static final int COLUMN_GAP = 6;
@@ -116,7 +116,14 @@ public class RecordingListScreen extends Screen {
 				.width(SMALL_BUTTON_WIDTH).build();
 		playButton.setTooltip(Tooltip.of(Text.translatable("ifuto-replay.list.play.tooltip")));
 
+		ButtonWidget exportButton = ButtonWidget.builder(Text.translatable("ifuto-replay.list.export"),
+						button -> MinecraftClient.getInstance()
+								.setScreen(new ExportScreen(this.parent, info, ReplayConfig.get())))
+				.width(SMALL_BUTTON_WIDTH).build();
+		exportButton.setTooltip(Tooltip.of(Text.translatable("ifuto-replay.list.export.tooltip")));
+
 		row.add(labels);
+		row.add(exportButton);
 		row.add(deleteButton);
 		row.add(playButton);
 		return row;
