@@ -22,6 +22,8 @@ import net.minecraft.client.gui.widget.ThreePartsLayoutWidget;
 import net.minecraft.text.Text;
 import net.minecraft.util.Util;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.IntConsumer;
 
 /**
@@ -139,6 +141,61 @@ public class ReplayConfigScreen extends Screen {
 		folderField.setChangedListener(value -> this.config.saveFolder = value.trim());
 		content.add(row(folderField, null));
 
+		// 8行目: 書き出しの既定値（FPS / 解像度）
+		String currentResolution = this.config.exportWidth + "x" + this.config.exportHeight;
+		List<String> resolutions = new ArrayList<>();
+		resolutions.add("1280x720");
+		resolutions.add("1920x1080");
+		resolutions.add("2560x1440");
+		resolutions.add("3840x2160");
+
+		if (!resolutions.contains(currentResolution)) {
+			resolutions.add(currentResolution);
+		}
+
+		content.add(row(
+				CyclingButtonWidget.<Integer>builder(
+								value -> Text.translatable("ifuto-replay.export.fps.value", value), this.config.exportFps)
+						.values(24, 30, 50, 60, 120, 144, 240)
+						.tooltip(value -> Tooltip.of(Text.translatable("ifuto-replay.export.fps.tooltip")))
+						.build(0, 0, WIDGET_WIDTH, WIDGET_HEIGHT, Text.translatable("ifuto-replay.config.export_fps"),
+								(button, value) -> this.config.exportFps = value),
+				CyclingButtonWidget.<String>builder(Text::literal, currentResolution)
+						.values(resolutions.toArray(new String[0]))
+						.tooltip(value -> Tooltip.of(Text.translatable("ifuto-replay.export.resolution.tooltip")))
+						.build(0, 0, WIDGET_WIDTH, WIDGET_HEIGHT, Text.translatable("ifuto-replay.config.export_resolution"),
+								(button, value) -> this.applyResolution(value))));
+
+		// 9行目: ビットレート
+		TextFieldWidget bitrateField = new TextFieldWidget(this.textRenderer, 0, 0, WIDGET_WIDTH, WIDGET_HEIGHT,
+				Text.translatable("ifuto-replay.config.export_bitrate"));
+		bitrateField.setMaxLength(9);
+		bitrateField.setText(String.valueOf(this.config.exportBitrateKbps));
+		bitrateField.setTooltip(Tooltip.of(Text.translatable("ifuto-replay.export.bitrate.tooltip")));
+		bitrateField.setChangedListener(value -> {
+			try {
+				int parsed = Integer.parseInt(value.trim());
+
+				if (parsed > 0) {
+					this.config.exportBitrateKbps = parsed;
+				}
+			} catch (NumberFormatException ignored) {
+				// 打ちかけの数字は無視する
+			}
+		});
+		content.add(row(bitrateField, null));
+
+		// 10行目: ffmpeg（全幅）
+		TextFieldWidget ffmpegField = new TextFieldWidget(this.textRenderer,
+				0, 0, WIDGET_WIDTH * 2 + COLUMN_GAP, WIDGET_HEIGHT,
+				Text.translatable("ifuto-replay.config.ffmpeg_path"));
+		ffmpegField.setMaxLength(240);
+		ffmpegField.setText(this.config.ffmpegPath);
+		ffmpegField.setTooltip(Tooltip.of(Text.translatable("ifuto-replay.export.ffmpeg.tooltip")));
+		ffmpegField.setChangedListener(value -> this.config.ffmpegPath = value.trim().isEmpty()
+				? "ffmpeg" : value.trim());
+		content.add(row(ffmpegField, null));
+
 		this.scrollable = new ScrollableLayoutWidget(this.client, content, SCROLL_MIN_HEIGHT);
 		this.scrollable.setWidth(WIDGET_WIDTH * 2 + COLUMN_GAP + 8);
 		body.add(this.scrollable);
@@ -165,6 +222,21 @@ public class ReplayConfigScreen extends Screen {
 			Util.getOperatingSystem().open(ReplayConfig.getSaveDirectory());
 		} catch (Throwable t) {
 			// 開けない環境でも設定画面が壊れないようにするだけ
+		}
+	}
+
+	private void applyResolution(String value) {
+		int separator = value.indexOf('x');
+
+		if (separator <= 0) {
+			return;
+		}
+
+		try {
+			this.config.exportWidth = Math.max(16, Integer.parseInt(value.substring(0, separator)));
+			this.config.exportHeight = Math.max(16, Integer.parseInt(value.substring(separator + 1)));
+		} catch (NumberFormatException ignored) {
+			// 変な値は無視する
 		}
 	}
 

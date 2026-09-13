@@ -1,6 +1,6 @@
 {
 	"ifuto-replay.config.title": "Ifuto Replay Settings",
-	"ifuto-replay.config.hint": "Everything is a button in the pause menu (top-left). Only raw packets are stored, so recording stays light (preview playback is here; video export is next).",
+	"ifuto-replay.config.hint": "Controls are the buttons in the top-left of the pause menu (ESC). Packets are stored as-is, so recording stays light (playback preview and video export are supported)",
 	"ifuto-replay.menu.record": "● Record",
 	"ifuto-replay.menu.record.tooltip": "Start saving packets.",
 	"ifuto-replay.menu.stop": "■ Stop %s",
@@ -114,5 +114,10 @@
 	"ifuto-replay.export.error_title": "Export failed",
 	"ifuto-replay.export.error_message": "%s\n\nCheck that ffmpeg is installed and that the path is correct.",
 	"ifuto-replay.export.error_start": "Could not start the export.\n%s",
-	"ifuto-replay.export.error_unknown": "Unknown reason"
+	"ifuto-replay.export.error_unknown": "Unknown reason",
+	"ifuto-replay.config.export_fps": "Export FPS",
+	"ifuto-replay.config.export_resolution": "Export resolution",
+	"ifuto-replay.config.export_bitrate": "Export bitrate (kbps)",
+	"ifuto-replay.config.ffmpeg_path": "ffmpeg location",
+	"ifuto-replay.export.bitrate.tooltip": "Higher is nicer and bigger (10000-20000 is a good range for 1080p60)"
 }

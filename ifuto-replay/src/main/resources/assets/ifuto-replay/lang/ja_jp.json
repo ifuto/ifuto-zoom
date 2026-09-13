@@ -1,6 +1,6 @@
 {
 	"ifuto-replay.config.title": "Ifuto Replay 設定",
-	"ifuto-replay.config.hint": "操作はポーズメニュー（ESC）の左上のボタンから。パケットをそのまま保存するので録画中は軽いままです（再生プレビューに対応。動画の書き出しは次の段階）",
+	"ifuto-replay.config.hint": "操作はポーズメニュー（ESC）の左上のボタンから。パケットをそのまま保存するので録画中は軽いままです（再生プレビューと動画の書き出しに対応）",
 	"ifuto-replay.menu.record": "● 録画開始",
 	"ifuto-replay.menu.record.tooltip": "パケットの保存を始めます。",
 	"ifuto-replay.menu.stop": "■ 停止 %s",
@@ -114,5 +114,10 @@
 	"ifuto-replay.export.error_title": "書き出しできませんでした",
 	"ifuto-replay.export.error_message": "%s\n\nffmpeg が入っているか、パスが合っているか確認してください。",
 	"ifuto-replay.export.error_start": "書き出しを始められませんでした。\n%s",
-	"ifuto-replay.export.error_unknown": "原因不明"
+	"ifuto-replay.export.error_unknown": "原因不明",
+	"ifuto-replay.config.export_fps": "書き出しの FPS",
+	"ifuto-replay.config.export_resolution": "書き出しの解像度",
+	"ifuto-replay.config.export_bitrate": "書き出しのビットレート",
+	"ifuto-replay.config.ffmpeg_path": "ffmpeg の場所",
+	"ifuto-replay.export.bitrate.tooltip": "大きいほど綺麗でファイルも大きい（1080p60 なら 10000〜20000 くらいが目安）"
 }
