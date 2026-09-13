@@ -1,0 +1,72 @@
+{
+	"ifuto-replay.config.title": "Ifuto Replay 設定",
+	"ifuto-replay.config.hint": "操作はポーズメニュー（ESC）の左上のボタンから。パケットをそのまま保存するので録画中は軽いままです（書き出しの FPS・解像度は次の段階で実装）",
+
+	"ifuto-replay.menu.record": "● 録画開始",
+	"ifuto-replay.menu.record.tooltip": "パケットの保存を始めます。",
+	"ifuto-replay.menu.stop": "■ 停止 %s",
+	"ifuto-replay.menu.marker": "⚑ しおり",
+	"ifuto-replay.menu.marker.tooltip": "いまの時刻にしおりを付けます（録画中だけ押せます）。",
+	"ifuto-replay.menu.list": "≡ 録画一覧",
+	"ifuto-replay.menu.list.tooltip": "保存した録画を見ます（削除もここから）。",
+	"ifuto-replay.menu.settings": "⚙ 設定",
+	"ifuto-replay.menu.settings.tooltip": "この Mod の設定画面を開きます。",
+
+	"ifuto-replay.list.title": "録画一覧",
+	"ifuto-replay.list.hint": "保存された録画の一覧です（本体は一切読みません）",
+	"ifuto-replay.list.empty": "まだ録画がありません",
+	"ifuto-replay.list.delete": "削除",
+	"ifuto-replay.list.delete.tooltip": "このファイルを消します。もう一度押すと確定です。",
+	"ifuto-replay.list.delete_confirm": "本当に削除？",
+	"ifuto-replay.list.play": "再生",
+	"ifuto-replay.list.play.tooltip": "次の段階で実装します（パケットを再生しながら、好きなFPS・解像度で書き出せるようにします）",
+	"ifuto-replay.list.refresh": "更新",
+	"ifuto-replay.list.player": "プレイヤー: %s",
+
+	"ifuto-replay.config.auto_record": "自動録画",
+	"ifuto-replay.config.auto_record.tooltip": "ワールドやサーバーに入ったら、自動で録り始めます。",
+
+	"ifuto-replay.config.record_client_packets": "操作も記録",
+	"ifuto-replay.config.record_client_packets.tooltip": "自分からサーバーへ送ったパケット（移動・クリック・チャットなど）も残します。オフにするとファイルがさらに小さくなります。",
+
+	"ifuto-replay.config.compression": "圧縮",
+	"ifuto-replay.config.compression.tooltip": "保存時の圧縮です。書き込みスレッド側でやるのでゲームの負荷にはほぼ影響しません。なし: 一番軽い。速い: そこそこ小さく。標準: 一番小さい。",
+	"ifuto-replay.config.compression.off": "なし",
+	"ifuto-replay.config.compression.fast": "速い",
+	"ifuto-replay.config.compression.balanced": "標準",
+
+	"ifuto-replay.config.skip_keep_alive": "維持パケット除外",
+	"ifuto-replay.config.skip_keep_alive.tooltip": "KeepAlive や Ping など、通信の維持にしか使わないパケットを記録から除きます。",
+
+	"ifuto-replay.config.max_file_size": "サイズ上限: %s",
+	"ifuto-replay.config.max_file_size.tooltip": "この大きさを超えたら自動で録画を止めて保存します。0 は無制限。",
+	"ifuto-replay.config.max_duration": "時間上限: %s",
+	"ifuto-replay.config.max_duration.tooltip": "この時間を超えたら自動で録画を止めて保存します。0 は無制限。",
+	"ifuto-replay.config.unlimited": "無制限",
+	"ifuto-replay.config.minutes": "分",
+
+	"ifuto-replay.config.show_indicator": "録画中表示",
+	"ifuto-replay.config.show_indicator.tooltip": "録画中だけ、画面の隅に経過時間とファイルサイズを出します（停止はポーズメニューから）。",
+	"ifuto-replay.config.indicator_position": "表示位置",
+	"ifuto-replay.config.indicator_position.tooltip": "録画中表示を出す画面の隅。",
+	"ifuto-replay.config.indicator_position.top_left": "左上",
+	"ifuto-replay.config.indicator_position.top_right": "右上",
+	"ifuto-replay.config.indicator_position.bottom_left": "左下",
+	"ifuto-replay.config.indicator_position.bottom_right": "右下",
+
+	"ifuto-replay.config.notify_chat": "チャット通知",
+	"ifuto-replay.config.notify_chat.tooltip": "録画の開始・保存・しおりを、システムメッセージではなくチャットにも出します。",
+
+	"ifuto-replay.config.save_folder": "保存先フォルダ",
+	"ifuto-replay.config.save_folder.tooltip": "ゲームフォルダ（.minecraft）からの相対パスです。",
+	"ifuto-replay.config.save_folder.placeholder": "ifuto-replay",
+
+	"ifuto-replay.config.open_folder": "フォルダを開く",
+	"ifuto-replay.config.reset": "リセット",
+
+	"ifuto-replay.message.started": "§7[Replay]§r 録画を開始しました: %1$s",
+	"ifuto-replay.message.saved": "§7[Replay]§r %1$s を保存しました（%2$s / %3$s / %4$s パケット）",
+	"ifuto-replay.message.not_in_game": "§7[Replay]§r ワールドに入ってから録画を開始してください",
+	"ifuto-replay.message.io_error": "§7[Replay]§r 保存先を開けませんでした（設定の保存先フォルダを確認してください）",
+	"ifuto-replay.message.marker": "§7[Replay]§r しおりを付けました"
+}

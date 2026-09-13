@@ -1,0 +1,72 @@
+{
+	"ifuto-replay.config.title": "Ifuto Replay Settings",
+	"ifuto-replay.config.hint": "Everything is done from the buttons in the top-left of the pause menu (ESC). It stores the raw packet stream, so recording stays light (export FPS and resolution land in the next stage)",
+
+	"ifuto-replay.menu.record": "● Record",
+	"ifuto-replay.menu.record.tooltip": "Start saving packets.",
+	"ifuto-replay.menu.stop": "■ Stop %s",
+	"ifuto-replay.menu.marker": "⚑ Marker",
+	"ifuto-replay.menu.marker.tooltip": "Drop a marker at the current time (only while recording).",
+	"ifuto-replay.menu.list": "≡ Recordings",
+	"ifuto-replay.menu.list.tooltip": "Browse saved recordings (and delete them).",
+	"ifuto-replay.menu.settings": "⚙ Settings",
+	"ifuto-replay.menu.settings.tooltip": "Open this mod's settings screen.",
+
+	"ifuto-replay.list.title": "Recordings",
+	"ifuto-replay.list.hint": "Saved recordings (only headers are read, never the packet bodies)",
+	"ifuto-replay.list.empty": "No recordings yet",
+	"ifuto-replay.list.delete": "Delete",
+	"ifuto-replay.list.delete.tooltip": "Delete this file. Press again to confirm.",
+	"ifuto-replay.list.delete_confirm": "Really delete?",
+	"ifuto-replay.list.play": "Play",
+	"ifuto-replay.list.play.tooltip": "Coming in the next stage: replay the packets and export at any FPS and resolution",
+	"ifuto-replay.list.refresh": "Refresh",
+	"ifuto-replay.list.player": "Player: %s",
+
+	"ifuto-replay.config.auto_record": "Auto Record",
+	"ifuto-replay.config.auto_record.tooltip": "Start recording as soon as you join a world or server.",
+
+	"ifuto-replay.config.record_client_packets": "Record Input",
+	"ifuto-replay.config.record_client_packets.tooltip": "Also store the packets you send to the server (movement, clicks, chat). Turning it off makes the file even smaller.",
+
+	"ifuto-replay.config.compression": "Compression",
+	"ifuto-replay.config.compression.tooltip": "Compression runs on the writer thread, so it barely affects the game. Off: lightest. Fast: smaller. Balanced: smallest.",
+	"ifuto-replay.config.compression.off": "Off",
+	"ifuto-replay.config.compression.fast": "Fast",
+	"ifuto-replay.config.compression.balanced": "Balanced",
+
+	"ifuto-replay.config.skip_keep_alive": "Skip Keep-Alives",
+	"ifuto-replay.config.skip_keep_alive.tooltip": "Leave out keep-alive and ping packets, which only keep the connection alive.",
+
+	"ifuto-replay.config.max_file_size": "Size Limit: %s",
+	"ifuto-replay.config.max_file_size.tooltip": "Stop and save automatically once the file grows past this. 0 means unlimited.",
+	"ifuto-replay.config.max_duration": "Time Limit: %s",
+	"ifuto-replay.config.max_duration.tooltip": "Stop and save automatically after this much time. 0 means unlimited.",
+	"ifuto-replay.config.unlimited": "Unlimited",
+	"ifuto-replay.config.minutes": "min",
+
+	"ifuto-replay.config.show_indicator": "Recording HUD",
+	"ifuto-replay.config.show_indicator.tooltip": "While recording, show the elapsed time and file size in a screen corner (stop from the pause menu).",
+	"ifuto-replay.config.indicator_position": "HUD Position",
+	"ifuto-replay.config.indicator_position.tooltip": "Which corner the recording HUD sits in.",
+	"ifuto-replay.config.indicator_position.top_left": "Top Left",
+	"ifuto-replay.config.indicator_position.top_right": "Top Right",
+	"ifuto-replay.config.indicator_position.bottom_left": "Bottom Left",
+	"ifuto-replay.config.indicator_position.bottom_right": "Bottom Right",
+
+	"ifuto-replay.config.notify_chat": "Chat Notices",
+	"ifuto-replay.config.notify_chat.tooltip": "Print recording start, save and marker messages to the chat.",
+
+	"ifuto-replay.config.save_folder": "Save Folder",
+	"ifuto-replay.config.save_folder.tooltip": "Relative to the game directory (.minecraft).",
+	"ifuto-replay.config.save_folder.placeholder": "ifuto-replay",
+
+	"ifuto-replay.config.open_folder": "Open Folder",
+	"ifuto-replay.config.reset": "Reset to Defaults",
+
+	"ifuto-replay.message.started": "§7[Replay]§r Recording started: %1$s",
+	"ifuto-replay.message.saved": "§7[Replay]§r Saved %1$s (%2$s / %3$s / %4$s packets)",
+	"ifuto-replay.message.not_in_game": "§7[Replay]§r Join a world before starting a recording",
+	"ifuto-replay.message.io_error": "§7[Replay]§r Could not open the save folder (check the save folder setting)",
+	"ifuto-replay.message.marker": "§7[Replay]§r Marker added"
+}

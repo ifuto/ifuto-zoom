@@ -1,0 +1,13 @@
+{
+	"required": true,
+	"package": "com.ifuto.armorhud.mixin",
+	"plugin": "com.ifuto.armorhud.mixin.ArmorHudMixinPlugin",
+	"compatibilityLevel": "JAVA_21",
+	"client": [
+		"ClientPlayNetworkHandlerMixin",
+		"compat.JagroshIpcCompatMixin"
+	],
+	"injectors": {
+		"defaultRequire": 1
+	}
+}
