@@ -28,7 +28,7 @@ import java.util.zip.InflaterInputStream;
 public final class ReplayStream implements Closeable {
 	/** ファイルの先頭にある情報 */
 	public record Header(int version, int flags, String mcVersion, long startedAt, String serverName, String playerName) {
-		boolean hasC2S() {
+		public boolean hasC2S() {
 			return (this.flags & ReplayFormat.FLAG_HAS_C2S) != 0;
 		}
 	}

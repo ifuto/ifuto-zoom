@@ -15,4 +15,4 @@ java: 21
 workdir: ifuto-replay
 artifact_path: ifuto-replay/build/libs/*.jar
 
-note: 再生できないときの案内画面と途中録画の警告を追加
+note: ScreenTexts の場所と hasC2S の公開範囲を修正
