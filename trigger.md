@@ -15,4 +15,4 @@ java: 21
 workdir: ifuto-replay
 artifact_path: ifuto-replay/build/libs/*.jar
 
-note: TimeSlider のキャストを修正して再ビルド
+note: 設定画面の書き出し項目を追加して再ビルド
