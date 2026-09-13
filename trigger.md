@@ -15,4 +15,4 @@ java: 21
 workdir: ifuto-replay
 artifact_path: ifuto-replay/build/libs/*.jar
 
-note: ボタン操作（ポーズメニュー）＋録画一覧を追加
+note: Instant.ofEpochMilli のタイプミスを修正
