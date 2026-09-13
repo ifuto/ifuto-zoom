@@ -15,4 +15,4 @@ java: 21
 workdir: ifuto-replay
 artifact_path: ifuto-replay/build/libs/*.jar
 
-note: 再生プレビュー（ポーズ/倍速/シーク/しおり/リソースパック/Iris）を追加
+note: コンパイルエラーを修正（NbtList/LevelLoadingScreen/視点API/レジストリの型）

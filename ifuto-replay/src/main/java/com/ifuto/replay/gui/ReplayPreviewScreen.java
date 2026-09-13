@@ -8,7 +8,7 @@ import com.ifuto.replay.playback.ReplayStream;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.ConfirmScreen;
-import net.minecraft.client.gui.screen.LevelLoadingScreen;
+import net.minecraft.client.gui.screen.world.LevelLoadingScreen;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.screen.TitleScreen;
 import net.minecraft.client.gui.screen.pack.PackScreen;
@@ -95,7 +95,7 @@ public class ReplayPreviewScreen extends Screen {
 
 		this.perspectiveButton = tools.add(this.perspectiveText(), 72, button -> {
 			MinecraftClient client = MinecraftClient.getInstance();
-			client.options.perspective = client.options.perspective.next();
+			client.options.setPerspective(client.options.getPerspective().next());
 			this.perspectiveButton.setMessage(this.perspectiveText());
 		});
 
@@ -264,7 +264,7 @@ public class ReplayPreviewScreen extends Screen {
 	}
 
 	private Text perspectiveText() {
-		Perspective perspective = MinecraftClient.getInstance().options.perspective;
+		Perspective perspective = MinecraftClient.getInstance().options.getPerspective();
 		return Text.translatable("ifuto-replay.preview.perspective." + perspective.name().toLowerCase(java.util.Locale.ROOT));
 	}
 

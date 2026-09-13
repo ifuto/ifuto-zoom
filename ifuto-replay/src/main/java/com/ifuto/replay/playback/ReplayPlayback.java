@@ -22,6 +22,7 @@ import net.minecraft.network.packet.c2s.play.PlayerMoveC2SPacket;
 import net.minecraft.network.state.NetworkState;
 import net.minecraft.network.state.PlayStateFactories;
 import net.minecraft.registry.DynamicRegistryManager;
+import net.minecraft.registry.Registries;
 import net.minecraft.resource.featuretoggle.FeatureFlags;
 import net.minecraft.server.ServerLinks;
 import net.minecraft.util.Util;
@@ -571,7 +572,7 @@ public final class ReplayPlayback implements ReplayStream.Sink {
 		}
 
 		if (client.world != null) {
-			return client.world.getRegistryManager();
+			return client.world.getRegistryManager().toImmutable();
 		}
 
 		ClientPlayNetworkHandler handler = client.getNetworkHandler();
@@ -581,7 +582,7 @@ public final class ReplayPlayback implements ReplayStream.Sink {
 		}
 
 		IfutoReplayClient.LOGGER.warn("[ifuto-replay] レジストリが見つからないので、既定の物で再生します");
-		return net.minecraft.registry.BuiltinRegistries.createWrapperLookup();
+		return DynamicRegistryManager.of(Registries.REGISTRIES);
 	}
 
 	/** カメラの位置のサンプル（2個あればその間を補間できる） */

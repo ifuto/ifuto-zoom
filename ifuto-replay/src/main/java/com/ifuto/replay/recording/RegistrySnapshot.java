@@ -87,11 +87,13 @@ public final class RegistrySnapshot {
 			List<SerializableRegistries.SerializedRegistryEntry> entries = new ArrayList<>(list.size());
 
 			for (int i = 0; i < list.size(); i++) {
-				if (list.getCompound(i).isEmpty()) {
+				Optional<NbtCompound> entry = list.getCompound(i);
+
+				if (entry.isEmpty()) {
 					continue;
 				}
 
-				NbtCompound child = list.getCompound(i);
+				NbtCompound child = entry.get();
 				NbtElement data = child.get(KEY_DATA);
 				entries.add(new SerializableRegistries.SerializedRegistryEntry(
 						Identifier.of(child.getString(KEY_ID)),
