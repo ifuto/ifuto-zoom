@@ -17,8 +17,8 @@ optionally, the ones you send back) while you play — so recording costs almost
 finished recording is still the world itself: **playback and export can use any FPS, any resolution and
 any camera angle you want.**
 
-> **Status: recording core + preview playback.** Video export (any FPS / resolution / bitrate) lands in
-> the next update — see the roadmap at the bottom.
+> **Status: recording core, preview playback and video export are all in.** (A replay still has to be
+> recorded from the moment you join a world — see the roadmap at the bottom.)
 
 ## Why packet recording?
 
@@ -94,6 +94,42 @@ change them mid-playback and you see the result immediately.
 > world/server (the file needs the packet that creates the world). Turn on **Auto Record**, or rejoin
 > before you start recording.
 
+## Export
+
+Hit **Export** in the recordings list to turn a recording into an `.mp4`.
+
+- **FPS, resolution and bitrate are independent of the recording.** Record at 60 fps and export at 30,
+  or export 4K while your window is 1080p — and redo it as many times as you like.
+- You can also export **just a range** (start / end sliders).
+
+| Option | What it does | Default |
+| --- | --- | --- |
+| FPS | Frames per second of the video (24 / 30 / 50 / 60 / 120 / 144 / 240) | 60 |
+| Resolution | 1280x720 / 1920x1080 / 2560x1440 / 3840x2160 / **same as screen** / custom | 1920x1080 |
+| Bitrate | Higher looks better and weighs more (10000-20000 is a good range for 1080p60) | 20000 kbps |
+| ffmpeg | The executable to use — `ffmpeg` works if it is on your PATH | `ffmpeg` |
+| File name | Written to `ifuto-replay/exports/` (a suffix is added if the name is taken) | same as the recording |
+| Start / End | The range to export | everything |
+
+How it differs from screen recording:
+
+- **Time is driven by the exporter.** Each frame it advances the recording clock by 1/FPS of a second,
+  lets the game draw, grabs the result and pipes raw RGBA frames to `ffmpeg`.
+- Because wall-clock time is irrelevant, **heavy scenes never stutter** (they just take longer).
+- Frames are captured through **vanilla's own screenshot path**, so no custom GL readback that could
+  break with a Minecraft update.
+- While exporting, the framebuffer is resized to the target resolution and the HUD is hidden;
+  everything is restored when it finishes.
+- The progress screen can **cancel** at any time. If ffmpeg is missing or the resolution cannot be used,
+  you get the reason on screen instead of a broken file.
+
+> **ffmpeg is not bundled.** Install it yourself, either on your PATH or by pointing the setting at the
+> executable.
+
+> **Tip:** don't resize the game window while exporting (that changes the framebuffer size, and the
+> export stops itself rather than produce a broken file). Exports take real time, so shorter recordings
+> are easier to work with.
+
 ## Settings (Mod Menu)
 
 | Setting | Description | Default |
@@ -109,11 +145,15 @@ change them mid-playback and you see the result immediately.
 | HUD Position | Which corner | Top Left |
 | Chat Notices | Print start / save / marker to chat | On |
 | Hide Server Address | Show the address as `********` in preview and export (remembered once enabled) | Off |
+| Export FPS | Starting value of the export screen | 60 |
+| Export Resolution | Starting value of the export screen (width x height) | 1920x1080 |
+| Export Bitrate | Starting value of the export screen (kbps) | 20000 |
+| ffmpeg Location | Executable used for exporting (`ffmpeg` works if it is on your PATH) | `ffmpeg` |
 | Save Folder | Relative to the game directory | `ifuto-replay` |
 
-Settings live in `config/ifuto-replay.json`, so they can be edited without Mod Menu too. The file already
-contains the upcoming export options (`exportFps`, `exportWidth`, `exportHeight`, `exportBitrateKbps`,
-`ffmpegPath`).
+Settings live in `config/ifuto-replay.json`, so they can be edited without Mod Menu too. The
+`exportFps` / `exportWidth` / `exportHeight` / `exportBitrateKbps` / `ffmpegPath` entries are the
+starting values of the export screen.
 
 ## Will this get me banned?
 
@@ -146,9 +186,10 @@ The `.ifreplay` format is append-only (no seeking while recording), self-describ
 ## Roadmap
 
 1. ✅ **Recording core** — lossless packet capture, async writer, markers, HUD
-2. ✅ **Preview playback** (this release) — packets fed into a vanilla world, pause / speed / marker
-   jumps / drag-to-seek, live resource pack and Iris shader switching
-3. ⬜ **Export** — render at **any FPS and resolution**, pipe raw frames to ffmpeg
+2. ✅ **Preview playback** — packets fed into a vanilla world, pause / speed / marker jumps /
+   drag-to-seek, live resource pack and Iris shader switching
+3. ✅ **Export** (this release) — render at **any FPS, resolution and bitrate**, pipe raw frames to
+   ffmpeg, with range selection and cancel
 4. ⬜ **Mid-session recordings** — snapshot the world state when you start recording, so every recording
    is playable no matter when you hit record
 
