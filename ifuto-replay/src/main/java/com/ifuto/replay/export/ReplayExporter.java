@@ -5,6 +5,7 @@ import com.ifuto.replay.playback.ReplayPlayback;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.texture.NativeImage;
 import net.minecraft.client.util.ScreenshotRecorder;
+import net.minecraft.text.Text;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -58,6 +59,7 @@ public final class ReplayExporter {
 	private State state = State.RUNNING;
 	private String failureMessage = "";
 	private long startedAtMs;
+	private volatile long lastProgressMs;
 
 	/** いま動いている書き出し（なければ null） */
 	private static volatile ReplayExporter active;
@@ -122,6 +124,20 @@ public final class ReplayExporter {
 		return this.options.output();
 	}
 
+	/**
+	 * 進捗が止まりっぱなしなら中断する（世界が消えた／絵が返ってこないときの保険）。
+	 * シェーダーの組み直しで最初の1枚が遅くなることがあるので、猶予は長めに見る。
+	 */
+	public void checkStalled(long timeoutMs) {
+		if (this.state != State.RUNNING) {
+			return;
+		}
+
+		if (System.currentTimeMillis() - this.lastProgressMs > timeoutMs) {
+			this.failWith(Text.translatable("ifuto-replay.export.error_stalled").getString());
+		}
+	}
+
 	/** 経過時間（ms） */
 	public long elapsedMs() {
 		return System.currentTimeMillis() - this.startedAtMs;
@@ -173,6 +189,7 @@ public final class ReplayExporter {
 		this.client.options.hudHidden = true;
 
 		this.startedAtMs = System.currentTimeMillis();
+		this.lastProgressMs = this.startedAtMs;
 		this.playback.setPaused(false);
 		active = this;
 	}
@@ -201,6 +218,10 @@ public final class ReplayExporter {
 
 	/** 描画の後に呼ぶ。いまの絵を取り込むよう頼む */
 	public void onFrameRendered() {
+		if (this.state == State.RUNNING && !this.playback.isSeeking()) {
+			this.lastProgressMs = System.currentTimeMillis();
+		}
+
 		if (this.state != State.RUNNING || this.captureRequested || !this.awaitingCapture) {
 			return;
 		}
@@ -224,6 +245,7 @@ public final class ReplayExporter {
 	/** 取り込めた絵を ffmpeg へ渡す */
 	private void onCaptured(NativeImage image) {
 		this.captureRequested = false;
+		this.lastProgressMs = System.currentTimeMillis();
 
 		if (this.state != State.RUNNING) {
 			image.close();
@@ -299,6 +321,19 @@ public final class ReplayExporter {
 		} catch (IOException e) {
 			IfutoReplayClient.LOGGER.warn("[ifuto-replay] ffmpeg の入力を閉じられませんでした", e);
 		}
+
+		if (this.process != null) {
+			this.process.destroy();
+		}
+
+		this.restore();
+	}
+
+	private void failWith(String message) {
+		IfutoReplayClient.LOGGER.error("[ifuto-replay] 書き出しを中断しました: {}", message);
+		this.failureMessage = message;
+		this.state = State.FAILED;
+		active = null;
 
 		if (this.process != null) {
 			this.process.destroy();

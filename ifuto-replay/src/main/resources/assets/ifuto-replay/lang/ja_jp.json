@@ -119,5 +119,6 @@
 	"ifuto-replay.config.export_resolution": "書き出しの解像度",
 	"ifuto-replay.config.export_bitrate": "書き出しのビットレート",
 	"ifuto-replay.config.ffmpeg_path": "ffmpeg の場所",
-	"ifuto-replay.export.bitrate.tooltip": "大きいほど綺麗でファイルも大きい（1080p60 なら 10000〜20000 くらいが目安）"
+	"ifuto-replay.export.bitrate.tooltip": "大きいほど綺麗でファイルも大きい（1080p60 なら 10000〜20000 くらいが目安）",
+	"ifuto-replay.export.error_stalled": "しばらく進まなかったので中断しました。解像度を下げるか、録画を選び直してみてください。"
 }

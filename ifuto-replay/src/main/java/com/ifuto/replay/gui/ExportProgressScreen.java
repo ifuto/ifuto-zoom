@@ -66,6 +66,9 @@ public class ExportProgressScreen extends Screen {
 			return;
 		}
 
+		// 3分以上まったく進まなければ中断する（そのまま待たせないための保険）
+		this.exporter.checkStalled(180_000L);
+
 		switch (this.exporter.state()) {
 			case RUNNING -> this.updateProgress();
 			case DONE -> this.finish();

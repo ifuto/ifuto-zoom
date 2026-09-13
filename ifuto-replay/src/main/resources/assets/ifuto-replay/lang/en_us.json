@@ -119,5 +119,6 @@
 	"ifuto-replay.config.export_resolution": "Export resolution",
 	"ifuto-replay.config.export_bitrate": "Export bitrate (kbps)",
 	"ifuto-replay.config.ffmpeg_path": "ffmpeg location",
-	"ifuto-replay.export.bitrate.tooltip": "Higher is nicer and bigger (10000-20000 is a good range for 1080p60)"
+	"ifuto-replay.export.bitrate.tooltip": "Higher is nicer and bigger (10000-20000 is a good range for 1080p60)",
+	"ifuto-replay.export.error_stalled": "No progress for a while, so the export was stopped. Try a lower resolution or another recording."
 }
