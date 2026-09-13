@@ -15,4 +15,4 @@ java: 21
 workdir: ifuto-replay
 artifact_path: ifuto-replay/build/libs/*.jar
 
-note: ffmpeg による動画書き出し（FPS・解像度・範囲を指定）
+note: TimeSlider のキャストを修正して再ビルド
