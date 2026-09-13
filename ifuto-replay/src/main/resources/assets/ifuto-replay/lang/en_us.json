@@ -1,10 +1,27 @@
 {
-	"key.category.ifuto-replay.replay": "Ifuto Replay",
-	"key.ifuto-replay.toggle_recording": "Start / Stop Recording",
-	"key.ifuto-replay.marker": "Add Marker",
-
 	"ifuto-replay.config.title": "Ifuto Replay Settings",
-	"ifuto-replay.config.hint": "Default keys: R to record, M to add a marker. It stores the raw packet stream, so recording stays light (export FPS and resolution land in the next stage)",
+	"ifuto-replay.config.hint": "Everything is done from the buttons in the top-left of the pause menu (ESC). It stores the raw packet stream, so recording stays light (export FPS and resolution land in the next stage)",
+
+	"ifuto-replay.menu.record": "● Record",
+	"ifuto-replay.menu.record.tooltip": "Start saving packets.",
+	"ifuto-replay.menu.stop": "■ Stop %s",
+	"ifuto-replay.menu.marker": "⚑ Marker",
+	"ifuto-replay.menu.marker.tooltip": "Drop a marker at the current time (only while recording).",
+	"ifuto-replay.menu.list": "≡ Recordings",
+	"ifuto-replay.menu.list.tooltip": "Browse saved recordings (and delete them).",
+	"ifuto-replay.menu.settings": "⚙ Settings",
+	"ifuto-replay.menu.settings.tooltip": "Open this mod's settings screen.",
+
+	"ifuto-replay.list.title": "Recordings",
+	"ifuto-replay.list.hint": "Saved recordings (only headers are read, never the packet bodies)",
+	"ifuto-replay.list.empty": "No recordings yet",
+	"ifuto-replay.list.delete": "Delete",
+	"ifuto-replay.list.delete.tooltip": "Delete this file. Press again to confirm.",
+	"ifuto-replay.list.delete_confirm": "Really delete?",
+	"ifuto-replay.list.play": "Play",
+	"ifuto-replay.list.play.tooltip": "Coming in the next stage: replay the packets and export at any FPS and resolution",
+	"ifuto-replay.list.refresh": "Refresh",
+	"ifuto-replay.list.player": "Player: %s",
 
 	"ifuto-replay.config.auto_record": "Auto Record",
 	"ifuto-replay.config.auto_record.tooltip": "Start recording as soon as you join a world or server.",
@@ -29,7 +46,7 @@
 	"ifuto-replay.config.minutes": "min",
 
 	"ifuto-replay.config.show_indicator": "Recording HUD",
-	"ifuto-replay.config.show_indicator.tooltip": "While recording, show the elapsed time and file size in a screen corner.",
+	"ifuto-replay.config.show_indicator.tooltip": "While recording, show the elapsed time and file size in a screen corner (stop from the pause menu).",
 	"ifuto-replay.config.indicator_position": "HUD Position",
 	"ifuto-replay.config.indicator_position.tooltip": "Which corner the recording HUD sits in.",
 	"ifuto-replay.config.indicator_position.top_left": "Top Left",

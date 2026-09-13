@@ -217,6 +217,10 @@ final class ReplayFileWriter implements Runnable {
 	}
 
 	private void writeFooter() throws IOException {
+		// 「インデックスが何バイト目にあるか」を巻末に残す。
+		// 一覧画面はファイルの末尾12バイトだけ見れば総時間を取れるので、本体を読み直さなくていい。
+		long indexOffset = this.out.position();
+
 		this.out.writeByte(ReplayFormat.TAG_INDEX);
 		this.out.writeVarInt(this.indexEntries.size());
 
@@ -227,6 +231,12 @@ final class ReplayFileWriter implements Runnable {
 
 		this.out.writeVarLong(Math.max(this.lastTimeMs, this.requestedDurationMs));
 		this.out.writeByte(ReplayFormat.TAG_END);
+
+		for (byte magic : ReplayFormat.MAGIC) {
+			this.out.writeByte(magic);
+		}
+
+		this.out.writeFixedLong(indexOffset);
 		this.out.flush();
 	}
 

@@ -15,4 +15,4 @@ java: 21
 workdir: ifuto-replay
 artifact_path: ifuto-replay/build/libs/*.jar
 
-note: 録画Mod（ifuto-replay）パケット記録コア 初回ビルド
+note: ボタン操作（ポーズメニュー）＋録画一覧を追加

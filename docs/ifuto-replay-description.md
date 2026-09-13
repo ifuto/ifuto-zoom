@@ -46,14 +46,22 @@ any camera angle you want.**
 
 ## Using it
 
-| Action | Default key |
+**No keybinds — everything is a button.** Open the pause menu (ESC) and you will find the controls in the
+top-left corner, just like Flashback:
+
+| Button | What it does |
 | --- | --- |
-| Start / stop recording | **R** |
-| Add a marker | **M** |
+| `● Record` / `■ Stop 0:12` | Start and stop recording (shows the elapsed time while recording) |
+| `⚑ Marker` | Drop a marker at the current time (only enabled while recording) |
+| `≡ Recordings` | Browse saved recordings: date, duration, size and server, with delete |
+| `⚙ Settings` | Open the settings screen |
 
 Recordings are saved as `ifuto-replay/2026-09-13_01-23-45.ifreplay` inside your game folder. Leaving a
 server or closing the game saves and closes the file automatically. A small indicator in a screen corner
 shows the elapsed time and file size while recording.
+
+The recordings screen only reads file headers plus the last 12 bytes of each file, so it stays instant
+even with gigabytes of recordings.
 
 ## Settings (Mod Menu)
 
@@ -73,6 +81,28 @@ shows the elapsed time and file size while recording.
 Settings live in `config/ifuto-replay.json`, so they can be edited without Mod Menu too. The file already
 contains the upcoming export options (`exportFps`, `exportWidth`, `exportHeight`, `exportBitrateKbps`,
 `ffmpegPath`).
+
+## Will this get me banned?
+
+**Not from your network traffic.** The mod never sends anything:
+
+| Concern | This mod |
+| --- | --- |
+| Outgoing packets | **None.** It only reads packets; it never modifies, drops or adds any |
+| What the server sees | **Byte-identical to vanilla** — every packet is passed through untouched |
+| Announcing itself to the server | No. It never answers a mod-list handshake |
+| Automation (autoclicker, etc.) | None |
+
+In other words, behaviour and packet-analysis anti-cheats (Grim, Vulcan, NCP, AAC) have nothing to detect.
+It is the same category as ReplayMod and Flashback.
+
+Things to keep in mind:
+
+1. **Server rules.** Some servers forbid recording or streaming outright — check before you record.
+2. **"Record Input"** stores the packets you send locally. Nothing is uploaded, but serializing them adds
+   a tiny delay to outgoing packets. Turn it off if you prefer S2C-only recording.
+3. **Recordings contain your account name, the server address and chat messages.** Be careful when sharing.
+4. The upcoming playback is **fully local** (no server connection), so it will not send anything either.
 
 ## File format
 
