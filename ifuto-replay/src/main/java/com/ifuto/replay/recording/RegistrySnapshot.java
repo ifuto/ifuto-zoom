@@ -5,7 +5,7 @@ import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtElement;
 import net.minecraft.nbt.NbtList;
 import net.minecraft.nbt.NbtOps;
-import net.minecraft.registry.BuiltinRegistries;
+import net.minecraft.registry.Registries;
 import net.minecraft.registry.DynamicRegistryManager;
 import net.minecraft.registry.Registry;
 import net.minecraft.registry.RegistryKey;
@@ -94,9 +94,15 @@ public final class RegistrySnapshot {
 				}
 
 				NbtCompound child = entry.get();
+				Optional<String> id = child.getString(KEY_ID);
+
+				if (id.isEmpty()) {
+					continue;
+				}
+
 				NbtElement data = child.get(KEY_DATA);
 				entries.add(new SerializableRegistries.SerializedRegistryEntry(
-						Identifier.of(child.getString(KEY_ID)),
+						Identifier.of(id.get()),
 						Optional.ofNullable(data)
 				));
 			}
@@ -104,6 +110,7 @@ public final class RegistrySnapshot {
 			clientRegistries.putDynamicRegistry(registryKey, entries);
 		}
 
-		return clientRegistries.createRegistryManager(resourceFactory, BuiltinRegistries.createWrapperLookup(), false);
+		return clientRegistries.createRegistryManager(resourceFactory, DynamicRegistryManager.of(Registries.REGISTRIES),
+				false);
 	}
 }

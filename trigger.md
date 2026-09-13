@@ -15,4 +15,4 @@ java: 21
 workdir: ifuto-replay
 artifact_path: ifuto-replay/build/libs/*.jar
 
-note: コンパイルエラーを修正（NbtList/LevelLoadingScreen/視点API/レジストリの型）
+note: NBTのOptional APIとレジストリの型を修正
