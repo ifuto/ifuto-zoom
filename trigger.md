@@ -15,4 +15,4 @@ java: 21
 workdir: ifuto-replay
 artifact_path: ifuto-replay/build/libs/*.jar
 
-note: 再生プレビュー（0.3.0）の説明文を整備
+note: ffmpeg による動画書き出し（FPS・解像度・範囲を指定）
