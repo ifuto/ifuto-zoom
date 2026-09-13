@@ -12,7 +12,7 @@ loader:
 fabric_api:
 modmenu:
 java: 21
-workdir: armor-hud
-artifact_path: armor-hud/build/libs/*.jar
+workdir: ifuto-replay
+artifact_path: ifuto-replay/build/libs/*.jar
 
-note: v1.4.11 アイテム位置の計算ミス
+note: 録画Mod（ifuto-replay）パケット記録コア 初回ビルド
