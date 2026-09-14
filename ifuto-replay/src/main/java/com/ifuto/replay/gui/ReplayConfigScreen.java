@@ -122,13 +122,23 @@ public class ReplayConfigScreen extends Screen {
 						.build(0, 0, WIDGET_WIDTH, WIDGET_HEIGHT, Text.translatable("ifuto-replay.config.indicator_position"),
 								(button, value) -> this.config.indicatorPosition = value)));
 
-		// 6行目: お知らせ / 空き
+		// 6行目: お知らせ / 途中から録るときの世界の写し
 		content.add(row(
 				CyclingButtonWidget.onOffBuilder(this.config.notifyChat)
 						.tooltip(value -> Tooltip.of(Text.translatable("ifuto-replay.config.notify_chat.tooltip")))
 						.build(0, 0, WIDGET_WIDTH, WIDGET_HEIGHT, Text.translatable("ifuto-replay.config.notify_chat"),
 								(button, value) -> this.config.notifyChat = value),
-				null));
+				new OptionSlider(0, 0, WIDGET_WIDTH, WIDGET_HEIGHT, "ifuto-replay.config.snapshot_radius",
+						0, 16, this.config.snapshotRadius,
+						value -> {
+							if (value <= 0) {
+								return Text.translatable("ifuto-replay.config.snapshot_radius.off").getString();
+							}
+
+							return Text.translatable("ifuto-replay.config.snapshot_radius.value", value).getString();
+						},
+						value -> this.config.snapshotRadius = value)
+						.tooltip("ifuto-replay.config.snapshot_radius.tooltip")));
 
 		// 7行目: 保存先（全幅）
 		TextFieldWidget folderField = new TextFieldWidget(this.textRenderer,

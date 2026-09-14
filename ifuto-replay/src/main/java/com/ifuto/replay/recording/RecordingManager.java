@@ -10,6 +10,7 @@ import net.minecraft.network.ClientConnection;
 import net.minecraft.network.listener.PacketListener;
 import net.minecraft.network.packet.Packet;
 import net.minecraft.text.Text;
+import org.jspecify.annotations.Nullable;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -31,7 +32,41 @@ public final class RecordingManager {
 	/** 最後にワールド/サーバーに入った時刻（途中から録り始めたかを判定するため） */
 	private volatile long lastJoinTimeMs;
 
+	/** 世界を作ったパケット（途中から録り始めたときの「世界の写し」に使う） */
+	private static volatile @Nullable Packet<?> joinPacket;
+
+	/** 入ったあとに別の次元へ移っていた場合のパケット */
+	private static volatile @Nullable Packet<?> respawnPacket;
+
+	/** 「途中から」と判定するまでの猶予（ms） */
+	private static final long PARTIAL_START_MS = 5000L;
+
 	private RecordingManager() {
+	}
+
+	/** 世界を作ったパケットを覚える（あとで世界の写しを作るため） */
+	public static void rememberJoinPacket(Packet<?> packet) {
+		joinPacket = packet;
+		respawnPacket = null;
+	}
+
+	/** 別の次元へ移ったパケットを覚える */
+	public static void rememberRespawnPacket(Packet<?> packet) {
+		respawnPacket = packet;
+	}
+
+	/** 切断したので忘れる */
+	public static void forgetWorldPackets() {
+		joinPacket = null;
+		respawnPacket = null;
+	}
+
+	public static @Nullable Packet<?> getJoinPacket() {
+		return joinPacket;
+	}
+
+	public static @Nullable Packet<?> getRespawnPacket() {
+		return respawnPacket;
 	}
 
 	public RecordingSession getSession() {
@@ -122,11 +157,17 @@ public final class RecordingManager {
 
 			created.start();
 
-			if (System.currentTimeMillis() - this.lastJoinTimeMs > 5000L) {
-				// GameJoin から録れていないので、このファイルでは世界を作れない（= 再生できない）
-				IfutoReplayClient.LOGGER.warn("[ifuto-replay] 途中から録り始めました。このファイルは再生できません"
-						+ "（サーバーに入り直してから録るか、設定の「自動録画」を ON にしてください）");
-				notify(client, "ifuto-replay.message.partial_start");
+			if (System.currentTimeMillis() - this.lastJoinTimeMs > PARTIAL_START_MS) {
+				// 途中から録り始めたので、いまの世界の写しを先頭に置いて再生できるようにする
+				if (created.captureSnapshot(client)) {
+					notify(client, "ifuto-replay.message.snapshot");
+				} else {
+					// 写しが作れない（この Mod を入れる前から入っていた等）ので、このファイルは再生できない
+					IfutoReplayClient.LOGGER.warn("[ifuto-replay] 途中から録り始めました。世界の写しが作れないので"
+							+ "このファイルは再生できません（サーバーに入り直してから録るか、"
+							+ "設定の「自動録画」を ON にしてください）");
+					notify(client, "ifuto-replay.message.partial_start");
+				}
 			}
 		} catch (IOException e) {
 			IfutoReplayClient.LOGGER.error("[ifuto-replay] {} を開けませんでした", file, e);
@@ -140,6 +181,7 @@ public final class RecordingManager {
 	}
 
 	public synchronized void stop(MinecraftClient client) {
+		forgetWorldPackets();
 		RecordingSession current = this.session;
 
 		if (current == null) {

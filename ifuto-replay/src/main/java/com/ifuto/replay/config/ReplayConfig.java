@@ -108,6 +108,12 @@ public class ReplayConfig {
 	/** 書き出しビットレート（kbps） */
 	public int exportBitrateKbps = 20000;
 
+	/**
+	 * 途中から録り始めたとき、一緒に保存する地形の半径（チャンク）。
+	 * 0 にすると保存しない（その場合、途中からの録画は再生できなくなる）
+	 */
+	public int snapshotRadius = 6;
+
 	/** ffmpeg の実行ファイル（パスが通っていれば "ffmpeg" のままでOK） */
 	public String ffmpegPath = "ffmpeg";
 
@@ -208,6 +214,7 @@ public class ReplayConfig {
 		this.exportHeight = defaults.exportHeight;
 		this.exportBitrateKbps = defaults.exportBitrateKbps;
 		this.ffmpegPath = defaults.ffmpegPath;
+		this.snapshotRadius = defaults.snapshotRadius;
 	}
 
 	/** 手書き編集や古いファイルで壊れていても落ちないように丸める */
@@ -229,6 +236,7 @@ public class ReplayConfig {
 		this.exportWidth = clampStrict(this.exportWidth, 16, 16384, 1920);
 		this.exportHeight = clampStrict(this.exportHeight, 16, 16384, 1080);
 		this.exportBitrateKbps = clampStrict(this.exportBitrateKbps, 100, 2_000_000, 20000);
+		this.snapshotRadius = clampStrict(this.snapshotRadius, 0, 32, 6);
 
 		if (this.saveFolder == null || this.saveFolder.isBlank()) {
 			this.saveFolder = DEFAULT_SAVE_FOLDER;

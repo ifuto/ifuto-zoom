@@ -120,5 +120,10 @@
 	"ifuto-replay.config.export_bitrate": "書き出しのビットレート",
 	"ifuto-replay.config.ffmpeg_path": "ffmpeg の場所",
 	"ifuto-replay.export.bitrate.tooltip": "大きいほど綺麗でファイルも大きい（1080p60 なら 10000〜20000 くらいが目安）",
-	"ifuto-replay.export.error_stalled": "しばらく進まなかったので中断しました。解像度を下げるか、録画を選び直してみてください。"
+	"ifuto-replay.export.error_stalled": "しばらく進まなかったので中断しました。解像度を下げるか、録画を選び直してみてください。",
+	"ifuto-replay.config.snapshot_radius": "地形を一緒に保存",
+	"ifuto-replay.config.snapshot_radius.value": "%s チャンク",
+	"ifuto-replay.config.snapshot_radius.off": "保存しない",
+	"ifuto-replay.config.snapshot_radius.tooltip": "途中から録り始めたとき、いまの地形とエンティティを一緒に保存する半径。0 = 保存しない（その場合、途中からの録画は再生できなくなります）",
+	"ifuto-replay.message.snapshot": "途中から録り始めたので、いまの世界の写しを一緒に保存しました"
 }

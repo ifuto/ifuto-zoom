@@ -4,6 +4,7 @@ import com.ifuto.replay.IfutoReplayClient;
 import com.ifuto.replay.config.ReplayConfig;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
+import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayNetworkHandler;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.network.packet.Packet;
@@ -202,6 +203,51 @@ public final class RecordingSession {
 
 		this.queuedBytes.addAndGet(size);
 		this.packetCount.incrementAndGet();
+	}
+
+	/**
+	 * いまの世界の写しを録画の先頭に置く（「途中から録り始めた」録画を再生できるようにするため）。
+	 *
+	 * <p>サーバーに取り直しを頼むことはしない（BAN を避けるため通信は一切増やさない）ので、
+	 * 手元にある世界から「サーバーが送ってきたのと同じパケット」を組み立てて書き込む。
+	 * 少し重い（数百チャンクで数十〜百ms）ので、録り始めの1回だけ。
+	 *
+	 * @return 作れたら true（作れないときは「最初から」録れていないのと同じ扱いになる）
+	 */
+	public boolean captureSnapshot(MinecraftClient client) {
+		if (this.stopping || client == null || this.config.snapshotRadius <= 0) {
+			return false;
+		}
+
+		try {
+			long startedAt = System.nanoTime();
+			WorldSnapshot.Snapshot snapshot = WorldSnapshot.build(client, this.config.snapshotRadius);
+
+			if (snapshot == null) {
+				return false;
+			}
+
+			long droppedBefore = this.droppedCount.get();
+
+			for (Packet<?> packet : snapshot.packets()) {
+				this.capture(packet, false, this.boundHandler);
+			}
+
+			long dropped = this.droppedCount.get() - droppedBefore;
+
+			if (dropped > 0L) {
+				IfutoReplayClient.LOGGER.warn("[ifuto-replay] 世界の写しのうち {} パケットを書ききれませんでした"
+						+ "（書き出しが追いついていません。地形が一部欠けます）", dropped);
+			}
+
+			IfutoReplayClient.LOGGER.info("[ifuto-replay] 世界の写しを保存しました (チャンク {}, エンティティ {}, {} パケット, {} ms)",
+					snapshot.chunks(), snapshot.entities(), snapshot.packets().size(),
+					(System.nanoTime() - startedAt) / 1_000_000L);
+			return true;
+		} catch (Throwable t) {
+			IfutoReplayClient.LOGGER.warn("[ifuto-replay] 世界の写しを作れませんでした", t);
+			return false;
+		}
 	}
 
 	/** しおりを付ける */

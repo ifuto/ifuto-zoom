@@ -120,5 +120,10 @@
 	"ifuto-replay.config.export_bitrate": "Export bitrate (kbps)",
 	"ifuto-replay.config.ffmpeg_path": "ffmpeg location",
 	"ifuto-replay.export.bitrate.tooltip": "Higher is nicer and bigger (10000-20000 is a good range for 1080p60)",
-	"ifuto-replay.export.error_stalled": "No progress for a while, so the export was stopped. Try a lower resolution or another recording."
+	"ifuto-replay.export.error_stalled": "No progress for a while, so the export was stopped. Try a lower resolution or another recording.",
+	"ifuto-replay.config.snapshot_radius": "Save world state",
+	"ifuto-replay.config.snapshot_radius.value": "%s chunks",
+	"ifuto-replay.config.snapshot_radius.off": "Off",
+	"ifuto-replay.config.snapshot_radius.tooltip": "When you start recording mid-session, save the terrain and entities within this radius. 0 = don't save (mid-session recordings won't be playable)",
+	"ifuto-replay.message.snapshot": "Recording started mid-session, so the current world state was saved along with it"
 }
