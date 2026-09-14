@@ -30,7 +30,7 @@ public class ModernButton extends ClickableWidget {
 		GHOST
 	}
 
-	private final Style style;
+	private Style style;
 	private final Consumer<ModernButton> onPress;
 	private final int radius;
 	private float hover;
@@ -41,6 +41,11 @@ public class ModernButton extends ClickableWidget {
 		this.onPress = onPress;
 		this.style = style;
 		this.radius = Math.min(8, height / 2);
+	}
+
+	/** 色の役割を差し替える（録画中は赤にするなど） */
+	public void setStyle(Style style) {
+		this.style = style;
 	}
 
 	@Override

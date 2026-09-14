@@ -74,15 +74,26 @@ public class ModernCycling<T> extends ClickableWidget {
 
 		int textY = this.getY() + (this.getHeight() - renderer.fontHeight) / 2 + 1;
 
-		// 左: 項目名（弱い色）
-		context.drawText(renderer, this.getMessage(), this.getX() + PADDING, textY,
-				this.active ? ReplayTheme.TEXT_DIM : ReplayTheme.withAlpha(ReplayTheme.TEXT_DIM, 0x99), true);
-
 		// 右: いまの値（アクセント色）
 		Text value = this.formatter.apply(this.value());
 		int valueWidth = renderer.getWidth(value);
 		context.drawText(renderer, value, this.getX() + this.getWidth() - PADDING - valueWidth, textY,
 				this.active ? ReplayTheme.ACCENT : ReplayTheme.TEXT_DIM, true);
+
+		// 左: 項目名（弱い色。値にぶつからない範囲で）
+		int labelMax = this.getWidth() - PADDING * 3 - valueWidth;
+
+		if (labelMax > renderer.getWidth("…")) {
+			Text label = this.getMessage();
+
+			if (renderer.getWidth(label) > labelMax) {
+				label = Text.literal(renderer.trimToWidth(label.getString(),
+						labelMax - renderer.getWidth("…")) + "…");
+			}
+
+			context.drawText(renderer, label, this.getX() + PADDING, textY,
+					this.active ? ReplayTheme.TEXT_DIM : ReplayTheme.withAlpha(ReplayTheme.TEXT_DIM, 0x99), true);
+		}
 
 		if (this.isFocused()) {
 			ReplayTheme.strokeRound(context, this.getX() - 1, this.getY() - 1, this.getWidth() + 2,

@@ -64,7 +64,8 @@ public class ModernToggle extends ClickableWidget {
 		}
 
 		int textY = this.getY() + (this.getHeight() - renderer.fontHeight) / 2 + 1;
-		context.drawText(renderer, this.getMessage(), this.getX() + 8, textY,
+		int labelMax = this.getWidth() - TRACK_WIDTH - 22;
+		context.drawText(renderer, trim(renderer, this.getMessage(), labelMax), this.getX() + 8, textY,
 				this.active ? ReplayTheme.TEXT : ReplayTheme.TEXT_DIM, true);
 
 		int trackX = this.getX() + this.getWidth() - TRACK_WIDTH - 8;
@@ -90,5 +91,14 @@ public class ModernToggle extends ClickableWidget {
 	@Override
 	protected void appendClickableNarrations(NarrationMessageBuilder builder) {
 		this.appendDefaultNarrations(builder);
+	}
+
+	/** 入りきらない文字は「…」で切る（切れない長さのときはそのまま） */
+	private static Text trim(TextRenderer renderer, Text text, int maxWidth) {
+		if (renderer.getWidth(text) <= maxWidth || maxWidth <= renderer.getWidth("…")) {
+			return text;
+		}
+
+		return Text.literal(renderer.trimToWidth(text.getString(), maxWidth - renderer.getWidth("…")) + "…");
 	}
 }

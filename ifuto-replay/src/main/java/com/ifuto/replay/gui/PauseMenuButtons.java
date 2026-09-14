@@ -105,6 +105,8 @@ public final class PauseMenuButtons {
 
 		recordButton.setTooltip(Tooltip.of(Text.translatable(recording
 				? "ifuto-replay.menu.stop.tooltip" : "ifuto-replay.menu.record.tooltip")));
+		// 録っているときは「押すと止まる」のがわかるように赤にする
+		recordButton.setStyle(recording ? ModernButton.Style.DANGER : ModernButton.Style.PRIMARY);
 
 		// しおりは録画中だけ意味があるので、それ以外では押せなくする
 		markerButton.active = recording;
