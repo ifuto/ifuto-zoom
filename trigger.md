@@ -15,4 +15,4 @@ java: 21
 workdir: ifuto-replay
 artifact_path: ifuto-replay/build/libs/*.jar
 
-note: 説明にキーボード操作を追記
+note: ClipMode（あとから保存）
