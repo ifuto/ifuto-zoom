@@ -15,4 +15,4 @@ java: 21
 workdir: ifuto-replay
 artifact_path: ifuto-replay/build/libs/*.jar
 
-note: 音声（3通り + VC 分離）
+note: GUI の土台（角丸テーマと部品）
