@@ -178,7 +178,8 @@ final class ClipBuffer {
 			}
 
 			Path result = saved;
-			client.execute(() -> this.afterSave(client, result, failure));
+			Throwable error = failure;
+			client.execute(() -> this.afterSave(client, result, error));
 		}, "ifuto-replay-clip-save");
 
 		thread.setDaemon(true);
