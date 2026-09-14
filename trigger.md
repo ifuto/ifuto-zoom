@@ -15,4 +15,4 @@ java: 21
 workdir: ifuto-replay
 artifact_path: ifuto-replay/build/libs/*.jar
 
-note: クリップの音声（直した）
+note: クリップの説明と 0.9.0
