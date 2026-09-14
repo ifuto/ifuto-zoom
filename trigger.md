@@ -15,4 +15,4 @@ java: 21
 workdir: ifuto-replay
 artifact_path: ifuto-replay/build/libs/*.jar
 
-note: 途中録画用の世界スナップショットを実装
+note: マッピング修正して再ビルド
