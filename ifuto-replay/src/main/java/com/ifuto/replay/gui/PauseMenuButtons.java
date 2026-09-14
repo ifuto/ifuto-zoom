@@ -42,13 +42,14 @@ public final class PauseMenuButtons {
 		int x = PANEL_MARGIN + PANEL_PADDING;
 		int y = PANEL_MARGIN + PANEL_PADDING;
 
-		// 「しおり」ボタンは録画ボタンを押した直後にも状態を更新したいので、配列経由で持つ
+		// 「しおり」と「クリップ」は録画ボタンを押した直後にも状態を更新したいので、配列経由で持つ
 		ModernButton[] markerHolder = new ModernButton[1];
+		ModernButton[] clipHolder = new ModernButton[1];
 
 		ModernButton recordButton = new ModernButton(x, y, BUTTON_WIDTH, BUTTON_HEIGHT, Text.empty(),
 				button -> {
 					RecordingManager.INSTANCE.toggle(client);
-					refresh(client, button, markerHolder[0]);
+					refresh(client, button, markerHolder[0], clipHolder[0]);
 				}, ModernButton.Style.PRIMARY);
 		recordButton.setTooltip(Tooltip.of(Text.translatable("ifuto-replay.menu.record.tooltip")));
 
@@ -77,6 +78,7 @@ public final class PauseMenuButtons {
 				Text.translatable("ifuto-replay.menu.clip"),
 				button -> RecordingManager.INSTANCE.saveClip(client), ModernButton.Style.PRIMARY);
 		clipButton.setTooltip(Tooltip.of(Text.translatable("ifuto-replay.menu.clip.tooltip")));
+		clipHolder[0] = clipButton;
 
 		Screens.getButtons(screen).add(recordButton);
 		Screens.getButtons(screen).add(markerButton);
