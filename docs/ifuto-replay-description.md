@@ -150,6 +150,40 @@ and typed text stores only what was added. When nothing changes, nothing is writ
 Playback drives **vanilla's own options**, so you see it exactly the way the person recording did, and the
 preview shows the open screen and the text being typed at the top of the screen.
 
+## Recording audio
+
+Sound only exists while it is playing, so audio is captured **while you record** — there is nothing
+left to capture at export time.
+
+| Setting | What you get | How |
+| --- | --- | --- |
+| **Minecraft only** (default) | just what Minecraft plays | OpenAL loopback: the game's audio output is routed through the mod, which records it and passes it on to your speakers |
+| **Whole PC** | everything your computer plays, voice chat included | ffmpeg reading the OS audio input |
+| Off | — | as before |
+
+- **Voice chat is recorded separately.** Simple Voice Chat opens its own output device, so its audio
+  never lands in the Minecraft track. Ifuto Replay takes it straight from Simple Voice Chat's plugin
+  API (the raw audio right before playback) and stores it as its own file, which is what makes
+  **Include voice chat** at export a real on/off switch.
+- Audio is **Opus**, written to separate files next to the recording (`.audio.ogg`, `.voice.ogg`,
+  `.system.ogg`). The recording itself is never touched, so a recording still plays if its audio is
+  missing or deleted.
+- If audio can't be captured (no ffmpeg, no device, OpenAL without loopback support), **the recording
+  is still saved**. When "Minecraft only" isn't possible, it falls back to whole-PC audio rather than
+  silence.
+- Preview playback is silent; the audio ends up in the exported video.
+
+What each mode needs:
+
+| OS | Whole-PC capture needs |
+| --- | --- |
+| Windows | Stereo Mix enabled, or a virtual device such as VB-CABLE |
+| Linux | PulseAudio / PipeWire (usually already there) |
+| macOS | a virtual device such as BlackHole (**there is no built-in way**) |
+
+The settings screen has a **Detect** button that lists the devices it can find (blank = pick one
+automatically).
+
 ## Export
 
 Hit **Export** in the recordings list to turn a recording into an `.mp4`.
@@ -209,6 +243,12 @@ How it differs from screen recording:
 | Export FPS | Starting value of the export screen | 60 |
 | Export Resolution | Starting value of the export screen (width x height) | 1920x1080 |
 | Export Bitrate | Starting value of the export screen (kbps) | 20000 |
+| Include Audio | Mux the audio captured alongside the recording (only shown when there is audio) | On |
+| Include Voice Chat | Include Simple Voice Chat audio | On |
+| Record Audio | Off / **Minecraft only** / Whole PC | Minecraft only |
+| Audio Quality | Opus bitrate (kbps) | 96 |
+| Audio Device | Device for whole-PC capture (blank = detect; the Detect button lists them) | blank |
+| Record Voice Chat | Record Simple Voice Chat audio separately (include or drop it when exporting) | On |
 | ffmpeg Location | Executable used for exporting (`ffmpeg` works if it is on your PATH) | `ffmpeg` |
 | Save Folder | Relative to the game directory | `ifuto-replay` |
 
@@ -255,8 +295,10 @@ The `.ifreplay` format is append-only (no seeking while recording), self-describ
    recording is playable no matter when you started it
 5. ✅ **Automatic memory and disk care** (this release) — buffered data is flushed on a timer, the memory
    budget is picked from your environment, and the recording is saved and stopped before the disk runs out
-6. ✅ **Recording what never becomes a packet** (this release) — cursor, text as you type, F5, F3 and the
-   open screen, delta-encoded and applied to vanilla's own options during playback
+6. ✅ **Recording what never becomes a packet** — cursor, text as you type, F5, F3 and the open screen,
+   delta-encoded and applied to vanilla's own options during playback
+7. ✅ **Audio** (this release) — **Minecraft only** or **whole PC**, muxed at export. **Voice chat is
+   captured separately**, so including Simple Voice Chat is a real on/off switch
 
 ## Requirements
 
@@ -264,6 +306,9 @@ The `.ifreplay` format is append-only (no seeking while recording), self-describ
 - Fabric Loader 0.16.0+ (any 1.21.11-compatible version)
 - [Fabric API](https://modrinth.com/mod/fabric-api)
 - (optional) [Mod Menu](https://modrinth.com/mod/modmenu) 17.x for the settings screen
+- ffmpeg, if you want audio (on your PATH, or set its location in the settings)
+- (optional) [Simple Voice Chat](https://modrinth.com/mod/simple-voice-chat), if you want voice chat
+  on its own track — everything works without it
 
 Japanese and English are both supported.
 
