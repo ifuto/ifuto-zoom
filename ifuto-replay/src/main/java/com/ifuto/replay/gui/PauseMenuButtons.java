@@ -124,9 +124,12 @@ public final class PauseMenuButtons {
 
 		// しおりは録画中だけ意味があるので、それ以外では押せなくする
 		markerButton.active = recording;
-		// クリップは「クリップ方式で録っている」ときだけ
+		// クリップは「クリップ方式で録っている」ときだけ（まとめている最中は待ってもらう）
 		RecordingSession clipSession = RecordingManager.INSTANCE.getSession();
-		clipButton.active = RecordingManager.INSTANCE.canClip();
+		boolean savingClip = clipSession != null && clipSession.isSavingClip();
+		clipButton.active = RecordingManager.INSTANCE.canClip() && !savingClip;
+		clipButton.setMessage(Text.translatable(savingClip
+				? "ifuto-replay.menu.clip.saving" : "ifuto-replay.menu.clip"));
 
 		// いま何秒ぶん残っているかをツールチップに出す（秒が変わったときだけ作り直す）
 		long readySeconds = clipSession == null ? 0L : clipSession.clipBufferedMillis() / 1000L;

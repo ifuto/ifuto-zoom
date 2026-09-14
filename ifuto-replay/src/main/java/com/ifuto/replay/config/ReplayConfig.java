@@ -91,6 +91,14 @@ public class ReplayConfig {
 	/** 何ミリ秒おきにシーク用の目印を残すか（0 で作らない） */
 	public int indexIntervalMs = 5000;
 
+	/**
+	 * 書き出しを等倍速で描く（**時間に依存する演出を正しくするため**）。
+	 *
+	 * <p>オフにすると GPU の速さしだいで一気に進むので速いが、モーションブラーの
+	 * 蓄積やテンポラル系のシェーダーなど「実時間」を見る Mod の効き方が変わる。
+	 */
+	public boolean exportRealtime = true;
+
 	// --- 自動停止 ---
 
 	/** ファイルサイズの上限（MB）。0 で無制限 */
@@ -282,6 +290,7 @@ public class ReplayConfig {
 		this.lowDiskSpaceMb = defaults.lowDiskSpaceMb;
 		this.criticalDiskSpaceMb = defaults.criticalDiskSpaceMb;
 		this.indexIntervalMs = defaults.indexIntervalMs;
+		this.exportRealtime = defaults.exportRealtime;
 		this.maxFileSizeMb = defaults.maxFileSizeMb;
 		this.maxDurationMinutes = defaults.maxDurationMinutes;
 		this.showIndicator = defaults.showIndicator;

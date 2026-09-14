@@ -11,6 +11,7 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.render.RenderTickCounter;
+import net.minecraft.text.Text;
 
 import com.ifuto.replay.gui.theme.ReplayTheme;
 
@@ -54,13 +55,19 @@ public class RecordingIndicator implements HudElement {
 		boolean clipReady = false;
 
 		if (session.isClipMode()) {
-			// クリップ方式: 「いま何秒ぶん残っているか」を出す（押したら残せる目安）
-			long wanted = (long) config.clipSeconds * 1000L;
-			long buffered = session.clipBufferedMillis();
-			clipReady = buffered >= wanted;
-			text = net.minecraft.text.Text.translatable("ifuto-replay.hud.clip",
-					RecordingManager.formatDuration(Math.min(buffered, wanted)),
-					RecordingManager.formatDuration(wanted)).getString();
+			if (session.isSavingClip()) {
+				// まとめている最中（長いクリップだと数分かかるので、動いていることを出す）
+				clipReady = true;
+				text = Text.translatable("ifuto-replay.hud.clip_saving").getString();
+			} else {
+				// クリップ方式: 「いま何秒ぶん残っているか」を出す（押したら残せる目安）
+				long wanted = (long) config.clipSeconds * 1000L;
+				long buffered = session.clipBufferedMillis();
+				clipReady = buffered >= wanted;
+				text = Text.translatable("ifuto-replay.hud.clip",
+						RecordingManager.formatDuration(Math.min(buffered, wanted)),
+						RecordingManager.formatDuration(wanted)).getString();
+			}
 		} else {
 			text = RecordingManager.formatDuration(session.elapsedMillis())
 					+ "  " + RecordingManager.formatSize(session.bytesWritten());

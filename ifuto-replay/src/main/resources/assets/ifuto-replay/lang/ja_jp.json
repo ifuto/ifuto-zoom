@@ -214,5 +214,9 @@
 	"ifuto-replay.config.clip_buffer.auto": "自動（実測から）",
 	"ifuto-replay.config.clip_buffer.tooltip": "一時ファイルの上限。自動では「いまの書き込み速度」から必要なぶんだけ置き、足が出そうになったら古い区間から消します（SSD に書く量もこれで抑えられます）",
 	"ifuto-replay.config.gigabytes.value": "%d GB",
-	"ifuto-replay.message.clip_no_space": "クリップを保存する空きがありません（%s 必要）"
+	"ifuto-replay.message.clip_no_space": "クリップを保存する空きがありません（%s 必要）",
+	"ifuto-replay.hud.clip_saving": "✂ クリップを保存中…",
+	"ifuto-replay.menu.clip.saving": "✂ 保存中…",
+	"ifuto-replay.export.realtime": "等倍速で描く",
+	"ifuto-replay.export.realtime.tooltip": "オン: 本番と同じ速さで1枚ずつ描くので、モーションブラーの蓄積など「実時間」を見る演出が本番どおりになります（そのぶん時間がかかります）。オフ: GPU の速さしだいで一気に進みます（速いですが、それらの演出の効き方が変わります）"
 }

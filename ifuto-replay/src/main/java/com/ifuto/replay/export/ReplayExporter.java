@@ -49,7 +49,6 @@ public final class ReplayExporter {
 	private final int totalFrames;
 	private final int originalFramebufferWidth;
 	private final int originalFramebufferHeight;
-	private final boolean hudWasHidden;
 
 	private Process process;
 	private OutputStream ffmpegInput;
@@ -77,7 +76,6 @@ public final class ReplayExporter {
 		this.totalFrames = (int) Math.max(1L, Math.ceil(spanMs / (double) this.frameStepMs));
 		this.originalFramebufferWidth = client.getWindow().getFramebufferWidth();
 		this.originalFramebufferHeight = client.getWindow().getFramebufferHeight();
-		this.hudWasHidden = client.options.hudHidden;
 	}
 
 	/** 描画の前にフレーム1回だけ呼ばれる（書き出し中でなければ何もしない） */
@@ -234,9 +232,6 @@ public final class ReplayExporter {
 		this.client.getWindow().setFramebufferHeight(height);
 		this.client.onResolutionChanged();
 
-		// HUD は出さない（動画に要らないので）
-		this.client.options.hudHidden = true;
-
 		this.startedAtMs = System.currentTimeMillis();
 		this.lastProgressMs = this.startedAtMs;
 		this.playback.setPaused(false);
@@ -283,10 +278,43 @@ public final class ReplayExporter {
 			return;
 		}
 
+		// 「時間に依存する演出」を正しくするために、待つことがある（下の説明を見てください）
+		if (this.options.realtime()) {
+			this.pace();
+		}
+
 		long target = this.startMs + this.frameIndex * this.frameStepMs;
 		this.playback.jumpTo(target);
 		this.frameIndex++;
 		this.awaitingCapture = true;
+	}
+
+	/**
+	 * 書き出しを **等倍速** に保つ（必要なぶんだけ待つ）。
+	 *
+	 * <p>ふつうの書き出しは「GPU が描き終わりしだい次の時刻へ」進むので、絵と絵のあいだの
+	 * **実時間** がバラバラになる。すると「直前の絵との差」や「実時間の経過」を見る類の
+	 * 演出（モーションブラーの蓄積、テンポラル系のシェーダー、時間で減衰する演出など）が
+	 * 本番と違う効き方をしてしまう。
+	 *
+	 * <p>ここで待つと、描かれる間隔が本来のフレーム間隔と同じになるので、それらの Mod も
+	 * 本番どおりに動く。遅いGPUでは待ち時間がゼロになるだけ（比率は自動で落ちる）なので、
+	 * そのときは「速い書き出し」と同じになる。
+	 */
+	private void pace() {
+		long ideal = this.startedAtMs + this.frameIndex * this.frameStepMs;
+		long wait = ideal - System.currentTimeMillis();
+
+		if (wait <= 0L) {
+			// 遅れているので待たない（借金は次のフレームに持ち越さない）
+			return;
+		}
+
+		try {
+			Thread.sleep(Math.min(wait, 500L));
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+		}
 	}
 
 	/** 描画の後に呼ぶ。いまの絵を取り込むよう頼む */
@@ -445,11 +473,10 @@ public final class ReplayExporter {
 		}
 	}
 
-	/** 解像度とHUDを元に戻す */
+	/** 解像度を元に戻す */
 	private void restore() {
 		this.client.getWindow().setFramebufferWidth(this.originalFramebufferWidth);
 		this.client.getWindow().setFramebufferHeight(this.originalFramebufferHeight);
 		this.client.onResolutionChanged();
-		this.client.options.hudHidden = this.hudWasHidden;
 	}
 }

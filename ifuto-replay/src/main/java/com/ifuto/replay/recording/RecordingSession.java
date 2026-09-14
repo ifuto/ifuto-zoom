@@ -377,6 +377,11 @@ public final class RecordingSession {
 	}
 
 	/** いま保存できる長さ（ミリ秒） */
+	/** クリップをまとめている最中か（数分かかることもあるので画面に出す） */
+	public boolean isSavingClip() {
+		return this.clip != null && this.clip.isSaving();
+	}
+
 	public long clipBufferedMillis() {
 		return this.clip == null ? 0L : this.clip.bufferedMillis();
 	}

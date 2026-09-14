@@ -214,5 +214,9 @@
 	"ifuto-replay.config.clip_buffer.auto": "Auto (measured)",
 	"ifuto-replay.config.clip_buffer.tooltip": "Upper limit for the temporary files. Auto keeps just what the measured write speed needs and drops the oldest segments past that, which also keeps the amount written to your SSD down",
 	"ifuto-replay.config.gigabytes.value": "%d GB",
-	"ifuto-replay.message.clip_no_space": "Not enough free space to save the clip (%s needed)"
+	"ifuto-replay.message.clip_no_space": "Not enough free space to save the clip (%s needed)",
+	"ifuto-replay.hud.clip_saving": "✂ Saving clip…",
+	"ifuto-replay.menu.clip.saving": "✂ Saving…",
+	"ifuto-replay.export.realtime": "Render at real speed",
+	"ifuto-replay.export.realtime.tooltip": "On: every frame is drawn at the same pace as the original, so effects that look at real time (motion blur accumulation, temporal shaders, effects that fade with time) behave exactly as they did live. It takes as long as the recording. Off: frames are drawn as fast as the GPU allows (much faster, but those effects change)"
 }

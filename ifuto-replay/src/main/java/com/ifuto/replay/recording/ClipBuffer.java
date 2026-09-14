@@ -133,6 +133,11 @@ final class ClipBuffer {
 		this.session.captureSnapshot(client);
 	}
 
+	/** まとめている最中か（画面に出すよう） */
+	boolean isSaving() {
+		return this.saving;
+	}
+
 	boolean offer(PacketTask task) {
 		// まとめている最中は受け取らない（ほんの少しのあいだだけ）
 		ReplayFileWriter current = this.writer;

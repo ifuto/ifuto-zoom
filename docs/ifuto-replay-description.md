@@ -219,6 +219,13 @@ files included. Set it to *Forever* to keep them until you delete them by hand.
 
 Hit **Export** in the recordings list to turn a recording into an `.mp4`.
 
+- **The vanilla HUD (hotbar and friends) is not hidden.** It is only absent when the player has
+  hidden it themselves with **F1** — the mod never hides it behind their back
+- **"Render at real speed"** (on by default) draws one frame at the same pace the original was
+  played at, so effects that look at real time — motion blur accumulation, temporal shaders,
+  effects that fade with time — come out exactly as they were live. Turn it off and frames are
+  drawn as fast as the GPU allows: much quicker, but those effects change
+
 - **FPS, resolution and bitrate are independent of the recording.** Record at 60 fps and export at 30,
   or export 4K while your window is 1080p — and redo it as many times as you like.
 - You can also export **just a range** (start / end sliders).
