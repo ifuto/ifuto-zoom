@@ -288,6 +288,7 @@ final class ClipBuffer {
 		last.endMs = Math.max(last.endMs, this.session.elapsedMillis());
 
 		Path output = uniqueClip(ReplayConfig.getSaveDirectory(), last.startEpoch);
+		long durationMs = Math.max(0L, last.endMs - parts.get(0).startMs);
 
 		try (OutputStream stream = new BufferedOutputStream(Files.newOutputStream(output), COPY_BUFFER)) {
 			ReplayDataOutput out = new ReplayDataOutput(stream);
@@ -299,8 +300,7 @@ final class ClipBuffer {
 				this.copy(segment.file, out);
 			}
 
-			long durationMs = last.endMs - parts.get(0).startMs;
-		ReplayFileWriter.writeFooter(out, durationMs);
+			ReplayFileWriter.writeFooter(out, durationMs);
 		}
 
 		this.segments.clear();
