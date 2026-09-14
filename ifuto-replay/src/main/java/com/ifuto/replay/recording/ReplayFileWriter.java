@@ -45,6 +45,7 @@ final class ReplayFileWriter implements Runnable {
 	private final List<long[]> indexEntries = new ArrayList<>();
 	private final int indexIntervalMs;
 	private final long maxBytes;
+	private final long flushIntervalMs;
 
 	private final Thread thread;
 	private volatile boolean running = true;
@@ -53,6 +54,8 @@ final class ReplayFileWriter implements Runnable {
 
 	private long lastTimeMs;
 	private long nextIndexTimeMs;
+	private long lastFlushMs;
+	private long bytesSinceFlush;
 	private long requestedDurationMs;
 
 	private Deflater deflater;
@@ -60,11 +63,13 @@ final class ReplayFileWriter implements Runnable {
 
 	ReplayFileWriter(Path file, String mcVersion, String serverName, String playerName, long startedAt,
 					 boolean recordsC2S, CompressionMode compression, int indexIntervalMs, long maxBytes,
+					 long flushIntervalMs,
 					 int queueCapacity, AtomicLong queuedBytes) throws IOException {
 		this.queue = new ArrayBlockingQueue<>(Math.max(64, queueCapacity));
 		this.compression = compression;
 		this.indexIntervalMs = indexIntervalMs;
 		this.maxBytes = maxBytes;
+		this.flushIntervalMs = Math.max(100L, flushIntervalMs);
 		this.queuedBytes = queuedBytes;
 
 		OutputStream stream = new BufferedOutputStream(Files.newOutputStream(file), BUFFER_SIZE);
@@ -116,6 +121,9 @@ final class ReplayFileWriter implements Runnable {
 				if (task != null) {
 					this.handle(task);
 				}
+
+				// 溜め込まず、こまめにファイルへ移す（メモリに持つのは最低限だけ）
+				this.flushIfNeeded();
 			}
 
 			// 停止指示が来てからも、溜まっている分は最後まで書く
@@ -143,6 +151,32 @@ final class ReplayFileWriter implements Runnable {
 		}
 	}
 
+	/**
+	 * 一定時間ごとにファイルへ流す。
+	 *
+	 * <p>書き込みスレッドの中でやるのでゲーム側は止まらない。
+	 * 「メモリ（キューとバッファ）に溜めない」のが目的。
+	 */
+	private void flushIfNeeded() {
+		if (this.bytesSinceFlush <= 0L) {
+			return;
+		}
+
+		long now = System.currentTimeMillis();
+
+		if (now - this.lastFlushMs < this.flushIntervalMs) {
+			return;
+		}
+
+		try {
+			this.out.flush();
+			this.bytesSinceFlush = 0L;
+			this.lastFlushMs = now;
+		} catch (IOException e) {
+			IfutoReplayClient.LOGGER.warn("[ifuto-replay] ファイルへ移すときにエラー", e);
+		}
+	}
+
 	// --- 中身 ---
 
 	private void writeHeader(String mcVersion, String serverName, String playerName, long startedAt,
@@ -160,6 +194,15 @@ final class ReplayFileWriter implements Runnable {
 	}
 
 	private void handle(PacketTask task) throws IOException {
+		try {
+			this.handleInner(task);
+		} finally {
+			// 最後にファイルへ移したあとに書いた量（周期フラッシュの判定に使う）
+			this.bytesSinceFlush += 1L + task.size();
+		}
+	}
+
+	private void handleInner(PacketTask task) throws IOException {
 		switch (task.kind) {
 			case PacketTask.KIND_TYPE -> {
 				this.out.writeByte(ReplayFormat.TAG_PACKET_TYPE);

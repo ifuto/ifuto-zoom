@@ -110,6 +110,37 @@ public class ReplayConfigScreen extends Screen {
 						value -> this.config.maxDurationMinutes = value)
 						.tooltip("ifuto-replay.config.max_duration.tooltip")));
 
+		// 4.5行目: メモリと容量の見張り
+		content.add(row(
+				new OptionSlider(0, 0, WIDGET_WIDTH, WIDGET_HEIGHT, "ifuto-replay.config.memory",
+						0, 128, Math.min(this.config.queuedMegaBytes, 128),
+						value -> value <= 0
+								? Text.translatable("ifuto-replay.config.memory.auto").getString()
+								: Text.translatable("ifuto-replay.config.memory.value", value).getString(),
+						value -> this.config.queuedMegaBytes = value)
+						.tooltip("ifuto-replay.config.memory.tooltip"),
+				new OptionSlider(0, 0, WIDGET_WIDTH, WIDGET_HEIGHT, "ifuto-replay.config.flush_interval",
+						1, 10, Math.max(1, this.config.flushIntervalMs / 1000),
+						value -> Text.translatable("ifuto-replay.config.flush_interval.value", value).getString(),
+						value -> this.config.flushIntervalMs = value * 1000)
+						.tooltip("ifuto-replay.config.flush_interval.tooltip")));
+
+		content.add(row(
+				new OptionSlider(0, 0, WIDGET_WIDTH, WIDGET_HEIGHT, "ifuto-replay.config.low_disk_space",
+						0, 4096, Math.min(this.config.lowDiskSpaceMb, 4096),
+						value -> value <= 0
+								? Text.translatable("ifuto-replay.config.unlimited").getString()
+								: Text.translatable("ifuto-replay.config.memory.value", value).getString(),
+						value -> this.config.lowDiskSpaceMb = value)
+						.tooltip("ifuto-replay.config.low_disk_space.tooltip"),
+				new OptionSlider(0, 0, WIDGET_WIDTH, WIDGET_HEIGHT, "ifuto-replay.config.critical_disk_space",
+						0, 1024, Math.min(this.config.criticalDiskSpaceMb, 1024),
+						value -> value <= 0
+								? Text.translatable("ifuto-replay.config.unlimited").getString()
+								: Text.translatable("ifuto-replay.config.memory.value", value).getString(),
+						value -> this.config.criticalDiskSpaceMb = value)
+						.tooltip("ifuto-replay.config.critical_disk_space.tooltip")));
+
 		// 5行目: 見た目
 		content.add(row(
 				CyclingButtonWidget.onOffBuilder(this.config.showIndicator)

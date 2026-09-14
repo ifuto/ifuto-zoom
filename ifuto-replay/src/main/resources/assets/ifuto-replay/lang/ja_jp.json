@@ -125,5 +125,19 @@
 	"ifuto-replay.config.snapshot_radius.value": "%s チャンク",
 	"ifuto-replay.config.snapshot_radius.off": "保存しない",
 	"ifuto-replay.config.snapshot_radius.tooltip": "途中から録り始めたとき、いまの地形とエンティティを一緒に保存する半径。0 = 保存しない（その場合、途中からの録画は再生できなくなります）",
-	"ifuto-replay.message.snapshot": "途中から録り始めたので、いまの世界の写しを一緒に保存しました"
+	"ifuto-replay.message.snapshot": "途中から録り始めたので、いまの世界の写しを一緒に保存しました",
+	"ifuto-replay.message.disk_low": "保存先の空きが %s MB です。少なくなると録画を自動で止めます",
+	"ifuto-replay.message.disk_critical": "保存先の空きが %s MB を切ったので、録画を保存して止めました",
+	"ifuto-replay.message.size_warning": "ファイルサイズの上限に近づきました（%s / %s MB）",
+	"ifuto-replay.config.flush_interval": "ファイルへ移す間隔",
+	"ifuto-replay.config.flush_interval.value": "%s 秒",
+	"ifuto-replay.config.flush_interval.tooltip": "メモリに溜めずにファイルへ移す周期。短いほどメモリが軽く、長いほどディスクへの書き込みが減ります",
+	"ifuto-replay.config.low_disk_space": "空き容量の警告",
+	"ifuto-replay.config.low_disk_space.tooltip": "保存先の空きがこれを切ったら知らせます（0 = 見張らない）",
+	"ifuto-replay.config.critical_disk_space": "強制停止する空き容量",
+	"ifuto-replay.config.critical_disk_space.tooltip": "保存先の空きがこれを切ったら、録画を保存して自動で止めます（0 = 止めない）",
+	"ifuto-replay.config.memory": "メモリに持つ量",
+	"ifuto-replay.config.memory.value": "%s MB",
+	"ifuto-replay.config.memory.auto": "自動",
+	"ifuto-replay.config.memory.tooltip": "書き込み待ちとしてメモリに持っていい量。0 = 環境（ヒープの大きさ）から自動で決める（推奨）"
 }

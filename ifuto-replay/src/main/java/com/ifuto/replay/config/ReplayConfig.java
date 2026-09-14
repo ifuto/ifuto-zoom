@@ -57,7 +57,17 @@ public class ReplayConfig {
 	public int queuePackets = 4096;
 
 	/** 書き込み待ちの合計バイト数の上限（MB）。これを超えたら捨て始める */
-	public int queuedMegaBytes = 32;
+	/** メモリに持っていい量（MB）。0 = 環境から自動で決める（推奨） */
+	public int queuedMegaBytes = 0;
+
+	/** 一定周期でファイルへ移す間隔（ミリ秒） */
+	public int flushIntervalMs = 2000;
+
+	/** 空き容量がこれを切ったら警告（MB）。0 = 監視しない */
+	public int lowDiskSpaceMb = 1024;
+
+	/** 空き容量がこれを切ったら録画を保存して強制停止（MB）。0 = 監視しない */
+	public int criticalDiskSpaceMb = 256;
 
 	/** 何ミリ秒おきにシーク用の目印を残すか（0 で作らない） */
 	public int indexIntervalMs = 5000;
@@ -147,6 +157,29 @@ public class ReplayConfig {
 	 * <p>隠す設定が ON なら、長さも中身もわからないように全部 * にする
 	 * （プレビュー・書き出しの両方でこれを通す）。
 	 */
+	/**
+	 * 環境から「メモリに持っていい量」を決める。
+	 *
+	 * <p>Minecraft に割り当てられたヒープの 1/16 を目安にする（8〜256MB）。
+	 * 少なすぎると書き込みが追いつかずパケットを捨てることになり、
+	 * 多すぎるとほかの動作を圧迫するので、どちらにも寄りすぎない値にしている。
+	 */
+	public static int autoQueueMegaBytes() {
+		long heapMb = Runtime.getRuntime().maxMemory() / (1024L * 1024L);
+		long value = heapMb / 16L;
+
+		if (value < 8L) {
+			return 8;
+		}
+
+		return (int) Math.min(256L, value);
+	}
+
+	/** 実際に使う量（0 のときは自動） */
+	public int queueMegaBytes() {
+		return this.queuedMegaBytes > 0 ? this.queuedMegaBytes : autoQueueMegaBytes();
+	}
+
 	public String displayAddress(@Nullable String address) {
 		if (address == null || address.isBlank()) {
 			return "-";
@@ -200,6 +233,9 @@ public class ReplayConfig {
 		this.compression = defaults.compression;
 		this.queuePackets = defaults.queuePackets;
 		this.queuedMegaBytes = defaults.queuedMegaBytes;
+		this.flushIntervalMs = defaults.flushIntervalMs;
+		this.lowDiskSpaceMb = defaults.lowDiskSpaceMb;
+		this.criticalDiskSpaceMb = defaults.criticalDiskSpaceMb;
 		this.indexIntervalMs = defaults.indexIntervalMs;
 		this.maxFileSizeMb = defaults.maxFileSizeMb;
 		this.maxDurationMinutes = defaults.maxDurationMinutes;
@@ -228,7 +264,10 @@ public class ReplayConfig {
 		}
 
 		this.queuePackets = clampStrict(this.queuePackets, 256, 65536, 4096);
-		this.queuedMegaBytes = clampStrict(this.queuedMegaBytes, 4, 1024, 32);
+		this.queuedMegaBytes = clampStrict(this.queuedMegaBytes, 0, 1024, 0);
+		this.flushIntervalMs = clampStrict(this.flushIntervalMs, 100, 60_000, 2000);
+		this.lowDiskSpaceMb = clampStrict(this.lowDiskSpaceMb, 0, 1_048_576, 1024);
+		this.criticalDiskSpaceMb = clampStrict(this.criticalDiskSpaceMb, 0, 1_048_576, 256);
 		this.indexIntervalMs = clamp(this.indexIntervalMs, 0, 600000, 5000);
 		this.maxFileSizeMb = clamp(this.maxFileSizeMb, 0, 1_000_000, 0);
 		this.maxDurationMinutes = clamp(this.maxDurationMinutes, 0, 100_000, 0);

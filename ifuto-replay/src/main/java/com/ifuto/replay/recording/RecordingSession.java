@@ -58,14 +58,15 @@ public final class RecordingSession {
 		this.config = config;
 		this.startedAt = startedAt;
 		this.startedAtEpoch = startedAt;
-		this.maxQueuedBytes = (long) config.queuedMegaBytes * 1024L * 1024L;
+		// 0 のときは環境（ヒープの大きさ）から自動で決める
+		this.maxQueuedBytes = (long) config.queueMegaBytes() * 1024L * 1024L;
 		this.maxDurationMs = config.maxDurationMinutes > 0 ? config.maxDurationMinutes * 60_000L : 0L;
 
 		long maxBytes = config.maxFileSizeMb > 0 ? (long) config.maxFileSizeMb * 1024L * 1024L : 0L;
 
 		this.writer = new ReplayFileWriter(file, mcVersion, serverName, playerName, startedAt,
 				config.recordClientPackets, config.compression, config.indexIntervalMs, maxBytes,
-				config.queuePackets, this.queuedBytes);
+						config.flushIntervalMs, config.queuePackets, this.queuedBytes);
 	}
 
 	/** ファイルを開いて書き込みスレッドを開始する */
@@ -274,6 +275,11 @@ public final class RecordingSession {
 
 		return new Stats(this.file, durationMs, this.writer.bytesWritten(), this.writer.packetsWritten(),
 				this.droppedCount.get(), this.errorCount.get());
+	}
+
+	/** いままでに書いた量（バイト） */
+	public long bytesWritten() {
+		return this.writer.bytesWritten();
 	}
 
 	/** 時間の上限に達したか */

@@ -125,5 +125,19 @@
 	"ifuto-replay.config.snapshot_radius.value": "%s chunks",
 	"ifuto-replay.config.snapshot_radius.off": "Off",
 	"ifuto-replay.config.snapshot_radius.tooltip": "When you start recording mid-session, save the terrain and entities within this radius. 0 = don't save (mid-session recordings won't be playable)",
-	"ifuto-replay.message.snapshot": "Recording started mid-session, so the current world state was saved along with it"
+	"ifuto-replay.message.snapshot": "Recording started mid-session, so the current world state was saved along with it",
+	"ifuto-replay.message.disk_low": "Only %s MB left where recordings are saved. Recording stops automatically when it runs out",
+	"ifuto-replay.message.disk_critical": "Less than %s MB left, so the recording was saved and stopped",
+	"ifuto-replay.message.size_warning": "Getting close to the file size limit (%s / %s MB)",
+	"ifuto-replay.config.flush_interval": "Flush interval",
+	"ifuto-replay.config.flush_interval.value": "%s s",
+	"ifuto-replay.config.flush_interval.tooltip": "How often buffered data is moved to the file. Shorter = less memory, longer = fewer disk writes",
+	"ifuto-replay.config.low_disk_space": "Warn below",
+	"ifuto-replay.config.low_disk_space.tooltip": "Warn when the free space drops below this (0 = never watch)",
+	"ifuto-replay.config.critical_disk_space": "Stop below",
+	"ifuto-replay.config.critical_disk_space.tooltip": "Save and stop recording when the free space drops below this (0 = never stop)",
+	"ifuto-replay.config.memory": "Memory buffer",
+	"ifuto-replay.config.memory.value": "%s MB",
+	"ifuto-replay.config.memory.auto": "Auto",
+	"ifuto-replay.config.memory.tooltip": "How much may sit in memory waiting to be written. 0 = decide from the environment (recommended)"
 }

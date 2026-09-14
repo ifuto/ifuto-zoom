@@ -13,6 +13,7 @@ import net.minecraft.text.Text;
 import org.jspecify.annotations.Nullable;
 
 import java.io.IOException;
+import java.nio.file.FileStore;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
@@ -40,6 +41,14 @@ public final class RecordingManager {
 
 	/** 「途中から」と判定するまでの猶予（ms） */
 	private static final long PARTIAL_START_MS = 5000L;
+
+	/** 空き容量のチェック間隔（ms） */
+	private static final long DISK_CHECK_INTERVAL_MS = 5000L;
+
+	/** 容量の警告は1回でいい */
+	private boolean lowDiskWarned;
+	private boolean sizeWarned;
+	private long lastDiskCheckMs;
 
 	private RecordingManager() {
 	}
@@ -124,6 +133,10 @@ public final class RecordingManager {
 		if (this.session != null) {
 			return false;
 		}
+
+		this.lowDiskWarned = false;
+		this.sizeWarned = false;
+		this.lastDiskCheckMs = System.currentTimeMillis();
 
 		if (handler == null || client == null) {
 			notify(client, "ifuto-replay.message.not_in_game");
@@ -228,8 +241,78 @@ public final class RecordingManager {
 			return;
 		}
 
+		long now = System.currentTimeMillis();
+
+		if (now - this.lastDiskCheckMs >= DISK_CHECK_INTERVAL_MS) {
+			this.lastDiskCheckMs = now;
+
+			if (this.checkStorage(client, current)) {
+				return;
+			}
+		}
+
 		if (current.isOverDuration() || current.isLimitReached()) {
 			this.stop(client);
+		}
+	}
+
+	/**
+	 * 容量の見張り。空きが心細くなったら知らせて、危なくなったら保存して止める。
+	 *
+	 * @return 録画を止めたら true
+	 */
+	private boolean checkStorage(MinecraftClient client, RecordingSession session) {
+		ReplayConfig config = ReplayConfig.get();
+		long freeMb = freeSpaceMb(ReplayConfig.getSaveDirectory());
+
+		// 取れない環境（フォルダが無い等）では何もしない
+		if (freeMb < 0L) {
+			return false;
+		}
+
+		if (config.criticalDiskSpaceMb > 0 && freeMb < config.criticalDiskSpaceMb) {
+			IfutoReplayClient.LOGGER.warn("[ifuto-replay] 保存先の空きが {} MB しかないので録画を止めます", freeMb);
+			notify(client, "ifuto-replay.message.disk_critical", Text.literal(String.valueOf(freeMb)));
+			this.stop(client);
+			return true;
+		}
+
+		if (config.lowDiskSpaceMb > 0 && freeMb < config.lowDiskSpaceMb && !this.lowDiskWarned) {
+			this.lowDiskWarned = true;
+			IfutoReplayClient.LOGGER.warn("[ifuto-replay] 保存先の空きが {} MB です", freeMb);
+			notify(client, "ifuto-replay.message.disk_low", Text.literal(String.valueOf(freeMb)));
+		}
+
+		if (config.maxFileSizeMb > 0 && !this.sizeWarned) {
+			long writtenMb = session.bytesWritten() / (1024L * 1024L);
+
+			if (writtenMb * 100L >= (long) config.maxFileSizeMb * 80L) {
+				this.sizeWarned = true;
+				notify(client, "ifuto-replay.message.size_warning",
+						Text.literal(String.valueOf(writtenMb)),
+						Text.literal(String.valueOf(config.maxFileSizeMb)));
+			}
+		}
+
+		return false;
+	}
+
+	/** 保存先の空き容量（MB）。分からなければ -1 */
+	private static long freeSpaceMb(Path directory) {
+		try {
+			Path target = directory;
+
+			while (target != null && !Files.exists(target)) {
+				target = target.getParent();
+			}
+
+			if (target == null) {
+				return -1L;
+			}
+
+			return Files.getFileStore(target).getUsableSpace() / (1024L * 1024L);
+		} catch (IOException e) {
+			return -1L;
 		}
 	}
 
