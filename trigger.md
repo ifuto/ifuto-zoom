@@ -15,4 +15,4 @@ java: 21
 workdir: ifuto-replay
 artifact_path: ifuto-replay/build/libs/*.jar
 
-note: 操作の記録（+ ドキュメント）
+note: 音声の録音（PC 全体・ffmpeg）
