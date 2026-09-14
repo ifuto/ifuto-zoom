@@ -66,6 +66,9 @@ final class ReplayFileWriter implements Runnable {
 	private Deflater deflater;
 	private byte[] deflateScratch = new byte[8192];
 
+	/** パケットをまたいで辞書を共有するか（共有するときは reset() しない） */
+	private final boolean sharedWindow;
+
 	/** ふつうの録画（先頭にヘッダを書く） */
 	ReplayFileWriter(Path file, String mcVersion, String serverName, String playerName, long startedAt,
 					 boolean recordsC2S, CompressionMode compression, int indexIntervalMs, long maxBytes,
@@ -74,7 +77,8 @@ final class ReplayFileWriter implements Runnable {
 		this(file, compression, indexIntervalMs, maxBytes, flushIntervalMs, queueCapacity, queuedBytes,
 				0L, null);
 
-		writeHeader(this.out, mcVersion, serverName, playerName, startedAt, recordsC2S);
+		writeHeader(this.out, mcVersion, serverName, playerName, startedAt, recordsC2S,
+				compression.sharedWindow());
 	}
 
 	/**
@@ -101,6 +105,7 @@ final class ReplayFileWriter implements Runnable {
 		this.flushIntervalMs = Math.max(100L, flushIntervalMs);
 		this.queuedBytes = queuedBytes;
 		this.preamble = preamble;
+		this.sharedWindow = compression.sharedWindow();
 		this.lastTimeMs = Math.max(0L, initialTimeMs);
 
 		OutputStream stream = new BufferedOutputStream(Files.newOutputStream(file), BUFFER_SIZE);
@@ -222,13 +227,15 @@ final class ReplayFileWriter implements Runnable {
 
 	/** ファイルの先頭（クリップをまとめるときも同じ物を書く） */
 	static void writeHeader(ReplayDataOutput out, String mcVersion, String serverName, String playerName,
-							long startedAt, boolean recordsC2S) throws IOException {
+							long startedAt, boolean recordsC2S, boolean sharedWindow) throws IOException {
 		for (byte magic : ReplayFormat.MAGIC) {
 			out.writeByte(magic);
 		}
 
+		int flags = (recordsC2S ? ReplayFormat.FLAG_HAS_C2S : 0)
+				| (sharedWindow ? ReplayFormat.FLAG_SHARED_DEFLATE : 0);
 		out.writeVarInt(ReplayFormat.VERSION);
-		out.writeVarInt(recordsC2S ? ReplayFormat.FLAG_HAS_C2S : 0);
+		out.writeVarInt(flags);
 		out.writeString(mcVersion);
 		out.writeFixedLong(startedAt);
 		out.writeString(serverName);
@@ -404,11 +411,16 @@ final class ReplayFileWriter implements Runnable {
 		if (deflater == null) {
 			deflater = new Deflater(this.compression.deflateLevel());
 			this.deflater = deflater;
-		} else {
+		} else if (!this.sharedWindow) {
 			deflater.reset();
 		}
 
 		deflater.setInput(input);
+
+		if (this.sharedWindow) {
+			return this.deflateShared(deflater);
+		}
+
 		deflater.finish();
 
 		ByteArrayOutputStream packed = new ByteArrayOutputStream(Math.max(64, input.length / 2));
@@ -424,6 +436,30 @@ final class ReplayFileWriter implements Runnable {
 
 		// 次のためにリセット（中身はもう取り出してある）
 		deflater.reset();
+		return packed.toByteArray();
+	}
+
+	/**
+	 * パケットをまたいで **辞書を共有** して圧縮する（いちばん効く部分）。
+	 *
+	 * <p>パケット1個はだいたい数十バイトなので、1個ずつ圧縮してもほとんど縮まない
+	 * （むしろ膨らむこともある）。そこで reset() せずに直前のパケットを辞書として
+	 * 使いまわし、**SYNC_FLUSH で区切り** を入れながら書く。
+	 */
+	private byte[] deflateShared(Deflater deflater) throws IOException {
+		ByteArrayOutputStream packed = new ByteArrayOutputStream(64);
+		byte[] scratch = this.deflateScratch;
+
+		while (true) {
+			int written = deflater.deflate(scratch, 0, scratch.length, Deflater.SYNC_FLUSH);
+
+			if (written <= 0) {
+				break;
+			}
+
+			packed.write(scratch, 0, written);
+		}
+
 		return packed.toByteArray();
 	}
 

@@ -481,7 +481,7 @@ final class ClipBuffer {
 			try (OutputStream stream = new BufferedOutputStream(Files.newOutputStream(output), COPY_BUFFER)) {
 				ReplayDataOutput out = new ReplayDataOutput(stream);
 				ReplayFileWriter.writeHeader(out, this.mcVersion, this.serverName, this.playerName,
-						parts.get(0).startEpoch, this.recordsC2S);
+						parts.get(0).startEpoch, this.recordsC2S, this.config.compression.sharedWindow());
 				this.writeRegistries(out);
 
 				for (Segment segment : parts) {

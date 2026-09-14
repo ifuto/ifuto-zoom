@@ -11,7 +11,7 @@ public final class ReplayFormat {
 	public static final byte[] MAGIC = {'I', 'F', 'R', 'P'};
 
 	/** フォーマットバージョン */
-	public static final int VERSION = 1;
+	public static final int VERSION = 2;
 
 	/** 保存ファイルの拡張子 */
 	public static final String FILE_EXTENSION = ".ifreplay";
@@ -32,6 +32,16 @@ public final class ReplayFormat {
 
 	/** シーク用のインデックス: 件数 / (時間, ファイル位置) * 件数 / 総時間 */
 	public static final int TAG_INDEX = 4;
+
+	/**
+	 * 圧縮が **パケットをまたいで辞書を共有している**。
+	 *
+	 * <p>パケット1個は数十バイトしかないので、1個ずつ圧縮してもほとんど縮まない。
+	 * この印があるファイルは、先頭から順に deflate を1本つないだ状態で書かれている
+	 * （パケットごとに SYNC_FLUSH で区切ってある）。読む側も **必ず先頭から順に**
+	 * たどることで同じ状態を再現できる。
+	 */
+	public static final int FLAG_SHARED_DEFLATE = 1 << 1;
 
 	/**
 	 * 動的レジストリの写し: 圧縮後の長さ / 展開後の長さ / deflate した NBT。

@@ -27,7 +27,7 @@
 	"ifuto-replay.config.record_client_packets": "Record Input",
 	"ifuto-replay.config.record_client_packets.tooltip": "Also store the packets you send to the server (movement, clicks, chat). Turning it off makes the file even smaller.",
 	"ifuto-replay.config.compression": "Compression",
-	"ifuto-replay.config.compression.tooltip": "Compression runs on the writer thread, so it barely affects the game. Off: lightest. Fast: smaller. Balanced: smallest.",
+	"ifuto-replay.config.compression.tooltip": "Compression applied while writing, on the writer thread, so the game is barely affected. Off: lightest. Fast/Balanced: moderate. Max: the dictionary is shared across packets, which roughly halves the file (and the amount written to disk)",
 	"ifuto-replay.config.compression.off": "Off",
 	"ifuto-replay.config.compression.fast": "Fast",
 	"ifuto-replay.config.compression.balanced": "Balanced",
@@ -218,5 +218,6 @@
 	"ifuto-replay.hud.clip_saving": "✂ Saving clip…",
 	"ifuto-replay.menu.clip.saving": "✂ Saving…",
 	"ifuto-replay.export.realtime": "Render at real speed",
-	"ifuto-replay.export.realtime.tooltip": "On: every frame is drawn at the same pace as the original, so effects that look at real time (motion blur accumulation, temporal shaders, effects that fade with time) behave exactly as they did live. It takes as long as the recording. Off: frames are drawn as fast as the GPU allows (much faster, but those effects change)"
+	"ifuto-replay.export.realtime.tooltip": "On: every frame is drawn at the same pace as the original, so effects that look at real time (motion blur accumulation, temporal shaders, effects that fade with time) behave exactly as they did live. It takes as long as the recording. Off: frames are drawn as fast as the GPU allows (much faster, but those effects change)",
+	"ifuto-replay.config.compression.max": "Max"
 }

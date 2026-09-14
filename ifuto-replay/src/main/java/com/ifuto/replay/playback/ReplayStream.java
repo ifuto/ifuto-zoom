@@ -16,6 +16,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.zip.DataFormatException;
+import java.util.zip.Inflater;
 import java.util.zip.InflaterInputStream;
 
 /**
@@ -62,6 +64,14 @@ public final class ReplayStream implements Closeable {
 	private final Header header;
 	private final NbtCompound registries;
 
+	/** 圧縮がパケットをまたいで辞書を共有しているか（このときは順番に展開する必要がある） */
+	private final boolean sharedWindow;
+
+	/** 共有窓のときの展開器（ファイルの先頭から1本つながっている） */
+	private Inflater inflater;
+
+	private final byte[] scratch = new byte[512];
+
 	private long timeMs;
 	private boolean ended;
 
@@ -95,10 +105,10 @@ public final class ReplayStream implements Closeable {
 						int method = stream.in.readByte();
 
 						if (method == ReplayFormat.METHOD_DEFLATE) {
-							stream.readVarInt();
+							stream.consumeDeflated(length, stream.readVarInt());
+						} else {
+							stream.skipExactly(length);
 						}
-
-						stream.skipExactly(length);
 					}
 					case ReplayFormat.TAG_MARKER -> {
 						stream.timeMs += stream.readVarInt();
@@ -112,8 +122,7 @@ public final class ReplayStream implements Closeable {
 					case ReplayFormat.TAG_INDEX -> durationMs = stream.readIndex();
 					case ReplayFormat.TAG_REGISTRIES -> {
 						int packed = stream.readVarInt();
-						stream.readVarInt();
-						stream.skipExactly(packed);
+						stream.consumeDeflated(packed, stream.readVarInt());
 					}
 					default -> throw new IOException("不明なフレーム: " + tag);
 				}
@@ -141,6 +150,12 @@ public final class ReplayStream implements Closeable {
 
 		int version = this.readVarInt();
 		int flags = this.readVarInt();
+		this.sharedWindow = (flags & ReplayFormat.FLAG_SHARED_DEFLATE) != 0;
+
+		if (this.sharedWindow) {
+			this.inflater = new Inflater();
+		}
+
 		String mcVersion = this.readString();
 		long startedAt = this.in.readLong();
 		String serverName = this.readString();
@@ -230,8 +245,7 @@ public final class ReplayStream implements Closeable {
 				case ReplayFormat.TAG_INDEX -> this.readIndex();
 				case ReplayFormat.TAG_REGISTRIES -> {
 					int packed = this.readVarInt();
-					this.readVarInt();
-					this.skipExactly(packed);
+					this.consumeDeflated(packed, this.readVarInt());
 				}
 				default -> throw new IOException("不明なフレーム: " + tag);
 			}
@@ -242,6 +256,13 @@ public final class ReplayStream implements Closeable {
 
 	@Override
 	public void close() {
+		Inflater opened = this.inflater;
+		this.inflater = null;
+
+		if (opened != null) {
+			opened.end();
+		}
+
 		try {
 			this.in.close();
 		} catch (IOException e) {
@@ -313,7 +334,67 @@ public final class ReplayStream implements Closeable {
 		throw new IOException("可変長longが壊れています");
 	}
 
-	private static byte[] inflate(byte[] packed, int rawLength) throws IOException {
+	/** 中身は要らないが、**共有窓の状態を進める** ために展開する（読み飛ばすとずれる） */
+	void consumeDeflated(int packedLength, int rawLength) throws IOException {
+		if (!this.sharedWindow) {
+			this.skipExactly(packedLength);
+			return;
+		}
+
+		byte[] packed = new byte[packedLength];
+		this.in.readFully(packed);
+		this.inflate(packed, rawLength);
+	}
+
+	private byte[] inflate(byte[] packed, int rawLength) throws IOException {
+		if (!this.sharedWindow) {
+			return inflateStandalone(packed, rawLength);
+		}
+
+		byte[] raw = new byte[rawLength];
+		Inflater inflater = this.inflater;
+		inflater.setInput(packed);
+		int read = 0;
+
+		while (read < rawLength) {
+			int n;
+
+			try {
+				n = inflater.inflate(raw, read, rawLength - read);
+			} catch (DataFormatException e) {
+				throw new IOException("圧縮が壊れています", e);
+			}
+
+			if (n == 0) {
+				if (inflater.needsInput() || inflater.finished()) {
+					throw new IOException("圧縮が途中で終わっています");
+				}
+			}
+
+			read += n;
+		}
+
+		// 区切り（同期マーカー）が入力に残っていることがある。次の setInput で
+		// 捨てられてしまうので、ここで読み切っておく
+		while (inflater.getRemaining() > 0) {
+			int n;
+
+			try {
+				n = inflater.inflate(this.scratch);
+			} catch (DataFormatException e) {
+				throw new IOException("圧縮が壊れています", e);
+			}
+
+			if (n == 0) {
+				break;
+			}
+		}
+
+		return raw;
+	}
+
+	/** ふるい形式（パケットごとに独立した圧縮） */
+	private static byte[] inflateStandalone(byte[] packed, int rawLength) throws IOException {
 		byte[] raw = new byte[rawLength];
 
 		try (InflaterInputStream inflater = new InflaterInputStream(new ByteArrayInputStream(packed))) {

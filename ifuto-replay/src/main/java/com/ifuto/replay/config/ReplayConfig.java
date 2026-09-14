@@ -70,7 +70,7 @@ public class ReplayConfig {
 	// --- 軽さの調整 ---
 
 	/** 保存時の圧縮 */
-	public CompressionMode compression = CompressionMode.OFF;
+	public CompressionMode compression = CompressionMode.MAX;
 
 	/** 書き込み待ちのキューに積めるパケット数（あふれた分は捨てて、ゲーム側は止めない） */
 	public int queuePackets = 4096;
