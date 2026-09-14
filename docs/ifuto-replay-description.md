@@ -297,8 +297,29 @@ The `.ifreplay` format is append-only (no seeking while recording), self-describ
    budget is picked from your environment, and the recording is saved and stopped before the disk runs out
 6. ✅ **Recording what never becomes a packet** — cursor, text as you type, F5, F3 and the open screen,
    delta-encoded and applied to vanilla's own options during playback
-7. ✅ **Audio** (this release) — **Minecraft only** or **whole PC**, muxed at export. **Voice chat is
-   captured separately**, so including Simple Voice Chat is a real on/off switch
+7. ✅ **Audio** — **Minecraft only** or **whole PC**, muxed at export. **Voice chat is captured
+   separately**, so including Simple Voice Chat is a real on/off switch
+8. ✅ **A modern interface** (this release) — rounded surfaces, toggles, thin sliders and a progress bar.
+   Only the drawing changed: input handling, tooltips and narration stay vanilla
+
+## Interface
+
+Not vanilla's widget sprites: **rounded surfaces, a calm dark palette and one accent colour** live in a
+single theme class, so every screen this mod adds looks like the same app.
+
+| Screen | What changed |
+| --- | --- |
+| Pause menu | the four controls sit on **one rounded panel**; while recording, the button turns red and shows the elapsed time |
+| Recording HUD | a **blinking red dot** on a rounded tag instead of a text bullet |
+| Recording list | rounded Play (blue) / Export / Delete (red) buttons over a rounded panel |
+| Settings | **toggles** with a small switch on the right, pickers with **name left / value right**, thin sliders, rounded text fields |
+| Export | the same parts, plus a **progress bar** |
+| Playback | rounded control bar, thin timeline with a **round handle** and yellow markers |
+| Notices | rounded buttons and a soft gradient |
+
+**It still behaves like Minecraft.** Only the drawing is swapped out — mouse handling, tooltips and
+narration are untouched. (Since 1.21.11 the button background can no longer be overridden, so these
+widgets are built from the plain widget class instead.)
 
 ## Requirements
 
