@@ -332,9 +332,14 @@ The `.ifreplay` format is append-only (no seeking while recording), self-describ
    separately**, so including Simple Voice Chat is a real on/off switch
 8. ✅ **A modern interface** — rounded surfaces, toggles, thin sliders and a progress bar. Only the
    drawing changed: input handling, tooltips and narration stay vanilla
-9. ✅ **Clip mode** (this release) — record continuously like Medal, then **save backwards from the
-   moment you press the button**. Segments are rolled on disk so memory never grows, and every segment
-   starts with a world snapshot, so the joined clip is always playable
+9. ✅ **Clip mode** — record continuously like Medal, then **save backwards from the moment you
+   press the button**. Segments are rolled on disk so memory never grows, and every segment starts
+   with a world snapshot, so the joined clip is always playable
+10. ✅ **Clips that last for hours** (this release) — the clip length now goes **up to four hours**
+   and the cache size limit is **derived from the measured write speed** (capped at a quarter of the
+   free space, which also keeps the amount written to your SSD down). Saving no longer **stops the
+   audio**, so saving twice in a row gives both clips their sound. When there is no room left, the
+   clip is reported instead of leaving a broken file behind
 
 ## Interface
 

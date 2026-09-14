@@ -194,7 +194,7 @@
 	"ifuto-replay.config.clip_seconds": "クリップの長さ",
 	"ifuto-replay.config.clip_seconds.tooltip": "さかのぼって保存する長さ（15秒〜4時間）。区間の都合でこれより少し長くなることがあります",
 	"ifuto-replay.config.seconds": "秒",
-	"ifuto-replay.message.clip_started": "クリップ方式で録り始めました（直近 %s 秒を保持します）",
+	"ifuto-replay.message.clip_started": "クリップ方式で録り始めました（直近%sぶんを保持します）",
 	"ifuto-replay.message.clip_saving": "クリップを保存しています…",
 	"ifuto-replay.message.clip_saved": "クリップを保存しました: %s (%s)",
 	"ifuto-replay.message.clip_failed": "クリップを保存できませんでした",
@@ -213,5 +213,6 @@
 	"ifuto-replay.config.clip_buffer": "クリップの一時容量",
 	"ifuto-replay.config.clip_buffer.auto": "自動（実測から）",
 	"ifuto-replay.config.clip_buffer.tooltip": "一時ファイルの上限。自動では「いまの書き込み速度」から必要なぶんだけ置き、足が出そうになったら古い区間から消します（SSD に書く量もこれで抑えられます）",
-	"ifuto-replay.config.gigabytes.value": "%d GB"
+	"ifuto-replay.config.gigabytes.value": "%d GB",
+	"ifuto-replay.message.clip_no_space": "クリップを保存する空きがありません（%s 必要）"
 }

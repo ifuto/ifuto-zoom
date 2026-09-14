@@ -194,7 +194,7 @@
 	"ifuto-replay.config.clip_seconds": "Clip length",
 	"ifuto-replay.config.clip_seconds.tooltip": "How far back to save (15 s up to 4 h). The result can be slightly longer because of how clips are split",
 	"ifuto-replay.config.seconds": "s",
-	"ifuto-replay.message.clip_started": "Clip mode started (keeping the last %s seconds)",
+	"ifuto-replay.message.clip_started": "Recording in clip mode, keeping the last %s",
 	"ifuto-replay.message.clip_saving": "Saving clip…",
 	"ifuto-replay.message.clip_saved": "Clip saved: %s (%s)",
 	"ifuto-replay.message.clip_failed": "Could not save the clip",
@@ -213,5 +213,6 @@
 	"ifuto-replay.config.clip_buffer": "Clip cache size",
 	"ifuto-replay.config.clip_buffer.auto": "Auto (measured)",
 	"ifuto-replay.config.clip_buffer.tooltip": "Upper limit for the temporary files. Auto keeps just what the measured write speed needs and drops the oldest segments past that, which also keeps the amount written to your SSD down",
-	"ifuto-replay.config.gigabytes.value": "%d GB"
+	"ifuto-replay.config.gigabytes.value": "%d GB",
+	"ifuto-replay.message.clip_no_space": "Not enough free space to save the clip (%s needed)"
 }

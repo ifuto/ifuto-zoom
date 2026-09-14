@@ -60,6 +60,9 @@ final class ClipBuffer {
 	/** 上限を決めていないときの天井 */
 	private static final long MAX_CACHE_BYTES = 16L * 1024L * 1024L * 1024L;
 
+	/** 保存するときに、これだけは余分に空いていてほしい */
+	private static final long SAVE_MARGIN_BYTES = 256L * 1024L * 1024L;
+
 	private static final int COPY_BUFFER = 1 << 16;
 
 	private final RecordingSession session;
@@ -237,6 +240,14 @@ final class ClipBuffer {
 		}
 	}
 
+	private static long size(Path file) {
+		try {
+			return Files.size(file);
+		} catch (IOException e) {
+			return 0L;
+		}
+	}
+
 	private static long freeBytes(Path directory) {
 		Path target = directory;
 
@@ -279,6 +290,18 @@ final class ClipBuffer {
 	/** つなげた結果に入れるレジストリ（録り始めに1回だけ渡される） */
 	void setRegistries(NbtCompound nbt) {
 		this.registries = nbt;
+	}
+
+	/** まとめ先の空きが足りない（途中で壊すより先に諦めるため） */
+	static final class NoSpaceException extends IOException {
+		private static final long serialVersionUID = 1L;
+
+		final long neededBytes;
+
+		NoSpaceException(long neededBytes) {
+			super("not enough space for " + neededBytes + " bytes");
+			this.neededBytes = neededBytes;
+		}
 	}
 
 	/** 音声の区間（保存するたびに1つ増える。消さずに取っておく） */
@@ -436,18 +459,37 @@ final class ClipBuffer {
 		Files.createDirectories(directory);
 		Path output = uniqueClip(directory, last.startEpoch);
 		long durationMs = Math.max(0L, last.endMs - parts.get(0).startMs);
+		long needed = 0L;
 
-		try (OutputStream stream = new BufferedOutputStream(Files.newOutputStream(output), COPY_BUFFER)) {
-			ReplayDataOutput out = new ReplayDataOutput(stream);
-			ReplayFileWriter.writeHeader(out, this.mcVersion, this.serverName, this.playerName,
-					parts.get(0).startEpoch, this.recordsC2S);
-			this.writeRegistries(out);
+		for (Segment part : parts) {
+			needed += size(part.file);
+		}
 
-			for (Segment segment : parts) {
-				this.copy(segment.file, out);
+		long free = freeBytes(directory);
+
+		// 置き場が無いのに書き始めると、数GB の壊れたファイルが残るので先に諦める
+		if (free > 0L && needed + SAVE_MARGIN_BYTES > free) {
+			throw new NoSpaceException(needed);
+		}
+
+		try {
+			try (OutputStream stream = new BufferedOutputStream(Files.newOutputStream(output), COPY_BUFFER)) {
+				ReplayDataOutput out = new ReplayDataOutput(stream);
+				ReplayFileWriter.writeHeader(out, this.mcVersion, this.serverName, this.playerName,
+						parts.get(0).startEpoch, this.recordsC2S);
+				this.writeRegistries(out);
+
+				for (Segment segment : parts) {
+					this.copy(segment.file, out);
+				}
+
+				ReplayFileWriter.writeFooter(out, durationMs);
 			}
-
-			ReplayFileWriter.writeFooter(out, durationMs);
+		} catch (Throwable t) {
+			// 途中まで書いた物は残さない（長いクリップでは数GB になる）
+			delete(output);
+			AudioTracks.discard(output);
+			throw t;
 		}
 
 		// 使った区間だけ捨てる（窓の外にある古い区間は、まだ次のクリップには要らないので消してよい）

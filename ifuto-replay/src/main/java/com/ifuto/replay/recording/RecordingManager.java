@@ -189,8 +189,7 @@ public final class RecordingManager {
 			if (created.isClipMode()) {
 				// クリップ方式: 区間を回し始める（区間の先頭に世界の写しが入る）
 				created.startClip(client);
-				notify(client, "ifuto-replay.message.clip_started",
-						Text.literal(String.valueOf(config.clipSeconds)));
+				notify(client, "ifuto-replay.message.clip_started", clipLengthText(config.clipSeconds));
 				this.session = created;
 				return true;
 			}
@@ -449,6 +448,12 @@ public final class RecordingManager {
 
 	/** まとめ終わったので知らせる（ClipBuffer からクライアントスレッドで呼ばれる） */
 	public void notifyClipSaved(MinecraftClient client, @Nullable Path saved, @Nullable Throwable failure) {
+		if (failure instanceof ClipBuffer.NoSpaceException noSpace) {
+			notify(client, "ifuto-replay.message.clip_no_space",
+					Text.literal(formatSize(noSpace.neededBytes)));
+			return;
+		}
+
 		if (failure != null || saved == null) {
 			notify(client, "ifuto-replay.message.clip_failed");
 			return;
@@ -599,6 +604,19 @@ public final class RecordingManager {
 		}
 
 		client.player.sendMessage(Text.translatable(key, args), false);
+	}
+
+	/** 秒を「2 時間」「30 分」「15 秒」にする（設定画面とお知らせで共用） */
+	public static Text clipLengthText(int seconds) {
+		if (seconds >= 3600) {
+			return Text.translatable("ifuto-replay.config.clip_length.hours", seconds / 3600);
+		}
+
+		if (seconds >= 60) {
+			return Text.translatable("ifuto-replay.config.clip_length.minutes", seconds / 60);
+		}
+
+		return Text.translatable("ifuto-replay.config.clip_length.seconds", seconds);
 	}
 
 	// --- いろいろ ---

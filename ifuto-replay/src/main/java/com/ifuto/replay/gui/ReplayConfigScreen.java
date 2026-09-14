@@ -11,6 +11,7 @@ import com.ifuto.replay.gui.widget.ModernCycling;
 import com.ifuto.replay.gui.widget.ModernSlider;
 import com.ifuto.replay.gui.widget.ModernTextField;
 import com.ifuto.replay.gui.widget.ModernToggle;
+import com.ifuto.replay.recording.RecordingManager;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.minecraft.client.MinecraftClient;
@@ -84,7 +85,7 @@ public class ReplayConfigScreen extends Screen {
 						"ifuto-replay.config.clip_mode.tooltip",
 						value -> this.config.clipMode = value),
 				cycle("ifuto-replay.config.clip_seconds", CLIP_LENGTHS, this.config.clipSeconds,
-						ReplayConfigScreen::clipLengthText,
+						RecordingManager::clipLengthText,
 						"ifuto-replay.config.clip_seconds.tooltip",
 						value -> this.config.clipSeconds = value)));
 
@@ -344,19 +345,6 @@ public class ReplayConfigScreen extends Screen {
 
 	/** クリップの一時ファイルの上限として選べる物（MB。0 = 自動） */
 	private static final List<Integer> CLIP_BUFFERS = List.of(0, 1024, 2048, 4096, 8192, 16384);
-
-	/** 秒を「2 時間」「30 分」「15 秒」のように表示する */
-	private static Text clipLengthText(int seconds) {
-		if (seconds >= 3600) {
-			return Text.translatable("ifuto-replay.config.clip_length.hours", seconds / 3600);
-		}
-
-		if (seconds >= 60) {
-			return Text.translatable("ifuto-replay.config.clip_length.minutes", seconds / 60);
-		}
-
-		return Text.translatable("ifuto-replay.config.clip_length.seconds", seconds);
-	}
 
 	/**
 	 * 音声を取れる機器を探す。
