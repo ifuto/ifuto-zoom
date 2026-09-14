@@ -12,7 +12,6 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.tooltip.Tooltip;
-import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.text.Text;
 
 /**
@@ -92,7 +91,7 @@ public final class PauseMenuButtons {
 		ReplayTheme.panel(context, panelX, panelY, panelWidth, panelHeight, 10);
 	}
 
-	private static void refresh(MinecraftClient client, ButtonWidget recordButton, ButtonWidget markerButton) {
+	private static void refresh(MinecraftClient client, ModernButton recordButton, ModernButton markerButton) {
 		boolean recording = RecordingManager.INSTANCE.isRecording();
 
 		if (recording) {
@@ -104,10 +103,8 @@ public final class PauseMenuButtons {
 			recordButton.setMessage(Text.translatable("ifuto-replay.menu.record"));
 		}
 
-		if (recordButton instanceof ModernButton modern) {
-			modern.setTooltip(Tooltip.of(Text.translatable(recording
-					? "ifuto-replay.menu.stop.tooltip" : "ifuto-replay.menu.record.tooltip")));
-		}
+		recordButton.setTooltip(Tooltip.of(Text.translatable(recording
+				? "ifuto-replay.menu.stop.tooltip" : "ifuto-replay.menu.record.tooltip")));
 
 		// しおりは録画中だけ意味があるので、それ以外では押せなくする
 		markerButton.active = recording;

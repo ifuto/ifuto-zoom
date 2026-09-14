@@ -4,7 +4,9 @@ import com.ifuto.replay.gui.theme.ReplayTheme;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.gui.widget.ButtonWidget;
+import net.minecraft.client.gui.narration.NarrationMessageBuilder;
+import net.minecraft.client.gui.widget.ClickableWidget;
+import net.minecraft.client.input.Click;
 import net.minecraft.text.Text;
 
 import java.util.function.Consumer;
@@ -14,7 +16,7 @@ import java.util.function.Consumer;
  *
  * <p>バニラの ON/OFF ボタンは文字だけなので、見ただけで状態がわかるようにしている。
  */
-public class ModernToggle extends ButtonWidget {
+public class ModernToggle extends ClickableWidget {
 	private static final int TRACK_WIDTH = 22;
 	private static final int TRACK_HEIGHT = 12;
 	private static final int KNOB = 8;
@@ -24,8 +26,7 @@ public class ModernToggle extends ButtonWidget {
 
 	public ModernToggle(int x, int y, int width, int height, Text label, boolean initial,
 						Consumer<Boolean> onToggle) {
-		super(x, y, width, height, label, button -> {
-		}, DEFAULT_NARRATION_SUPPLIER);
+		super(x, y, width, height, label);
 		this.value = initial;
 		this.onToggle = onToggle;
 	}
@@ -39,9 +40,13 @@ public class ModernToggle extends ButtonWidget {
 	}
 
 	@Override
-	public void onPress() {
+	public void onClick(Click click, boolean doubled) {
+		if (!this.active) {
+			return;
+		}
+
 		this.value = !this.value;
-		super.onPress();
+		this.playDownSound(MinecraftClient.getInstance().getSoundManager());
 
 		if (this.onToggle != null) {
 			this.onToggle.accept(this.value);
@@ -75,5 +80,15 @@ public class ModernToggle extends ButtonWidget {
 		int knobX = this.value ? trackX + TRACK_WIDTH - KNOB - 2 : trackX + 2;
 		ReplayTheme.fillRound(context, knobX, trackY + (TRACK_HEIGHT - KNOB) / 2, KNOB, KNOB, KNOB / 2,
 				this.value ? ReplayTheme.ACCENT : ReplayTheme.TEXT_DIM);
+
+		if (this.isFocused()) {
+			ReplayTheme.strokeRound(context, this.getX() - 1, this.getY() - 1, this.getWidth() + 2,
+					this.getHeight() + 2, 7, ReplayTheme.ACCENT);
+		}
+	}
+
+	@Override
+	protected void appendClickableNarrations(NarrationMessageBuilder builder) {
+		this.appendDefaultNarrations(builder);
 	}
 }

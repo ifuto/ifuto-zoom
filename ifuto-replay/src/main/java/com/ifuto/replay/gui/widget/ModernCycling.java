@@ -4,7 +4,9 @@ import com.ifuto.replay.gui.theme.ReplayTheme;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.gui.widget.ButtonWidget;
+import net.minecraft.client.gui.narration.NarrationMessageBuilder;
+import net.minecraft.client.gui.widget.ClickableWidget;
+import net.minecraft.client.input.Click;
 import net.minecraft.text.Text;
 
 import java.util.List;
@@ -17,7 +19,7 @@ import java.util.function.Function;
  * <p>バニラの「値つきボタン」は1行の文字に全部入れるので長くなりがち。
  * ここでは **左に名前、右に値** と分けて、見やすくしている。
  */
-public class ModernCycling<T> extends ButtonWidget {
+public class ModernCycling<T> extends ClickableWidget {
 	private static final int PADDING = 8;
 
 	private final List<T> values;
@@ -27,31 +29,37 @@ public class ModernCycling<T> extends ButtonWidget {
 
 	public ModernCycling(int x, int y, int width, int height, Text label, List<T> values, T initial,
 						 Function<T, Text> formatter, Consumer<T> onChanged) {
-		super(x, y, width, height, label, button -> {
-		}, DEFAULT_NARRATION_SUPPLIER);
+		super(x, y, width, height, label);
 		this.values = values;
 		this.formatter = formatter;
 		this.onChanged = onChanged;
 		this.index = Math.max(0, values.indexOf(initial));
 	}
 
-	/** 押すたびに次へ */
+	public T value() {
+		return this.values.isEmpty() ? null : this.values.get(this.index);
+	}
+
+	public void setValue(T value) {
+		int found = this.values.indexOf(value);
+
+		if (found >= 0) {
+			this.index = found;
+		}
+	}
+
 	@Override
-	public void onPress() {
-		if (this.values.isEmpty()) {
+	public void onClick(Click click, boolean doubled) {
+		if (!this.active || this.values.isEmpty()) {
 			return;
 		}
 
 		this.index = (this.index + 1) % this.values.size();
-		super.onPress();
+		this.playDownSound(MinecraftClient.getInstance().getSoundManager());
 
 		if (this.onChanged != null) {
 			this.onChanged.accept(this.values.get(this.index));
 		}
-	}
-
-	public T value() {
-		return this.values.isEmpty() ? null : this.values.get(this.index);
 	}
 
 	@Override
@@ -80,5 +88,10 @@ public class ModernCycling<T> extends ButtonWidget {
 			ReplayTheme.strokeRound(context, this.getX() - 1, this.getY() - 1, this.getWidth() + 2,
 					this.getHeight() + 2, 7, ReplayTheme.ACCENT);
 		}
+	}
+
+	@Override
+	protected void appendClickableNarrations(NarrationMessageBuilder builder) {
+		this.appendDefaultNarrations(builder);
 	}
 }

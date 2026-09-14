@@ -53,7 +53,7 @@ public class ModernSlider extends SliderWidget {
 	}
 
 	@Override
-	protected void renderWidget(DrawContext context, int mouseX, int mouseY, float delta) {
+	public void renderWidget(DrawContext context, int mouseX, int mouseY, float delta) {
 		MinecraftClient client = MinecraftClient.getInstance();
 		TextRenderer renderer = client.textRenderer;
 		boolean active = this.active;

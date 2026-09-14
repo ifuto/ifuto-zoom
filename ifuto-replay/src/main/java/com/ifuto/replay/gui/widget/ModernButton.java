@@ -4,16 +4,21 @@ import com.ifuto.replay.gui.theme.ReplayTheme;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.gui.widget.ButtonWidget;
+import net.minecraft.client.gui.narration.NarrationMessageBuilder;
+import net.minecraft.client.gui.widget.ClickableWidget;
+import net.minecraft.client.input.Click;
 import net.minecraft.text.Text;
+
+import java.util.function.Consumer;
 
 /**
  * 今っぽい見た目のボタン（角丸・ふわっとしたホバー・はっきりした色）。
  *
- * <p>バニラの {@link ButtonWidget} をそのまま継承しているので、置き場所や押したときの扱いは
- * バニラとまったく同じ。**描き方だけ** 差し替えている（だから壊れにくい）。
+ * <p>1.21.11 の {@link net.minecraft.client.gui.widget.ButtonWidget} は背景を描く部分が
+ * `final` で固定されているので、ここでは {@link ClickableWidget} から作っている。
+ * 押されたときの扱い（`onClick`）と読み上げはバニラの仕組みに乗る。
  */
-public class ModernButton extends ButtonWidget {
+public class ModernButton extends ClickableWidget {
 	public enum Style {
 		/** ふつう */
 		NORMAL,
@@ -26,13 +31,29 @@ public class ModernButton extends ButtonWidget {
 	}
 
 	private final Style style;
+	private final Consumer<ModernButton> onPress;
 	private final int radius;
 	private float hover;
 
-	public ModernButton(int x, int y, int width, int height, Text message, PressAction onPress, Style style) {
-		super(x, y, width, height, message, onPress, DEFAULT_NARRATION_SUPPLIER);
+	public ModernButton(int x, int y, int width, int height, Text message, Consumer<ModernButton> onPress,
+						Style style) {
+		super(x, y, width, height, message);
+		this.onPress = onPress;
 		this.style = style;
 		this.radius = Math.min(8, height / 2);
+	}
+
+	@Override
+	public void onClick(Click click, boolean doubled) {
+		if (!this.active) {
+			return;
+		}
+
+		this.playDownSound(MinecraftClient.getInstance().getSoundManager());
+
+		if (this.onPress != null) {
+			this.onPress.accept(this);
+		}
 	}
 
 	@Override
@@ -63,11 +84,10 @@ public class ModernButton extends ButtonWidget {
 		}
 
 		Text message = this.getMessage();
-		int maxWidth = this.getWidth() - 8;
+		int maxWidth = this.getWidth() - 10;
 		int textWidth = renderer.getWidth(message);
 
 		if (textWidth > maxWidth && maxWidth > renderer.getWidth("...")) {
-			// 入りきらないときは「...」で切る（バニラと同じ考え方）
 			message = Text.literal(renderer.trimToWidth(message.getString(),
 					maxWidth - renderer.getWidth("...")) + "...");
 			textWidth = renderer.getWidth(message);
@@ -76,6 +96,11 @@ public class ModernButton extends ButtonWidget {
 		int textX = this.getX() + (this.getWidth() - textWidth) / 2;
 		int textY = this.getY() + (this.getHeight() - renderer.fontHeight) / 2 + 1;
 		context.drawText(renderer, message, textX, textY, this.textColor(), true);
+	}
+
+	@Override
+	protected void appendClickableNarrations(NarrationMessageBuilder builder) {
+		this.appendDefaultNarrations(builder);
 	}
 
 	private int baseColor() {
