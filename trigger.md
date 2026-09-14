@@ -15,4 +15,4 @@ java: 21
 workdir: ifuto-replay
 artifact_path: ifuto-replay/build/libs/*.jar
 
-note: マッピング修正して再ビルド
+note: getSyncedPos に修正して再ビルド
