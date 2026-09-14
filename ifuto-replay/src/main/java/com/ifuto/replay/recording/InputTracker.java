@@ -111,7 +111,7 @@ public final class InputTracker {
 			session.recordInput(encode(ReplayFormat.INPUT_PERSPECTIVE, out -> out.writeByte(perspective)));
 		}
 
-		int debug = client.options.debugEnabled ? 1 : 0;
+		int debug = client.getDebugHud().shouldShowDebugHud() ? 1 : 0;
 
 		if (debug != this.lastDebug) {
 			this.lastDebug = debug;

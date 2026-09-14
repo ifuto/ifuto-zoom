@@ -332,10 +332,6 @@ public final class RecordingSession {
 		return System.currentTimeMillis() - this.startedAt;
 	}
 
-	public long bytesWritten() {
-		return this.writer.bytesWritten();
-	}
-
 	public long packetCount() {
 		return this.packetCount.get();
 	}

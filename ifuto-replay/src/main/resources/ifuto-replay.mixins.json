@@ -8,6 +8,7 @@
 		"ClientConnectionMixin",
 		"ClientPlayNetworkHandlerMixin",
 		"GameRendererMixin",
+		"MinecraftClientAccessor",
 		"MouseAccessor"
 	],
 	"injectors": {

@@ -2,6 +2,7 @@ package com.ifuto.replay.playback;
 
 import com.ifuto.replay.IfutoReplayClient;
 import com.ifuto.replay.gui.BlankScreen;
+import com.ifuto.replay.mixin.MinecraftClientAccessor;
 import com.ifuto.replay.mixin.MouseAccessor;
 import com.ifuto.replay.recording.RegistrySnapshot;
 import com.ifuto.replay.recording.ReplayFormat;
@@ -13,6 +14,7 @@ import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.network.ClientConnectionState;
 import net.minecraft.client.network.ClientPlayNetworkHandler;
 import net.minecraft.client.network.ClientPlayerEntity;
+import net.minecraft.client.gui.hud.debug.DebugHudProfile;
 import net.minecraft.client.option.Perspective;
 import net.minecraft.client.world.ClientChunkLoadProgress;
 import net.minecraft.network.ClientConnection;
@@ -362,7 +364,14 @@ public final class ReplayPlayback implements ReplayStream.Sink {
 		}
 
 		if (this.pendingDebug != null) {
-			this.client.options.debugEnabled = this.pendingDebug;
+			boolean on = this.pendingDebug;
+			DebugHudProfile profile = ((MinecraftClientAccessor) this.client).ifutoReplay$getDebugHudProfile();
+
+			// すでに同じ状態なら書き込まない（設定ファイルの書き直しを避ける）
+			if (profile != null && this.client.getDebugHud().shouldShowDebugHud() != on) {
+				profile.setF3Enabled(on);
+			}
+
 			this.pendingDebug = null;
 		}
 
