@@ -49,6 +49,9 @@ public class ReplayConfig {
 	/** クリップとして残す長さ（秒）。実際は区間の都合でこれより少し長くなる */
 	public int clipSeconds = 30;
 
+	/** 保存したクリップを残す時間（時間）。これより古い物は自動で消す。0 = 消さない */
+	public int clipKeepHours = 24;
+
 	/** KeepAlive / Ping などの通信維持用パケットを除外する */
 	public boolean skipKeepAlive = true;
 
@@ -296,6 +299,7 @@ public class ReplayConfig {
 		this.recordVoiceChat = defaults.recordVoiceChat;
 		this.clipMode = defaults.clipMode;
 		this.clipSeconds = defaults.clipSeconds;
+		this.clipKeepHours = defaults.clipKeepHours;
 	}
 
 	/** 手書き編集や古いファイルで壊れていても落ちないように丸める */
@@ -336,6 +340,7 @@ public class ReplayConfig {
 
 		this.audioBitrateKbps = clampStrict(this.audioBitrateKbps, 32, 512, 96);
 		this.clipSeconds = clampStrict(this.clipSeconds, 5, 600, 30);
+		this.clipKeepHours = clampStrict(this.clipKeepHours, 0, 720, 24);
 
 		if (this.audioDevice == null) {
 			this.audioDevice = "";

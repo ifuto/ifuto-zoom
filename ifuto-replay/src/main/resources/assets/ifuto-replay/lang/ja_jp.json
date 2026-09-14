@@ -202,5 +202,9 @@
 	"ifuto-replay.message.clip_stopped": "クリップ方式を止めました（保存していない分は残りません）",
 	"ifuto-replay.message.clip_disabled": "クリップ方式がオンになっていません（設定から切り替えられます）",
 	"ifuto-replay.hud.clip": "✂ クリップ %s / %s",
-	"ifuto-replay.menu.clip.buffered": "いま %s ぶん残っています"
+	"ifuto-replay.menu.clip.buffered": "いま %s ぶん残っています",
+	"ifuto-replay.config.clip_keep": "クリップを残す時間",
+	"ifuto-replay.config.clip_keep.tooltip": "押して保存したクリップのうち、この時間より古い物を自動で消します（音声ファイルも一緒）。「消さない」にすると、自分で消すまで残ります",
+	"ifuto-replay.config.clip_keep.never": "消さない",
+	"ifuto-replay.config.clip_keep.hours": "%d 時間"
 }

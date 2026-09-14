@@ -202,5 +202,9 @@
 	"ifuto-replay.message.clip_stopped": "Clip mode stopped (anything you did not save is gone)",
 	"ifuto-replay.message.clip_disabled": "Clip mode is off — you can turn it on in the settings",
 	"ifuto-replay.hud.clip": "✂ Clip %s / %s",
-	"ifuto-replay.menu.clip.buffered": "Holding %s right now"
+	"ifuto-replay.menu.clip.buffered": "Holding %s right now",
+	"ifuto-replay.config.clip_keep": "Keep clips for",
+	"ifuto-replay.config.clip_keep.tooltip": "Saved clips older than this are deleted automatically, together with their audio. Choose \"Forever\" to keep them until you delete them yourself",
+	"ifuto-replay.config.clip_keep.never": "Forever",
+	"ifuto-replay.config.clip_keep.hours": "%d h"
 }

@@ -96,6 +96,8 @@ final class ClipBuffer {
 
 		// 前回が途中で終わっていた（クラッシュ等）ときの残りを先に片付ける
 		clearCache();
+		// 置きっぱなしのクリップも、この機会に片付ける
+		ClipCleanup.prune(this.config.clipKeepHours);
 
 		// 音声は区間と違って通しで1本（止めると音が途切れるので）
 		RecordingManager.INSTANCE.startClipAudio(client, this.audioBase);
@@ -369,6 +371,10 @@ final class ClipBuffer {
 		this.openSegment();
 		this.session.captureSnapshot(client);
 		RecordingManager.INSTANCE.notifyClipSaved(client, saved, failure);
+
+		if (saved != null) {
+			ClipCleanup.prune(this.config.clipKeepHours);
+		}
 	}
 
 	private void writeRegistries(ReplayDataOutput out) throws IOException {

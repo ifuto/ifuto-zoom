@@ -205,6 +205,10 @@ How it stays light:
 Because clips are split at segment boundaries, a saved clip ends up between **the configured length and
 1.5× that**. Temporary files live in `<save folder>/.clip-cache/` and are removed when you stop.
 
+Saved clips are the files whose name starts with `clip_`. Anything older than **Keep clips for**
+(24 hours by default) is cleaned up automatically when clip mode starts and after every save — audio
+files included. Set it to *Forever* to keep them until you delete them by hand.
+
 ## Export
 
 Hit **Export** in the recordings list to turn a recording into an `.mp4`.

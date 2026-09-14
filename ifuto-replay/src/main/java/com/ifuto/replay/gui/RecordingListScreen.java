@@ -1,6 +1,7 @@
 package com.ifuto.replay.gui;
 
 import com.ifuto.replay.IfutoReplayClient;
+import com.ifuto.replay.audio.AudioTracks;
 import com.ifuto.replay.config.ReplayConfig;
 import com.ifuto.replay.gui.theme.ReplayTheme;
 import com.ifuto.replay.gui.widget.ModernButton;
@@ -143,6 +144,8 @@ public class RecordingListScreen extends Screen {
 
 			try {
 				Files.delete(info.file());
+				// 音声の .ogg が残らないように、こちらも一緒に消す
+				AudioTracks.discard(info.file());
 			} catch (IOException e) {
 				IfutoReplayClient.LOGGER.warn("[ifuto-replay] {} を消せませんでした", info.file(), e);
 			}

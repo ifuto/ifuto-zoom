@@ -88,6 +88,17 @@ public class ReplayConfigScreen extends Screen {
 						"ifuto-replay.config.clip_seconds.tooltip",
 						value -> this.config.clipSeconds = value)));
 
+		// 1.6行目: クリップの置き場の整理
+		content.add(row(
+				cycle("ifuto-replay.config.clip_keep", List.of(0, 1, 4, 12, 24, 72, 168),
+						this.config.clipKeepHours,
+						value -> value <= 0
+								? Text.translatable("ifuto-replay.config.clip_keep.never")
+								: Text.translatable("ifuto-replay.config.clip_keep.hours", value),
+						"ifuto-replay.config.clip_keep.tooltip",
+						value -> this.config.clipKeepHours = value),
+				null));
+
 		// 2行目: 軽さの調整
 		content.add(row(
 				cycle("ifuto-replay.config.compression", List.of(CompressionMode.values()),
