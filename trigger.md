@@ -15,4 +15,4 @@ java: 21
 workdir: ifuto-replay
 artifact_path: ifuto-replay/build/libs/*.jar
 
-note: 画面をモダンに（一覧・設定・書き出し・再生）
+note: GUI の説明と 0.8.0
