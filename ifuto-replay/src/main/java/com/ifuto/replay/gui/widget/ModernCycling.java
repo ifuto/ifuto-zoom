@@ -7,6 +7,7 @@ import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.narration.NarrationMessageBuilder;
 import net.minecraft.client.gui.widget.ClickableWidget;
 import net.minecraft.client.gui.Click;
+import net.minecraft.client.input.KeyInput;
 import net.minecraft.text.Text;
 
 import java.util.List;
@@ -50,6 +51,21 @@ public class ModernCycling<T> extends ClickableWidget {
 
 	@Override
 	public void onClick(Click click, boolean doubled) {
+		this.press();
+	}
+
+	/** 選んだ状態で Enter / Space を押しても次へ進む */
+	@Override
+	public boolean keyPressed(KeyInput input) {
+		if (!this.active || !this.visible || !ModernKeys.isActivation(input)) {
+			return false;
+		}
+
+		this.press();
+		return true;
+	}
+
+	public void press() {
 		if (!this.active || this.values.isEmpty()) {
 			return;
 		}
