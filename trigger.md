@@ -15,4 +15,4 @@ java: 21
 workdir: ifuto-replay
 artifact_path: ifuto-replay/build/libs/*.jar
 
-note: GUI の説明と 0.8.0
+note: ボタンの色と長い項目名の調整
