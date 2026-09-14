@@ -15,4 +15,4 @@ java: 21
 workdir: ifuto-replay
 artifact_path: ifuto-replay/build/libs/*.jar
 
-note: ボタンの色と長い項目名の調整
+note: キーボード操作（Enter / Space）
