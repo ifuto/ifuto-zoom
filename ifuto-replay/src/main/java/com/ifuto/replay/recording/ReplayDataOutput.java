@@ -81,6 +81,12 @@ final class ReplayDataOutput {
 		this.position += bytes.length;
 	}
 
+	/** 配列の先頭 length バイトだけ流し込む（読みながら書き出すとき用） */
+	void writeBytes(byte[] bytes, int length) throws IOException {
+		this.out.write(bytes, 0, length);
+		this.position += length;
+	}
+
 	/** ByteBuf の中身をそのまま流し込む（コピーなし） */
 	void writeBytes(ByteBuf buffer, int length) throws IOException {
 		buffer.readBytes(this.out, length);
