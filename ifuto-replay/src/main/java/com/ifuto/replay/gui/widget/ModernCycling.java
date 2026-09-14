@@ -4,7 +4,7 @@ import com.ifuto.replay.gui.theme.ReplayTheme;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.gui.narration.NarrationMessageBuilder;
+import net.minecraft.client.gui.screen.narration.NarrationMessageBuilder;
 import net.minecraft.client.gui.widget.ClickableWidget;
 import net.minecraft.client.input.Click;
 import net.minecraft.text.Text;
