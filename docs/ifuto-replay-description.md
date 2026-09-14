@@ -15,10 +15,11 @@ An ultra-lightweight packet recorder for Minecraft 1.21.11. Save the network str
 Ifuto Replay does not capture your screen. It saves the **network packets** the server sends you (and,
 optionally, the ones you send back) while you play — so recording costs almost nothing, and the
 finished recording is still the world itself: **playback and export can use any FPS, any resolution and
-any camera angle you want.**
+any camera angle you want.** **Start recording whenever you like, even in the middle of a session.**
 
-> **Status: recording core, preview playback and video export are all in.** (A replay still has to be
-> recorded from the moment you join a world — see the roadmap at the bottom.)
+> **Status: recording core, preview playback and video export are all in.** You can also start recording
+> in the middle of a session — the current world state is saved along with it.
+> (Roadmap is at the bottom.)
 
 ## Why packet recording?
 
@@ -90,9 +91,40 @@ single `.ifreplay` file be played back on its own.
 Because it is just a normal world being rendered, **Iris shaders and resource packs apply to the replay** —
 change them mid-playback and you see the result immediately.
 
-> **Important:** a replay can only be played back if it was recorded **from the moment you joined** the
-> world/server (the file needs the packet that creates the world). Turn on **Auto Record**, or rejoin
-> before you start recording.
+> **Note:** a replay needs the packet that creates the world. When you start recording mid-session,
+> Ifuto Replay writes one itself (see the next section), so mid-session recordings are playable too.
+> The only exception is a world you were already in **before** the mod was installed — rejoin once and
+> it works.
+
+## Recording mid-session (world snapshot)
+
+**Hit record whenever you feel like it** — you don't have to be there from the moment you joined.
+
+Packet replays need the packet that creates the world, and it is long gone by then. Asking the server to
+send it again is out of the question (the mod never sends anything), so Ifuto Replay **builds the same
+packets from the world you already have** and writes them at the front of the recording:
+
+| Saved | What |
+| --- | --- |
+| The world itself | the `GameJoin` you received when joining (plus `Respawn` if you changed dimension since) |
+| Terrain | blocks, biomes, block entities and **lighting** around you (**6 chunks** by default) |
+| Entities | mobs, items, falling blocks in range: position, rotation, data, equipment, effects |
+| You | position, rotation, health, food, XP, **inventory**, abilities |
+| World | weather (rain and thunder levels) |
+
+- Packets are built with **the same constructors the vanilla server uses**
+  (`ChunkDataS2CPacket(WorldChunk, LightingProvider, ...)`, `EntitySpawnS2CPacket(...)`, and friends),
+  so there is no hand-written protocol to keep up to date.
+- It happens **once**, when you hit record (tens of milliseconds for a few hundred chunks; the log tells
+  you what was saved).
+- The radius is configurable. **0 turns it off** (starting a recording gets cheaper, but mid-session
+  recordings are no longer playable).
+
+Known limits:
+
+- **Other players appear from the moment the server sends their info** during the recording (tab-list
+  data isn't part of the snapshot).
+- A world you joined **before installing the mod** has no `GameJoin` to reuse — rejoin once.
 
 ## Export
 
@@ -138,6 +170,7 @@ How it differs from screen recording:
 | Record Input | Also store the packets you send (C2S) | On |
 | Skip Keep-Alives | Leave out keep-alive and ping packets | On |
 | Store Registries | Keep a copy of the dynamic registries in the file, so a recording can be played back on its own | On |
+| Save World State | When starting mid-session, save terrain and entities within this radius (0 = off) | 6 chunks |
 | Compression | Off / Fast / Balanced (runs on the writer thread) | Off |
 | Size Limit | Stop and save past this size (0 = unlimited) | Unlimited |
 | Time Limit | Stop and save after this long (0 = unlimited) | Unlimited |
@@ -190,8 +223,8 @@ The `.ifreplay` format is append-only (no seeking while recording), self-describ
    drag-to-seek, live resource pack and Iris shader switching
 3. ✅ **Export** (this release) — render at **any FPS, resolution and bitrate**, pipe raw frames to
    ffmpeg, with range selection and cancel
-4. ⬜ **Mid-session recordings** — snapshot the world state when you start recording, so every recording
-   is playable no matter when you hit record
+4. ✅ **Mid-session recordings** (this release) — snapshot the world state as vanilla packets when you
+   hit record, so a recording is playable no matter when you started it
 
 ## Requirements
 
