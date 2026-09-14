@@ -185,5 +185,6 @@
 	"ifuto-replay.export.audio_dropped": "+ no audio (there is no voice-chat-free track)",
 	"ifuto-replay.config.record_voice_chat": "Record voice chat",
 	"ifuto-replay.config.record_voice_chat.tooltip": "Record Simple Voice Chat voices into a separate file (include or drop them when exporting)",
-	"ifuto-replay.message.audio_fallback": "Could not capture Minecraft-only audio, recording whole-PC audio instead (%s). Change it under \"Record audio\" in the settings"
+	"ifuto-replay.message.audio_fallback": "Could not capture Minecraft-only audio, recording whole-PC audio instead (%s). Change it under \"Record audio\" in the settings",
+	"ifuto-replay.menu.stop.tooltip": "Stop recording and save what you have so far"
 }

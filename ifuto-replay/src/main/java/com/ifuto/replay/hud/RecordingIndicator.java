@@ -12,6 +12,8 @@ import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.render.RenderTickCounter;
 
+import com.ifuto.replay.gui.theme.ReplayTheme;
+
 /**
  * 録画中だけ画面の隅に出る小さなインジケータ。
  *
@@ -19,10 +21,10 @@ import net.minecraft.client.render.RenderTickCounter;
  */
 @Environment(EnvType.CLIENT)
 public class RecordingIndicator implements HudElement {
-	private static final int MARGIN = 4;
-	private static final int BACKGROUND = 0x66000000;
-	private static final int DOT_ON = 0xFFFF5555;
-	private static final int DOT_OFF = 0xFF888888;
+	private static final int MARGIN = 5;
+	private static final int PADDING_X = 8;
+	private static final int DOT_SIZE = 6;
+	private static final int DOT_GAP = 6;
 
 	@Override
 	public void render(DrawContext context, RenderTickCounter tickCounter) {
@@ -44,26 +46,41 @@ public class RecordingIndicator implements HudElement {
 			return;
 		}
 
+		// 点滅（1秒ごと。録っていることがひと目でわかるように）
 		boolean blink = System.currentTimeMillis() % 1000L < 600L;
-		String text = (blink ? "● " : "○ ")
-				+ RecordingManager.formatDuration(session.elapsedMillis())
+		String text = RecordingManager.formatDuration(session.elapsedMillis())
 				+ "  " + RecordingManager.formatSize(session.bytesWritten());
 
 		TextRenderer renderer = client.textRenderer;
 		int textWidth = renderer.getWidth(text);
+		int boxWidth = PADDING_X + DOT_SIZE + DOT_GAP + textWidth + PADDING_X;
+		int boxHeight = renderer.fontHeight + 8;
 		IndicatorPosition position = config.indicatorPosition;
 
 		int x = switch (position) {
 			case TOP_LEFT, BOTTOM_LEFT -> MARGIN;
-			case TOP_RIGHT, BOTTOM_RIGHT -> context.getScaledWindowWidth() - textWidth - MARGIN;
+			case TOP_RIGHT, BOTTOM_RIGHT -> context.getScaledWindowWidth() - boxWidth - MARGIN;
 		};
 
 		int y = switch (position) {
 			case TOP_LEFT, TOP_RIGHT -> MARGIN;
-			case BOTTOM_LEFT, BOTTOM_RIGHT -> context.getScaledWindowHeight() - renderer.fontHeight - MARGIN;
+			case BOTTOM_LEFT, BOTTOM_RIGHT -> context.getScaledWindowHeight() - boxHeight - MARGIN;
 		};
 
-		context.fill(x - 3, y - 3, x + textWidth + 3, y + renderer.fontHeight + 1, BACKGROUND);
-		context.drawTextWithShadow(renderer, text, x, y, blink ? DOT_ON : DOT_OFF);
+		// 角丸の「札」（影つき）
+		ReplayTheme.fillRound(context, x + 1, y + 2, boxWidth, boxHeight, boxHeight / 2, ReplayTheme.SHADOW);
+		ReplayTheme.fillRound(context, x, y, boxWidth, boxHeight, boxHeight / 2, ReplayTheme.SURFACE);
+		ReplayTheme.strokeRound(context, x, y, boxWidth, boxHeight, boxHeight / 2,
+				ReplayTheme.withAlpha(ReplayTheme.RECORD, blink ? 0x66 : 0x33));
+
+		// 赤い丸（点滅）
+		int dotX = x + PADDING_X;
+		int dotY = y + (boxHeight - DOT_SIZE) / 2;
+		ReplayTheme.fillRound(context, dotX, dotY, DOT_SIZE, DOT_SIZE, DOT_SIZE / 2,
+				blink ? ReplayTheme.RECORD : ReplayTheme.withAlpha(ReplayTheme.RECORD, 0x55));
+
+		int textX = dotX + DOT_SIZE + DOT_GAP;
+		int textY = y + (boxHeight - renderer.fontHeight) / 2;
+		context.drawText(renderer, text, textX, textY, ReplayTheme.TEXT, true);
 	}
 }
