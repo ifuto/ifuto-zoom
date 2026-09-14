@@ -1,9 +1,10 @@
 package com.ifuto.replay.gui;
 
+import com.ifuto.replay.gui.theme.ReplayTheme;
+import com.ifuto.replay.gui.widget.ModernButton;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.screen.ScreenTexts;
-import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.client.gui.widget.DirectionalLayoutWidget;
 import net.minecraft.client.gui.widget.TextWidget;
 import net.minecraft.client.gui.widget.ThreePartsLayoutWidget;
@@ -36,9 +37,8 @@ public class NoticeScreen extends Screen {
 		text.setMaxWidth(Math.min(MAX_TEXT_WIDTH, this.width - 40));
 		body.add(text);
 
-		this.layout.addFooter(ButtonWidget.builder(ScreenTexts.OK, button -> this.close())
-				.width(200)
-				.build());
+		this.layout.addFooter(new ModernButton(0, 0, 200, 20, ScreenTexts.OK, button -> this.close(),
+				ModernButton.Style.PRIMARY));
 
 		this.layout.forEachChild(this::addDrawableChild);
 		this.refreshWidgetPositions();
@@ -47,6 +47,13 @@ public class NoticeScreen extends Screen {
 	@Override
 	protected void refreshWidgetPositions() {
 		this.layout.refreshPositions();
+	}
+
+	/** うっすら暗くするだけ */
+	@Override
+	public void renderBackground(DrawContext context, int mouseX, int mouseY, float deltaTicks) {
+		super.renderBackground(context, mouseX, mouseY, deltaTicks);
+		ReplayTheme.veil(context, this.width, this.height);
 	}
 
 	@Override

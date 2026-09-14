@@ -134,4 +134,32 @@ public final class ReplayTheme {
 	public static void separator(DrawContext context, int x, int y, int width) {
 		context.fill(x, y, x + width, y + 1, BORDER);
 	}
+
+	/** 既定の角丸で浮く面 */
+	public static void panel(DrawContext context, int x, int y, int width, int height) {
+		panel(context, x, y, width, height, 10);
+	}
+
+	/**
+	 * 画面全体にうっすら暗さを足す。
+	 *
+	 * <p>バニラの「背景を暗くする」だけだと色がのっぺりするので、
+	 * 上下にグラデを重ねて奥行きを出している。
+	 */
+	public static void veil(DrawContext context, int width, int height) {
+		context.fillGradient(0, 0, width, height / 2, 0x4A0A0F14, 0x00000000);
+		context.fillGradient(0, height / 2, width, height, 0x00000000, 0x660A0F14);
+	}
+
+	/** 進捗バー（0〜1） */
+	public static void progress(DrawContext context, int x, int y, int width, int height, float ratio) {
+		fillRound(context, x, y, width, height, height / 2, SURFACE_INPUT);
+		strokeRound(context, x, y, width, height, height / 2, BORDER);
+
+		int filled = (int) Math.round(width * Math.max(0F, Math.min(1F, ratio)));
+
+		if (filled > 2) {
+			fillRound(context, x, y, filled, height, height / 2, ACCENT);
+		}
+	}
 }

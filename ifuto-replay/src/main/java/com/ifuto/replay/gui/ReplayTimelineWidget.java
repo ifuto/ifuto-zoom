@@ -1,5 +1,6 @@
 package com.ifuto.replay.gui;
 
+import com.ifuto.replay.gui.theme.ReplayTheme;
 import com.ifuto.replay.playback.ReplayPlayback;
 import com.ifuto.replay.playback.ReplayStream;
 import net.minecraft.client.gui.Click;
@@ -16,10 +17,8 @@ import net.minecraft.util.math.MathHelper;
  * （作り直しの予算は {@link ReplayPlayback} 側で 1 フレームずつ抑えている）。
  */
 final class ReplayTimelineWidget extends ClickableWidget {
-	private static final int LINE_COLOR = 0xFF9E9E9E;
-	private static final int FILLED_COLOR = 0xFF4FC3F7;
+	private static final int TRACK_HEIGHT = 4;
 	private static final int MARKER_COLOR = 0xFFFFEB3B;
-	private static final int HANDLE_COLOR = 0xFFFFFFFF;
 
 	private final ReplayPlayback playback;
 	private boolean dragging;
@@ -38,8 +37,10 @@ final class ReplayTimelineWidget extends ClickableWidget {
 		long duration = this.playback.durationMs();
 		int middle = y + height / 2;
 
-		// 線
-		context.fill(x, middle - 1, x + width, middle + 1, LINE_COLOR);
+		int trackTop = middle - TRACK_HEIGHT / 2;
+
+		// 線（まだ進んでいないぶん）
+		ReplayTheme.fillRound(context, x, trackTop, width, TRACK_HEIGHT, 2, ReplayTheme.SURFACE_INPUT);
 
 		if (duration <= 0L) {
 			return;
@@ -47,16 +48,20 @@ final class ReplayTimelineWidget extends ClickableWidget {
 
 		// 進んだ分
 		int progress = this.positionOf(this.playback.timeMs(), duration);
-		context.fill(x, middle - 1, progress, middle + 1, FILLED_COLOR);
+		int filled = progress - x;
+
+		if (filled > 0) {
+			ReplayTheme.fillRound(context, x, trackTop, filled, TRACK_HEIGHT, 2, ReplayTheme.ACCENT);
+		}
 
 		// しおり
 		for (ReplayStream.Marker marker : this.playback.markers()) {
 			int mx = this.positionOf(marker.timeMs(), duration);
-			context.fill(mx, y + 2, mx + 1, y + height - 2, MARKER_COLOR);
+			context.fill(mx, trackTop - 2, mx + 1, trackTop + TRACK_HEIGHT + 2, MARKER_COLOR);
 		}
 
-		// つまみ
-		context.fill(progress - 1, y, progress + 2, y + height, HANDLE_COLOR);
+		// つまみ（丸い）
+		ReplayTheme.fillRound(context, progress - 3, middle - 5, 7, 10, 3, ReplayTheme.TEXT);
 	}
 
 	@Override

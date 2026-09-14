@@ -5,21 +5,25 @@ import com.ifuto.replay.audio.AudioTracks;
 import com.ifuto.replay.config.ReplayConfig;
 import com.ifuto.replay.export.ExportOptions;
 import com.ifuto.replay.export.ReplayExporter;
+import com.ifuto.replay.gui.theme.ReplayTheme;
+import com.ifuto.replay.gui.widget.ModernButton;
+import com.ifuto.replay.gui.widget.ModernCycling;
+import com.ifuto.replay.gui.widget.ModernSlider;
+import com.ifuto.replay.gui.widget.ModernTextField;
+import com.ifuto.replay.gui.widget.ModernToggle;
 import com.ifuto.replay.playback.ReplayPlayback;
 import com.ifuto.replay.recording.ReplayFileReader;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.gui.ScreenRect;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.tooltip.Tooltip;
-import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.client.gui.widget.ClickableWidget;
-import net.minecraft.client.gui.widget.CyclingButtonWidget;
 import net.minecraft.client.gui.widget.DirectionalLayoutWidget;
 import net.minecraft.client.gui.widget.LayoutWidget;
 import net.minecraft.client.gui.widget.ScrollableLayoutWidget;
-import net.minecraft.client.gui.widget.SliderWidget;
-import net.minecraft.client.gui.widget.TextFieldWidget;
 import net.minecraft.client.gui.widget.TextWidget;
 import net.minecraft.client.gui.widget.ThreePartsLayoutWidget;
 import net.minecraft.text.Text;
@@ -52,11 +56,11 @@ public class ExportScreen extends Screen {
 
 	private ScrollableLayoutWidget scrollable;
 	private ThreePartsLayoutWidget layout;
-	private TextFieldWidget widthField;
-	private TextFieldWidget heightField;
-	private TextFieldWidget bitrateField;
-	private TextFieldWidget ffmpegField;
-	private TextFieldWidget nameField;
+	private ModernTextField widthField;
+	private ModernTextField heightField;
+	private ModernTextField bitrateField;
+	private ModernTextField ffmpegField;
+	private ModernTextField nameField;
 	private TextWidget summaryText;
 	private boolean includeAudio;
 	private boolean includeVoiceChat = true;
@@ -90,27 +94,27 @@ public class ExportScreen extends Screen {
 		DirectionalLayoutWidget content = DirectionalLayoutWidget.vertical().spacing(ROW_SPACING);
 
 		// 1行目: FPS と解像度のプリセット
-		content.add(row(
-				CyclingButtonWidget.<Integer>builder(value -> Text.translatable("ifuto-replay.export.fps.value", value), this.fps)
-						.values(FPS_VALUES)
-						.tooltip(value -> Tooltip.of(Text.translatable("ifuto-replay.export.fps.tooltip")))
-						.build(0, 0, WIDGET_WIDTH, WIDGET_HEIGHT, Text.translatable("ifuto-replay.export.fps"),
-								(button, value) -> {
-									this.fps = value;
-									this.updateSummary();
-								}),
-				CyclingButtonWidget.<String>builder(this::resolutionText, this.initialResolution())
-						.values(this.resolutionValues())
-						.tooltip(value -> Tooltip.of(Text.translatable("ifuto-replay.export.resolution.tooltip")))
-						.build(0, 0, WIDGET_WIDTH, WIDGET_HEIGHT, Text.translatable("ifuto-replay.export.resolution"),
-								(button, value) -> this.applyResolution(value))));
+		ModernCycling<Integer> fpsCycling = new ModernCycling<>(0, 0, WIDGET_WIDTH, WIDGET_HEIGHT,
+				Text.translatable("ifuto-replay.export.fps"), List.of(FPS_VALUES), this.fps,
+				value -> Text.translatable("ifuto-replay.export.fps.value", value),
+				value -> {
+					this.fps = value;
+					this.updateSummary();
+				});
+		fpsCycling.setTooltip(Tooltip.of(Text.translatable("ifuto-replay.export.fps.tooltip")));
+
+		ModernCycling<String> resolutionCycling = new ModernCycling<>(0, 0, WIDGET_WIDTH, WIDGET_HEIGHT,
+				Text.translatable("ifuto-replay.export.resolution"), List.of(this.resolutionValues()),
+				this.initialResolution(), this::resolutionText, value -> this.applyResolution(value));
+		resolutionCycling.setTooltip(Tooltip.of(Text.translatable("ifuto-replay.export.resolution.tooltip")));
+		content.add(row(fpsCycling, resolutionCycling));
 
 		// 2行目: 幅・高さ（プリセットを選んだあとでも書き換えられる）
-		this.widthField = new TextFieldWidget(this.textRenderer, 0, 0, WIDGET_WIDTH, WIDGET_HEIGHT,
+		this.widthField = new ModernTextField(this.textRenderer, 0, 0, WIDGET_WIDTH, WIDGET_HEIGHT,
 				Text.translatable("ifuto-replay.export.width"));
 		this.widthField.setText(String.valueOf(this.config.exportWidth));
 		this.widthField.setChangedListener(text -> this.updateSummary());
-		this.heightField = new TextFieldWidget(this.textRenderer, 0, 0, WIDGET_WIDTH, WIDGET_HEIGHT,
+		this.heightField = new ModernTextField(this.textRenderer, 0, 0, WIDGET_WIDTH, WIDGET_HEIGHT,
 				Text.translatable("ifuto-replay.export.height"));
 		this.heightField.setText(String.valueOf(this.config.exportHeight));
 		this.heightField.setChangedListener(text -> this.updateSummary());
@@ -118,55 +122,59 @@ public class ExportScreen extends Screen {
 
 		// 3行目: 開始・終了（秒）
 		if (this.durationSec > 0) {
-			content.add(row(
-					new TimeSlider(0, 0, WIDGET_WIDTH, WIDGET_HEIGHT, "ifuto-replay.export.start",
-							0, this.durationSec, this.startSec, value -> {
-								this.startSec = value;
-								this.updateSummary();
-							})
-							.tooltip("ifuto-replay.export.start.tooltip"),
-					new TimeSlider(0, 0, WIDGET_WIDTH, WIDGET_HEIGHT, "ifuto-replay.export.end",
-							0, this.durationSec, this.endSec, value -> {
-								this.endSec = value;
-								this.updateSummary();
-							})
-							.tooltip("ifuto-replay.export.end.tooltip")));
+			ModernSlider startSlider = new ModernSlider(0, 0, WIDGET_WIDTH, WIDGET_HEIGHT,
+						"ifuto-replay.export.start", 0, this.durationSec, this.startSec,
+						ExportScreen::secondsText,
+						value -> {
+							this.startSec = value;
+							this.updateSummary();
+						});
+			startSlider.setTooltip(Tooltip.of(Text.translatable("ifuto-replay.export.start.tooltip")));
+
+			ModernSlider endSlider = new ModernSlider(0, 0, WIDGET_WIDTH, WIDGET_HEIGHT,
+						"ifuto-replay.export.end", 0, this.durationSec, this.endSec,
+						ExportScreen::secondsText,
+						value -> {
+							this.endSec = value;
+							this.updateSummary();
+						});
+			endSlider.setTooltip(Tooltip.of(Text.translatable("ifuto-replay.export.end.tooltip")));
+			content.add(row(startSlider, endSlider));
 		}
 
 		// 4行目: ビットレートと ffmpeg
-		this.bitrateField = new TextFieldWidget(this.textRenderer, 0, 0, WIDGET_WIDTH, WIDGET_HEIGHT,
+		this.bitrateField = new ModernTextField(this.textRenderer, 0, 0, WIDGET_WIDTH, WIDGET_HEIGHT,
 				Text.translatable("ifuto-replay.export.bitrate"));
 		this.bitrateField.setText(String.valueOf(this.config.exportBitrateKbps));
 		this.bitrateField.setChangedListener(text -> this.updateSummary());
-		this.ffmpegField = new TextFieldWidget(this.textRenderer, 0, 0, WIDGET_WIDTH, WIDGET_HEIGHT,
+		this.ffmpegField = new ModernTextField(this.textRenderer, 0, 0, WIDGET_WIDTH, WIDGET_HEIGHT,
 				Text.translatable("ifuto-replay.export.ffmpeg"));
 		this.ffmpegField.setText(this.config.ffmpegPath);
 		this.ffmpegField.setTooltip(Tooltip.of(Text.translatable("ifuto-replay.export.ffmpeg.tooltip")));
 		content.add(row(this.bitrateField, this.ffmpegField));
 
 		// 5行目: ファイル名
-		this.nameField = new TextFieldWidget(this.textRenderer, 0, 0, WIDGET_WIDTH * 2 + COLUMN_GAP, WIDGET_HEIGHT,
+		this.nameField = new ModernTextField(this.textRenderer, 0, 0, WIDGET_WIDTH * 2 + COLUMN_GAP, WIDGET_HEIGHT,
 				Text.translatable("ifuto-replay.export.name"));
 		this.nameField.setText(this.defaultFileName());
 		content.add(row(this.nameField, null));
 
 		// 6行目: 音声（録画と一緒に録られていたときだけ出す）
 		if (AudioTracks.hasAny(this.info.file())) {
-			CyclingButtonWidget<Boolean> audioToggle = CyclingButtonWidget.onOffBuilder(this.includeAudio)
-					.tooltip(value -> Tooltip.of(Text.translatable("ifuto-replay.export.include_audio.tooltip")))
-					.build(0, 0, WIDGET_WIDTH, WIDGET_HEIGHT,
-							Text.translatable("ifuto-replay.export.include_audio"),
-							(button, value) -> {
-								this.includeAudio = value;
-								this.updateSummary();
-							});
-			CyclingButtonWidget<Boolean> voiceToggle = CyclingButtonWidget.onOffBuilder(this.includeVoiceChat)
-					.build(0, 0, WIDGET_WIDTH, WIDGET_HEIGHT,
-							Text.translatable("ifuto-replay.export.include_vc"),
-							(button, value) -> {
-								this.includeVoiceChat = value;
-								this.updateSummary();
-							});
+			ModernToggle audioToggle = new ModernToggle(0, 0, WIDGET_WIDTH, WIDGET_HEIGHT,
+					Text.translatable("ifuto-replay.export.include_audio"), this.includeAudio,
+					value -> {
+						this.includeAudio = value;
+						this.updateSummary();
+					});
+			audioToggle.setTooltip(Tooltip.of(Text.translatable("ifuto-replay.export.include_audio.tooltip")));
+
+			ModernToggle voiceToggle = new ModernToggle(0, 0, WIDGET_WIDTH, WIDGET_HEIGHT,
+					Text.translatable("ifuto-replay.export.include_vc"), this.includeVoiceChat,
+					value -> {
+						this.includeVoiceChat = value;
+						this.updateSummary();
+					});
 			// VC は「PC 全体の音」にしか入っていない。外せるのは Minecraft だけの音があるとき
 			voiceToggle.setTooltip(Tooltip.of(Text.translatable(AudioTracks.losesAudioWithoutVoiceChat(this.info.file())
 					? "ifuto-replay.export.include_vc.tooltip_only"
@@ -182,10 +190,11 @@ public class ExportScreen extends Screen {
 		body.add(this.scrollable);
 
 		DirectionalLayoutWidget footer = this.layout.addFooter(DirectionalLayoutWidget.horizontal().spacing(COLUMN_GAP));
-		footer.add(ButtonWidget.builder(Text.translatable("ifuto-replay.export.begin"), button -> this.beginExport())
-				.width(WIDGET_WIDTH).build());
-		footer.add(ButtonWidget.builder(Text.translatable("gui.cancel"), button -> this.close())
-				.width(WIDGET_WIDTH).build());
+		footer.add(new ModernButton(0, 0, WIDGET_WIDTH, WIDGET_HEIGHT,
+				Text.translatable("ifuto-replay.export.begin"), button -> this.beginExport(),
+				ModernButton.Style.PRIMARY));
+		footer.add(new ModernButton(0, 0, WIDGET_WIDTH, WIDGET_HEIGHT,
+				Text.translatable("gui.cancel"), button -> this.close(), ModernButton.Style.NORMAL));
 
 		this.layout.forEachChild(this::addDrawableChild);
 		this.refreshWidgetPositions();
@@ -288,13 +297,18 @@ public class ExportScreen extends Screen {
 		this.summaryText.setMessage(summary);
 	}
 
-	private static int intValue(TextFieldWidget field, int fallback) {
+	private static int intValue(ModernTextField field, int fallback) {
 		try {
 			int value = Integer.parseInt(field.getText().trim());
 			return value > 0 ? value : fallback;
 		} catch (NumberFormatException e) {
 			return fallback;
 		}
+	}
+
+	/** スライダーに出す秒の文字 */
+	private static String secondsText(int seconds) {
+		return formatDuration(seconds * 1000L);
 	}
 
 	/** 秒を m:ss / h:mm:ss にする（一覧と同じ見た目） */
@@ -403,43 +417,23 @@ public class ExportScreen extends Screen {
 		this.scrollable.setHeight(this.scrollable.getHeight() + extra);
 	}
 
+	/** うっすら暗くして、設定の一覧のうしろに丸い面を敷く */
+	@Override
+	public void renderBackground(DrawContext context, int mouseX, int mouseY, float deltaTicks) {
+		super.renderBackground(context, mouseX, mouseY, deltaTicks);
+		ReplayTheme.veil(context, this.width, this.height);
+
+		if (this.scrollable != null) {
+			ScreenRect rect = this.scrollable.getNavigationFocus();
+			int left = rect.getLeft() - 8;
+			int top = rect.getTop() - 8;
+			ReplayTheme.panel(context, left, top, rect.getRight() - rect.getLeft() + 16,
+					rect.getBottom() - rect.getTop() + 16);
+		}
+	}
+
 	@Override
 	public void close() {
 		MinecraftClient.getInstance().setScreen(this.parent);
-	}
-
-	/** 秒を選ぶだけのスライダー */
-	private static class TimeSlider extends SliderWidget {
-		private final String labelKey;
-		private final int min;
-		private final int max;
-		private final java.util.function.IntConsumer setter;
-
-		TimeSlider(int x, int y, int width, int height, String labelKey, int min, int max, int initialValue,
-				java.util.function.IntConsumer setter) {
-			super(x, y, width, height, Text.empty(),
-					max == min ? 0.0 : (double) (initialValue - min) / (double) (max - min));
-			this.labelKey = labelKey;
-			this.min = min;
-			this.max = max;
-			this.setter = setter;
-			this.updateMessage();
-		}
-
-		TimeSlider tooltip(String key) {
-			this.setTooltip(Tooltip.of(Text.translatable(key)));
-			return this;
-		}
-
-		@Override
-		protected void updateMessage() {
-			long seconds = this.min + Math.round((this.max - this.min) * this.value);
-			this.setMessage(Text.translatable(this.labelKey, Text.literal(formatDuration(seconds * 1000L))));
-		}
-
-		@Override
-		protected void applyValue() {
-			this.setter.accept((int) Math.round(this.min + (this.max - this.min) * this.value));
-		}
 	}
 }

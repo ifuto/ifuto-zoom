@@ -2,15 +2,17 @@ package com.ifuto.replay.gui;
 
 import com.ifuto.replay.IfutoReplayClient;
 import com.ifuto.replay.config.ReplayConfig;
+import com.ifuto.replay.gui.theme.ReplayTheme;
+import com.ifuto.replay.gui.widget.ModernButton;
 import com.ifuto.replay.recording.RecordingManager;
 import com.ifuto.replay.recording.ReplayFileReader;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.gui.ScreenRect;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.tooltip.Tooltip;
-import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.client.gui.widget.DirectionalLayoutWidget;
 import net.minecraft.client.gui.widget.LayoutWidget;
 import net.minecraft.client.gui.widget.ScrollableLayoutWidget;
@@ -48,7 +50,7 @@ public class RecordingListScreen extends Screen {
 	private ScrollableLayoutWidget scrollable;
 	private ThreePartsLayoutWidget layout;
 
-	private ButtonWidget armedDeleteButton;
+	private ModernButton armedDeleteButton;
 	private long armedUntil;
 
 	public RecordingListScreen(Screen parent) {
@@ -81,12 +83,14 @@ public class RecordingListScreen extends Screen {
 		body.add(this.scrollable);
 
 		DirectionalLayoutWidget footer = this.layout.addFooter(DirectionalLayoutWidget.horizontal().spacing(COLUMN_GAP));
-		footer.add(ButtonWidget.builder(Text.translatable("ifuto-replay.list.refresh"),
-				button -> this.clearAndInit()).width(SMALL_BUTTON_WIDTH).build());
-		footer.add(ButtonWidget.builder(Text.translatable("ifuto-replay.config.open_folder"),
-				button -> this.openFolder()).width(SMALL_BUTTON_WIDTH).build());
-		footer.add(ButtonWidget.builder(Text.translatable("gui.done"), button -> this.close())
-				.width(SMALL_BUTTON_WIDTH).build());
+		footer.add(new ModernButton(0, 0, SMALL_BUTTON_WIDTH, BUTTON_HEIGHT,
+				Text.translatable("ifuto-replay.list.refresh"), button -> this.clearAndInit(),
+				ModernButton.Style.NORMAL));
+		footer.add(new ModernButton(0, 0, SMALL_BUTTON_WIDTH, BUTTON_HEIGHT,
+				Text.translatable("ifuto-replay.config.open_folder"), button -> this.openFolder(),
+				ModernButton.Style.NORMAL));
+		footer.add(new ModernButton(0, 0, SMALL_BUTTON_WIDTH, BUTTON_HEIGHT,
+				Text.translatable("gui.done"), button -> this.close(), ModernButton.Style.PRIMARY));
 
 		this.layout.forEachChild(this::addDrawableChild);
 		this.refreshWidgetPositions();
@@ -106,20 +110,22 @@ public class RecordingListScreen extends Screen {
 		labels.add(when);
 		labels.add(details);
 
-		ButtonWidget deleteButton = ButtonWidget.builder(Text.translatable("ifuto-replay.list.delete"),
-						button -> this.onDelete(button, info))
-				.width(SMALL_BUTTON_WIDTH).build();
+		ModernButton deleteButton = new ModernButton(0, 0, SMALL_BUTTON_WIDTH, BUTTON_HEIGHT,
+				Text.translatable("ifuto-replay.list.delete"), button -> this.onDelete(button, info),
+				ModernButton.Style.DANGER);
 		deleteButton.setTooltip(Tooltip.of(Text.translatable("ifuto-replay.list.delete.tooltip")));
 
-		ButtonWidget playButton = ButtonWidget.builder(Text.translatable("ifuto-replay.list.play"),
-						button -> ReplayPreviewScreen.open(MinecraftClient.getInstance(), info.file(), this.parent))
-				.width(SMALL_BUTTON_WIDTH).build();
+		ModernButton playButton = new ModernButton(0, 0, SMALL_BUTTON_WIDTH, BUTTON_HEIGHT,
+				Text.translatable("ifuto-replay.list.play"),
+				button -> ReplayPreviewScreen.open(MinecraftClient.getInstance(), info.file(), this.parent),
+				ModernButton.Style.PRIMARY);
 		playButton.setTooltip(Tooltip.of(Text.translatable("ifuto-replay.list.play.tooltip")));
 
-		ButtonWidget exportButton = ButtonWidget.builder(Text.translatable("ifuto-replay.list.export"),
-						button -> MinecraftClient.getInstance()
-								.setScreen(new ExportScreen(this.parent, info, ReplayConfig.get())))
-				.width(SMALL_BUTTON_WIDTH).build();
+		ModernButton exportButton = new ModernButton(0, 0, SMALL_BUTTON_WIDTH, BUTTON_HEIGHT,
+				Text.translatable("ifuto-replay.list.export"),
+				button -> MinecraftClient.getInstance()
+						.setScreen(new ExportScreen(this.parent, info, ReplayConfig.get())),
+				ModernButton.Style.NORMAL);
 		exportButton.setTooltip(Tooltip.of(Text.translatable("ifuto-replay.list.export.tooltip")));
 
 		row.add(labels);
@@ -129,7 +135,7 @@ public class RecordingListScreen extends Screen {
 		return row;
 	}
 
-	private void onDelete(ButtonWidget button, ReplayFileReader.Info info) {
+	private void onDelete(ModernButton button, ReplayFileReader.Info info) {
 		long now = System.currentTimeMillis();
 
 		if (this.armedDeleteButton == button && now < this.armedUntil) {
@@ -166,12 +172,27 @@ public class RecordingListScreen extends Screen {
 		this.scrollable.setHeight(this.scrollable.getHeight() + extra);
 	}
 
+	/** うっすら暗くして、一覧のうしろに丸い面を敷く */
+	@Override
+	public void renderBackground(DrawContext context, int mouseX, int mouseY, float deltaTicks) {
+		super.renderBackground(context, mouseX, mouseY, deltaTicks);
+		ReplayTheme.veil(context, this.width, this.height);
+
+		if (this.scrollable != null) {
+			ScreenRect rect = this.scrollable.getNavigationFocus();
+			int left = rect.getLeft() - 8;
+			int top = rect.getTop() - 8;
+			ReplayTheme.panel(context, left, top, rect.getRight() - rect.getLeft() + 16,
+					rect.getBottom() - rect.getTop() + 16);
+		}
+	}
+
 	@Override
 	public void render(DrawContext context, int mouseX, int mouseY, float delta) {
 		super.render(context, mouseX, mouseY, delta);
 
 		// 二段階確認は時間で戻す
-		ButtonWidget armed = this.armedDeleteButton;
+		ModernButton armed = this.armedDeleteButton;
 
 		if (armed != null && System.currentTimeMillis() > this.armedUntil) {
 			armed.setMessage(Text.translatable("ifuto-replay.list.delete"));

@@ -2,12 +2,14 @@ package com.ifuto.replay.gui;
 
 import com.ifuto.replay.IfutoReplayClient;
 import com.ifuto.replay.export.ReplayExporter;
+import com.ifuto.replay.gui.theme.ReplayTheme;
+import com.ifuto.replay.gui.widget.ModernButton;
 import com.ifuto.replay.playback.ReplayPlayback;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.client.gui.widget.DirectionalLayoutWidget;
 import net.minecraft.client.gui.widget.TextWidget;
 import net.minecraft.client.gui.widget.ThreePartsLayoutWidget;
@@ -51,11 +53,32 @@ public class ExportProgressScreen extends Screen {
 		body.add(this.statusText);
 		body.add(this.detailText);
 
-		this.layout.addFooter(ButtonWidget.builder(Text.translatable("gui.cancel"), button -> this.cancel())
-				.width(200).build());
+		this.layout.addFooter(new ModernButton(0, 0, 200, 20, Text.translatable("gui.cancel"),
+				button -> this.cancel(), ModernButton.Style.DANGER));
 
 		this.layout.forEachChild(this::addDrawableChild);
 		this.refreshWidgetPositions();
+	}
+
+	/** うっすら暗くするだけ（書き出し中は世界が見えたほうが安心なので薄め） */
+	@Override
+	public void renderBackground(DrawContext context, int mouseX, int mouseY, float deltaTicks) {
+		super.renderBackground(context, mouseX, mouseY, deltaTicks);
+		ReplayTheme.veil(context, this.width, this.height);
+	}
+
+	/** 進みぐあいを棒で出す（数字だけだと待っている間つらいので） */
+	@Override
+	public void render(DrawContext context, int mouseX, int mouseY, float deltaTicks) {
+		super.render(context, mouseX, mouseY, deltaTicks);
+
+		int total = this.exporter.totalFrames();
+		int frames = Math.max(0, this.exporter.frameIndex() - 1);
+		int barWidth = Math.min(this.width - 120, 320);
+		int x = this.width / 2 - barWidth / 2;
+		int y = this.height / 2 + 30;
+		ReplayTheme.progress(context, x, y, barWidth, 6,
+				total <= 0 ? 0F : Math.min(1F, frames / (float) total));
 	}
 
 	@Override

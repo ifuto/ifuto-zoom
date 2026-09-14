@@ -5,20 +5,23 @@ import com.ifuto.replay.audio.SystemAudioCapture;
 import com.ifuto.replay.config.CompressionMode;
 import com.ifuto.replay.config.IndicatorPosition;
 import com.ifuto.replay.config.ReplayConfig;
+import com.ifuto.replay.gui.theme.ReplayTheme;
+import com.ifuto.replay.gui.widget.ModernButton;
+import com.ifuto.replay.gui.widget.ModernCycling;
+import com.ifuto.replay.gui.widget.ModernSlider;
+import com.ifuto.replay.gui.widget.ModernTextField;
+import com.ifuto.replay.gui.widget.ModernToggle;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.gui.ScreenRect;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.tooltip.Tooltip;
-import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.client.gui.widget.ClickableWidget;
-import net.minecraft.client.gui.widget.CyclingButtonWidget;
 import net.minecraft.client.gui.widget.DirectionalLayoutWidget;
 import net.minecraft.client.gui.widget.LayoutWidget;
 import net.minecraft.client.gui.widget.ScrollableLayoutWidget;
-import net.minecraft.client.gui.widget.SliderWidget;
-import net.minecraft.client.gui.widget.TextFieldWidget;
 import net.minecraft.client.gui.widget.TextWidget;
 import net.minecraft.client.gui.widget.ThreePartsLayoutWidget;
 import net.minecraft.text.Text;
@@ -26,10 +29,15 @@ import net.minecraft.util.Util;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.function.IntConsumer;
 
 /**
  * Mod Menu から開く設定画面。バニラのスクロールレイアウトを使っているので、ウィンドウの縦が短くても全部届く。
+ *
+ * <p>部品はバニラの絵ではなく {@link ReplayTheme} の角丸の物を使う。
+ * 押し心地やキー操作はバニラのままなので、触り方は変わらない。
  */
 @Environment(EnvType.CLIENT)
 public class ReplayConfigScreen extends Screen {
@@ -63,118 +71,100 @@ public class ReplayConfigScreen extends Screen {
 
 		// 1行目: いつ録るか
 		content.add(row(
-				CyclingButtonWidget.onOffBuilder(this.config.autoRecord)
-						.tooltip(value -> Tooltip.of(Text.translatable("ifuto-replay.config.auto_record.tooltip")))
-						.build(0, 0, WIDGET_WIDTH, WIDGET_HEIGHT, Text.translatable("ifuto-replay.config.auto_record"),
-								(button, value) -> this.config.autoRecord = value),
-				CyclingButtonWidget.onOffBuilder(this.config.recordClientPackets)
-						.tooltip(value -> Tooltip.of(Text.translatable("ifuto-replay.config.record_client_packets.tooltip")))
-						.build(0, 0, WIDGET_WIDTH, WIDGET_HEIGHT, Text.translatable("ifuto-replay.config.record_client_packets"),
-								(button, value) -> this.config.recordClientPackets = value)));
+				toggle("ifuto-replay.config.auto_record", this.config.autoRecord,
+						"ifuto-replay.config.auto_record.tooltip",
+						value -> this.config.autoRecord = value),
+				toggle("ifuto-replay.config.record_client_packets", this.config.recordClientPackets,
+						"ifuto-replay.config.record_client_packets.tooltip",
+						value -> this.config.recordClientPackets = value)));
 
 		// 2行目: 軽さの調整
 		content.add(row(
-				CyclingButtonWidget.<CompressionMode>builder(CompressionMode::getText, this.config.compression)
-						.values(CompressionMode.values())
-						.tooltip(value -> Tooltip.of(Text.translatable("ifuto-replay.config.compression.tooltip")))
-						.build(0, 0, WIDGET_WIDTH, WIDGET_HEIGHT, Text.translatable("ifuto-replay.config.compression"),
-								(button, value) -> this.config.compression = value),
-				CyclingButtonWidget.onOffBuilder(this.config.skipKeepAlive)
-						.tooltip(value -> Tooltip.of(Text.translatable("ifuto-replay.config.skip_keep_alive.tooltip")))
-						.build(0, 0, WIDGET_WIDTH, WIDGET_HEIGHT, Text.translatable("ifuto-replay.config.skip_keep_alive"),
-								(button, value) -> this.config.skipKeepAlive = value)));
+				cycle("ifuto-replay.config.compression", List.of(CompressionMode.values()),
+						this.config.compression, CompressionMode::getText,
+						"ifuto-replay.config.compression.tooltip",
+						value -> this.config.compression = value),
+				toggle("ifuto-replay.config.skip_keep_alive", this.config.skipKeepAlive,
+						"ifuto-replay.config.skip_keep_alive.tooltip",
+						value -> this.config.skipKeepAlive = value)));
 
 		// 3行目: 再生とプライバシー
 		content.add(row(
-				CyclingButtonWidget.onOffBuilder(this.config.saveRegistries)
-						.tooltip(value -> Tooltip.of(Text.translatable("ifuto-replay.config.save_registries.tooltip")))
-						.build(0, 0, WIDGET_WIDTH, WIDGET_HEIGHT, Text.translatable("ifuto-replay.config.save_registries"),
-								(button, value) -> this.config.saveRegistries = value),
-				CyclingButtonWidget.onOffBuilder(this.config.maskServerAddress)
-						.tooltip(value -> Tooltip.of(Text.translatable("ifuto-replay.config.mask_address.tooltip")))
-						.build(0, 0, WIDGET_WIDTH, WIDGET_HEIGHT, Text.translatable("ifuto-replay.config.mask_address"),
-								(button, value) -> this.config.maskServerAddress = value)));
+				toggle("ifuto-replay.config.save_registries", this.config.saveRegistries,
+						"ifuto-replay.config.save_registries.tooltip",
+						value -> this.config.saveRegistries = value),
+				toggle("ifuto-replay.config.mask_address", this.config.maskServerAddress,
+						"ifuto-replay.config.mask_address.tooltip",
+						value -> this.config.maskServerAddress = value)));
 
 		// 4行目: 自動停止
 		content.add(row(
-				new OptionSlider(0, 0, WIDGET_WIDTH, WIDGET_HEIGHT, "ifuto-replay.config.max_file_size",
-						0, 4096, this.config.maxFileSizeMb,
+				slider("ifuto-replay.config.max_file_size", 0, 4096, this.config.maxFileSizeMb,
 						value -> value <= 0
 								? Text.translatable("ifuto-replay.config.unlimited").getString()
 								: value + " MB",
-						value -> this.config.maxFileSizeMb = value)
-						.tooltip("ifuto-replay.config.max_file_size.tooltip"),
-				new OptionSlider(0, 0, WIDGET_WIDTH, WIDGET_HEIGHT, "ifuto-replay.config.max_duration",
-						0, 360, this.config.maxDurationMinutes,
+						"ifuto-replay.config.max_file_size.tooltip",
+						value -> this.config.maxFileSizeMb = value),
+				slider("ifuto-replay.config.max_duration", 0, 360, this.config.maxDurationMinutes,
 						value -> value <= 0
 								? Text.translatable("ifuto-replay.config.unlimited").getString()
 								: value + " " + Text.translatable("ifuto-replay.config.minutes").getString(),
-						value -> this.config.maxDurationMinutes = value)
-						.tooltip("ifuto-replay.config.max_duration.tooltip")));
+						"ifuto-replay.config.max_duration.tooltip",
+						value -> this.config.maxDurationMinutes = value)));
 
 		// 4.5行目: メモリと容量の見張り
 		content.add(row(
-				new OptionSlider(0, 0, WIDGET_WIDTH, WIDGET_HEIGHT, "ifuto-replay.config.memory",
-						0, 128, Math.min(this.config.queuedMegaBytes, 128),
+				slider("ifuto-replay.config.memory", 0, 128, Math.min(this.config.queuedMegaBytes, 128),
 						value -> value <= 0
 								? Text.translatable("ifuto-replay.config.memory.auto").getString()
 								: Text.translatable("ifuto-replay.config.memory.value", value).getString(),
-						value -> this.config.queuedMegaBytes = value)
-						.tooltip("ifuto-replay.config.memory.tooltip"),
-				new OptionSlider(0, 0, WIDGET_WIDTH, WIDGET_HEIGHT, "ifuto-replay.config.flush_interval",
-						1, 10, Math.max(1, this.config.flushIntervalMs / 1000),
+						"ifuto-replay.config.memory.tooltip",
+						value -> this.config.queuedMegaBytes = value),
+				slider("ifuto-replay.config.flush_interval", 1, 10,
+						Math.max(1, this.config.flushIntervalMs / 1000),
 						value -> Text.translatable("ifuto-replay.config.flush_interval.value", value).getString(),
-						value -> this.config.flushIntervalMs = value * 1000)
-						.tooltip("ifuto-replay.config.flush_interval.tooltip")));
+						"ifuto-replay.config.flush_interval.tooltip",
+						value -> this.config.flushIntervalMs = value * 1000)));
 
 		content.add(row(
-				new OptionSlider(0, 0, WIDGET_WIDTH, WIDGET_HEIGHT, "ifuto-replay.config.low_disk_space",
-						0, 4096, Math.min(this.config.lowDiskSpaceMb, 4096),
+				slider("ifuto-replay.config.low_disk_space", 0, 4096, Math.min(this.config.lowDiskSpaceMb, 4096),
 						value -> value <= 0
 								? Text.translatable("ifuto-replay.config.unlimited").getString()
 								: Text.translatable("ifuto-replay.config.memory.value", value).getString(),
-						value -> this.config.lowDiskSpaceMb = value)
-						.tooltip("ifuto-replay.config.low_disk_space.tooltip"),
-				new OptionSlider(0, 0, WIDGET_WIDTH, WIDGET_HEIGHT, "ifuto-replay.config.critical_disk_space",
-						0, 1024, Math.min(this.config.criticalDiskSpaceMb, 1024),
+						"ifuto-replay.config.low_disk_space.tooltip",
+						value -> this.config.lowDiskSpaceMb = value),
+				slider("ifuto-replay.config.critical_disk_space", 0, 1024,
+						Math.min(this.config.criticalDiskSpaceMb, 1024),
 						value -> value <= 0
 								? Text.translatable("ifuto-replay.config.unlimited").getString()
 								: Text.translatable("ifuto-replay.config.memory.value", value).getString(),
-						value -> this.config.criticalDiskSpaceMb = value)
-						.tooltip("ifuto-replay.config.critical_disk_space.tooltip")));
+						"ifuto-replay.config.critical_disk_space.tooltip",
+						value -> this.config.criticalDiskSpaceMb = value)));
 
 		// 5行目: 見た目
 		content.add(row(
-				CyclingButtonWidget.onOffBuilder(this.config.showIndicator)
-						.tooltip(value -> Tooltip.of(Text.translatable("ifuto-replay.config.show_indicator.tooltip")))
-						.build(0, 0, WIDGET_WIDTH, WIDGET_HEIGHT, Text.translatable("ifuto-replay.config.show_indicator"),
-								(button, value) -> this.config.showIndicator = value),
-				CyclingButtonWidget.<IndicatorPosition>builder(IndicatorPosition::getText, this.config.indicatorPosition)
-						.values(IndicatorPosition.values())
-						.tooltip(value -> Tooltip.of(Text.translatable("ifuto-replay.config.indicator_position.tooltip")))
-						.build(0, 0, WIDGET_WIDTH, WIDGET_HEIGHT, Text.translatable("ifuto-replay.config.indicator_position"),
-								(button, value) -> this.config.indicatorPosition = value)));
+				toggle("ifuto-replay.config.show_indicator", this.config.showIndicator,
+						"ifuto-replay.config.show_indicator.tooltip",
+						value -> this.config.showIndicator = value),
+				cycle("ifuto-replay.config.indicator_position", List.of(IndicatorPosition.values()),
+						this.config.indicatorPosition, IndicatorPosition::getText,
+						"ifuto-replay.config.indicator_position.tooltip",
+						value -> this.config.indicatorPosition = value)));
 
 		// 6行目: お知らせ / 途中から録るときの世界の写し
 		content.add(row(
-				CyclingButtonWidget.onOffBuilder(this.config.notifyChat)
-						.tooltip(value -> Tooltip.of(Text.translatable("ifuto-replay.config.notify_chat.tooltip")))
-						.build(0, 0, WIDGET_WIDTH, WIDGET_HEIGHT, Text.translatable("ifuto-replay.config.notify_chat"),
-								(button, value) -> this.config.notifyChat = value),
-				new OptionSlider(0, 0, WIDGET_WIDTH, WIDGET_HEIGHT, "ifuto-replay.config.snapshot_radius",
-						0, 16, this.config.snapshotRadius,
-						value -> {
-							if (value <= 0) {
-								return Text.translatable("ifuto-replay.config.snapshot_radius.off").getString();
-							}
-
-							return Text.translatable("ifuto-replay.config.snapshot_radius.value", value).getString();
-						},
-						value -> this.config.snapshotRadius = value)
-						.tooltip("ifuto-replay.config.snapshot_radius.tooltip")));
+				toggle("ifuto-replay.config.notify_chat", this.config.notifyChat,
+						"ifuto-replay.config.notify_chat.tooltip",
+						value -> this.config.notifyChat = value),
+				slider("ifuto-replay.config.snapshot_radius", 0, 16, this.config.snapshotRadius,
+						value -> value <= 0
+								? Text.translatable("ifuto-replay.config.snapshot_radius.off").getString()
+								: Text.translatable("ifuto-replay.config.snapshot_radius.value", value).getString(),
+						"ifuto-replay.config.snapshot_radius.tooltip",
+						value -> this.config.snapshotRadius = value)));
 
 		// 7行目: 保存先（全幅）
-		TextFieldWidget folderField = new TextFieldWidget(this.textRenderer,
+		ModernTextField folderField = new ModernTextField(this.textRenderer,
 				0, 0, WIDGET_WIDTH * 2 + COLUMN_GAP, WIDGET_HEIGHT,
 				Text.translatable("ifuto-replay.config.save_folder"));
 		folderField.setMaxLength(120);
@@ -186,20 +176,16 @@ public class ReplayConfigScreen extends Screen {
 
 		// 7.5行目: 音声
 		content.add(row(
-				CyclingButtonWidget.<AudioMode>builder(mode -> Text.translatable(mode.translationKey()),
-								this.config.audioMode)
-						.values(AudioMode.available())
-						.tooltip(value -> Tooltip.of(Text.translatable("ifuto-replay.config.audio_mode.tooltip")))
-						.build(0, 0, WIDGET_WIDTH, WIDGET_HEIGHT,
-								Text.translatable("ifuto-replay.config.audio_mode"),
-								(button, value) -> this.config.audioMode = value),
-				new OptionSlider(0, 0, WIDGET_WIDTH, WIDGET_HEIGHT, "ifuto-replay.config.audio_bitrate",
-						32, 256, this.config.audioBitrateKbps,
+				cycle("ifuto-replay.config.audio_mode", List.of(AudioMode.available()),
+						this.config.audioMode, mode -> Text.translatable(mode.translationKey()),
+						"ifuto-replay.config.audio_mode.tooltip",
+						value -> this.config.audioMode = value),
+				slider("ifuto-replay.config.audio_bitrate", 32, 256, this.config.audioBitrateKbps,
 						value -> value + " kbps",
-						value -> this.config.audioBitrateKbps = value)
-						.tooltip("ifuto-replay.config.audio_bitrate.tooltip")));
+						"ifuto-replay.config.audio_bitrate.tooltip",
+						value -> this.config.audioBitrateKbps = value)));
 
-		TextFieldWidget deviceField = new TextFieldWidget(this.textRenderer,
+		ModernTextField deviceField = new ModernTextField(this.textRenderer,
 				0, 0, WIDGET_WIDTH, WIDGET_HEIGHT,
 				Text.translatable("ifuto-replay.config.audio_device"));
 		deviceField.setMaxLength(120);
@@ -207,19 +193,14 @@ public class ReplayConfigScreen extends Screen {
 		deviceField.setPlaceholder(Text.translatable("ifuto-replay.config.audio_device.placeholder"));
 		deviceField.setTooltip(Tooltip.of(Text.translatable("ifuto-replay.config.audio_device.tooltip")));
 		deviceField.setChangedListener(value -> this.config.audioDevice = value.trim());
-		ButtonWidget detectButton = ButtonWidget.builder(
-						Text.translatable("ifuto-replay.config.audio_device.detect"),
-						button -> this.detectAudioDevice(deviceField))
-				.width(WIDGET_WIDTH)
-				.build();
+		ModernButton detectButton = new ModernButton(0, 0, WIDGET_WIDTH, WIDGET_HEIGHT,
+				Text.translatable("ifuto-replay.config.audio_device.detect"),
+				button -> this.detectAudioDevice(deviceField), ModernButton.Style.NORMAL);
 		detectButton.setTooltip(Tooltip.of(Text.translatable("ifuto-replay.config.audio_device.detect.tooltip")));
 		content.add(row(deviceField, detectButton));
-		content.add(row(CyclingButtonWidget.onOffBuilder(this.config.recordVoiceChat)
-						.tooltip(value -> Tooltip.of(Text.translatable("ifuto-replay.config.record_voice_chat.tooltip")))
-						.build(0, 0, WIDGET_WIDTH * 2 + COLUMN_GAP, WIDGET_HEIGHT,
-								Text.translatable("ifuto-replay.config.record_voice_chat"),
-								(button, value) -> this.config.recordVoiceChat = value),
-				null));
+		content.add(row(toggle("ifuto-replay.config.record_voice_chat", this.config.recordVoiceChat,
+				"ifuto-replay.config.record_voice_chat.tooltip",
+				value -> this.config.recordVoiceChat = value, WIDGET_WIDTH * 2 + COLUMN_GAP), null));
 
 		// 8行目: 書き出しの既定値（FPS / 解像度）
 		String currentResolution = this.config.exportWidth + "x" + this.config.exportHeight;
@@ -234,20 +215,17 @@ public class ReplayConfigScreen extends Screen {
 		}
 
 		content.add(row(
-				CyclingButtonWidget.<Integer>builder(
-								value -> Text.translatable("ifuto-replay.export.fps.value", value), this.config.exportFps)
-						.values(24, 30, 50, 60, 120, 144, 240)
-						.tooltip(value -> Tooltip.of(Text.translatable("ifuto-replay.export.fps.tooltip")))
-						.build(0, 0, WIDGET_WIDTH, WIDGET_HEIGHT, Text.translatable("ifuto-replay.config.export_fps"),
-								(button, value) -> this.config.exportFps = value),
-				CyclingButtonWidget.<String>builder(Text::literal, currentResolution)
-						.values(resolutions.toArray(new String[0]))
-						.tooltip(value -> Tooltip.of(Text.translatable("ifuto-replay.export.resolution.tooltip")))
-						.build(0, 0, WIDGET_WIDTH, WIDGET_HEIGHT, Text.translatable("ifuto-replay.config.export_resolution"),
-								(button, value) -> this.applyResolution(value))));
+				cycle("ifuto-replay.config.export_fps", List.of(24, 30, 50, 60, 120, 144, 240),
+						this.config.exportFps,
+						value -> Text.translatable("ifuto-replay.export.fps.value", value),
+						"ifuto-replay.export.fps.tooltip",
+						value -> this.config.exportFps = value),
+				cycle("ifuto-replay.config.export_resolution", resolutions, currentResolution,
+						Text::literal, "ifuto-replay.export.resolution.tooltip",
+						value -> this.applyResolution(value))));
 
 		// 9行目: ビットレート
-		TextFieldWidget bitrateField = new TextFieldWidget(this.textRenderer, 0, 0, WIDGET_WIDTH, WIDGET_HEIGHT,
+		ModernTextField bitrateField = new ModernTextField(this.textRenderer, 0, 0, WIDGET_WIDTH, WIDGET_HEIGHT,
 				Text.translatable("ifuto-replay.config.export_bitrate"));
 		bitrateField.setMaxLength(9);
 		bitrateField.setText(String.valueOf(this.config.exportBitrateKbps));
@@ -266,7 +244,7 @@ public class ReplayConfigScreen extends Screen {
 		content.add(row(bitrateField, null));
 
 		// 10行目: ffmpeg（全幅）
-		TextFieldWidget ffmpegField = new TextFieldWidget(this.textRenderer,
+		ModernTextField ffmpegField = new ModernTextField(this.textRenderer,
 				0, 0, WIDGET_WIDTH * 2 + COLUMN_GAP, WIDGET_HEIGHT,
 				Text.translatable("ifuto-replay.config.ffmpeg_path"));
 		ffmpegField.setMaxLength(240);
@@ -281,18 +259,53 @@ public class ReplayConfigScreen extends Screen {
 		body.add(this.scrollable);
 
 		DirectionalLayoutWidget footer = this.layout.addFooter(DirectionalLayoutWidget.horizontal().spacing(COLUMN_GAP));
-		footer.add(ButtonWidget.builder(Text.translatable("ifuto-replay.config.open_folder"), button -> openFolder())
-				.width(WIDGET_WIDTH).build());
-		footer.add(ButtonWidget.builder(Text.translatable("ifuto-replay.config.reset"), button -> {
-			this.config.resetToDefaults();
-			this.config.save();
-			this.clearAndInit();
-		}).width(WIDGET_WIDTH).build());
-		footer.add(ButtonWidget.builder(Text.translatable("gui.done"), button -> this.close())
-				.width(WIDGET_WIDTH).build());
+		footer.add(new ModernButton(0, 0, WIDGET_WIDTH, WIDGET_HEIGHT,
+				Text.translatable("ifuto-replay.config.open_folder"), button -> openFolder(),
+				ModernButton.Style.NORMAL));
+		footer.add(new ModernButton(0, 0, WIDGET_WIDTH, WIDGET_HEIGHT,
+				Text.translatable("ifuto-replay.config.reset"), button -> {
+					this.config.resetToDefaults();
+					this.config.save();
+					this.clearAndInit();
+				}, ModernButton.Style.DANGER));
+		footer.add(new ModernButton(0, 0, WIDGET_WIDTH, WIDGET_HEIGHT,
+				Text.translatable("gui.done"), button -> this.close(), ModernButton.Style.PRIMARY));
 
 		this.layout.forEachChild(this::addDrawableChild);
 		this.refreshWidgetPositions();
+	}
+
+	// --- 部品を作る（同じ形を何度も書かないためのまとめ） ---
+
+	private static ModernToggle toggle(String labelKey, boolean initial, String tooltipKey,
+									   Consumer<Boolean> setter) {
+		return toggle(labelKey, initial, tooltipKey, setter, WIDGET_WIDTH);
+	}
+
+	private static ModernToggle toggle(String labelKey, boolean initial, String tooltipKey,
+									   Consumer<Boolean> setter, int width) {
+		ModernToggle toggle = new ModernToggle(0, 0, width, WIDGET_HEIGHT,
+				Text.translatable(labelKey), initial, setter);
+		toggle.setTooltip(Tooltip.of(Text.translatable(tooltipKey)));
+		return toggle;
+	}
+
+	private static <T> ModernCycling<T> cycle(String labelKey, List<T> values, T initial,
+											  Function<T, Text> formatter, String tooltipKey,
+											  Consumer<T> setter) {
+		ModernCycling<T> cycling = new ModernCycling<>(0, 0, WIDGET_WIDTH, WIDGET_HEIGHT,
+				Text.translatable(labelKey), values, initial, formatter, setter);
+		cycling.setTooltip(Tooltip.of(Text.translatable(tooltipKey)));
+		return cycling;
+	}
+
+	private static ModernSlider slider(String labelKey, int min, int max, int initial,
+									   ModernSlider.ValueFormatter formatter, String tooltipKey,
+									   IntConsumer setter) {
+		ModernSlider slider = new ModernSlider(0, 0, WIDGET_WIDTH, WIDGET_HEIGHT, labelKey, min, max, initial,
+				formatter, setter);
+		slider.setTooltip(Tooltip.of(Text.translatable(tooltipKey)));
+		return slider;
 	}
 
 	/**
@@ -301,7 +314,7 @@ public class ReplayConfigScreen extends Screen {
 	 * <p>ffmpeg（や pactl）を起動するので画面を止めないように別スレッドで探し、
 	 * 見つかったら項目へ入れる。見つかった機器はツールチップに一覧で出しておく。
 	 */
-	private void detectAudioDevice(TextFieldWidget field) {
+	private void detectAudioDevice(ModernTextField field) {
 		field.setText(Text.translatable("ifuto-replay.config.audio_device.detecting").getString());
 		MinecraftClient client = MinecraftClient.getInstance();
 		String ffmpegPath = this.config.ffmpegPath;
@@ -377,10 +390,25 @@ public class ReplayConfigScreen extends Screen {
 		this.scrollable.setHeight(this.scrollable.getHeight() + extra);
 	}
 
+	/** うっすら暗くして、設定の一覧のうしろに丸い面を敷く */
+	@Override
+	public void renderBackground(DrawContext context, int mouseX, int mouseY, float deltaTicks) {
+		super.renderBackground(context, mouseX, mouseY, deltaTicks);
+		ReplayTheme.veil(context, this.width, this.height);
+
+		if (this.scrollable != null) {
+			ScreenRect rect = this.scrollable.getNavigationFocus();
+			int left = rect.getLeft() - 8;
+			int top = rect.getTop() - 8;
+			ReplayTheme.panel(context, left, top, rect.getRight() - rect.getLeft() + 16,
+					rect.getBottom() - rect.getTop() + 16);
+		}
+	}
+
 	@Override
 	public void render(DrawContext context, int mouseX, int mouseY, float delta) {
 		super.render(context, mouseX, mouseY, delta);
-		context.drawTextWithShadow(this.textRenderer, "Made by Ifuto_mitai", 4, this.height - 12, 0xFF808080);
+		context.drawTextWithShadow(this.textRenderer, "Made by Ifuto_mitai", 4, this.height - 12, 0xFF6B7784);
 	}
 
 	@Override
@@ -393,49 +421,5 @@ public class ReplayConfigScreen extends Screen {
 	public void removed() {
 		this.config.save();
 		super.removed();
-	}
-
-	/** 0-1 の位置を整数の範囲に変換するだけのスライダー */
-	private static class OptionSlider extends SliderWidget {
-		private final String labelKey;
-		private final int min;
-		private final int max;
-		private final ValueFormatter formatter;
-		private final IntConsumer setter;
-
-		OptionSlider(int x, int y, int width, int height, String labelKey, int min, int max, int initialValue,
-					 ValueFormatter formatter, IntConsumer setter) {
-			super(x, y, width, height, Text.empty(), (double) (initialValue - min) / (double) (max - min));
-			this.labelKey = labelKey;
-			this.min = min;
-			this.max = max;
-			this.formatter = formatter;
-			this.setter = setter;
-			this.updateMessage();
-		}
-
-		OptionSlider tooltip(String key) {
-			this.setTooltip(Tooltip.of(Text.translatable(key)));
-			return this;
-		}
-
-		private int intValue() {
-			return this.min + (int) Math.round((this.max - this.min) * this.value);
-		}
-
-		@Override
-		protected void updateMessage() {
-			this.setMessage(Text.translatable(this.labelKey, Text.literal(this.formatter.format(this.intValue()))));
-		}
-
-		@Override
-		protected void applyValue() {
-			this.setter.accept(this.intValue());
-		}
-	}
-
-	@FunctionalInterface
-	private interface ValueFormatter {
-		String format(int value);
 	}
 }

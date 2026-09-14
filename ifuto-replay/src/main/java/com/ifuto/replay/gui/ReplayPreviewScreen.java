@@ -3,6 +3,8 @@ package com.ifuto.replay.gui;
 import com.ifuto.replay.IfutoReplayClient;
 import com.ifuto.replay.compat.IrisCompat;
 import com.ifuto.replay.config.ReplayConfig;
+import com.ifuto.replay.gui.theme.ReplayTheme;
+import com.ifuto.replay.gui.widget.ModernButton;
 import com.ifuto.replay.playback.ReplayPlayback;
 import com.ifuto.replay.playback.ReplayStream;
 import net.minecraft.client.MinecraftClient;
@@ -13,13 +15,13 @@ import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.screen.TitleScreen;
 import net.minecraft.client.gui.screen.pack.PackScreen;
 import net.minecraft.client.gui.tooltip.Tooltip;
-import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.client.option.Perspective;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
 
 import java.nio.file.Path;
 import java.util.List;
+import java.util.function.Consumer;
 
 /**
  * 再生画面（プレビュー）。
@@ -32,14 +34,13 @@ public class ReplayPreviewScreen extends Screen {
 	private static final int ROW_HEIGHT = 20;
 	private static final int GAP = 4;
 	private static final int TIMELINE_HEIGHT = 18;
-	private static final int BAR_COLOR = 0x80000000;
 
 	private final ReplayPlayback playback;
 
-	private ButtonWidget playPause;
-	private ButtonWidget speedButton;
-	private ButtonWidget addressButton;
-	private ButtonWidget perspectiveButton;
+	private ModernButton playPause;
+	private ModernButton speedButton;
+	private ModernButton addressButton;
+	private ModernButton perspectiveButton;
 
 	public ReplayPreviewScreen(ReplayPlayback playback) {
 		super(Text.translatable("ifuto-replay.preview.title"));
@@ -62,31 +63,32 @@ public class ReplayPreviewScreen extends Screen {
 
 		Row controls = new Row(left, controlsY, left + barWidth);
 
-		controls.add(Text.literal("⏮"), 26, button -> this.restartAt(0L))
+		controls.add(Text.literal("⏮"), 26, button -> this.restartAt(0L), ModernButton.Style.NORMAL)
 				.setTooltip(Tooltip.of(Text.translatable("ifuto-replay.preview.restart")));
 
 		this.playPause = controls.add(this.playPauseText(), 40, button -> {
 			this.playback.setPaused(!this.playback.isPaused());
 			this.playPause.setMessage(this.playPauseText());
-		});
+		}, ModernButton.Style.PRIMARY);
 
 		this.speedButton = controls.add(this.speedText(), 62, button -> {
 			this.playback.cycleSpeed();
 			this.speedButton.setMessage(this.speedText());
-		});
+		}, ModernButton.Style.NORMAL);
 
-		controls.add(Text.literal("⚑ ◀"), 52, button -> this.jumpMarker(false))
+		controls.add(Text.literal("⚑ ◀"), 52, button -> this.jumpMarker(false), ModernButton.Style.NORMAL)
 				.setTooltip(Tooltip.of(Text.translatable("ifuto-replay.preview.marker_prev")));
 
-		controls.add(Text.literal("⚑ ▶"), 52, button -> this.jumpMarker(true))
+		controls.add(Text.literal("⚑ ▶"), 52, button -> this.jumpMarker(true), ModernButton.Style.NORMAL)
 				.setTooltip(Tooltip.of(Text.translatable("ifuto-replay.preview.marker_next")));
 
 		Row tools = new Row(left, toolsY, left + barWidth);
 
-		tools.add(Text.translatable("ifuto-replay.preview.resource_packs"), 96, button -> this.openPackScreen());
+		tools.add(Text.translatable("ifuto-replay.preview.resource_packs"), 96, button -> this.openPackScreen(),
+				ModernButton.Style.NORMAL);
 
-		ButtonWidget shaders = tools.add(Text.translatable("ifuto-replay.preview.shaders"), 80,
-				button -> this.openShaderScreen());
+		ModernButton shaders = tools.add(Text.translatable("ifuto-replay.preview.shaders"), 80,
+				button -> this.openShaderScreen(), ModernButton.Style.NORMAL);
 
 		if (!IrisCompat.isAvailable()) {
 			shaders.active = false;
@@ -97,16 +99,16 @@ public class ReplayPreviewScreen extends Screen {
 			MinecraftClient client = MinecraftClient.getInstance();
 			client.options.setPerspective(client.options.getPerspective().next());
 			this.perspectiveButton.setMessage(this.perspectiveText());
-		});
+		}, ModernButton.Style.NORMAL);
 
 		this.addressButton = tools.add(this.addressText(), 104, button -> {
 			ReplayConfig config = ReplayConfig.get();
 			config.maskServerAddress = !config.maskServerAddress;
 			config.save();
 			this.addressButton.setMessage(this.addressText());
-		});
+		}, ModernButton.Style.NORMAL);
 
-		tools.add(Text.literal("✕"), 26, button -> this.close())
+		tools.add(Text.literal("✕"), 26, button -> this.close(), ModernButton.Style.DANGER)
 				.setTooltip(Tooltip.of(Text.translatable("ifuto-replay.preview.close")));
 	}
 
@@ -150,7 +152,7 @@ public class ReplayPreviewScreen extends Screen {
 		int left = this.width / 2 - barWidth / 2;
 		int top = this.height - 8 - ROW_HEIGHT * 2 - GAP * 2 - TIMELINE_HEIGHT - 16;
 
-		context.fill(left - 6, top - 4, left + barWidth + 6, this.height - 2, BAR_COLOR);
+		ReplayTheme.panel(context, left - 6, top - 4, barWidth + 12, this.height - 2 - (top - 4));
 
 		// 1行目: 時刻 / 長さ、サーバー名
 		String time = timeText(this.playback.timeMs()) + " / " + timeText(this.playback.durationMs());
@@ -197,7 +199,8 @@ public class ReplayPreviewScreen extends Screen {
 	private int drawOverlayLine(DrawContext context, Text text, int y, int color) {
 		int width = this.textRenderer.getWidth(text);
 		int left = this.width / 2 - width / 2;
-		context.fill(left - 5, y - 3, left + width + 5, y + 10, BAR_COLOR);
+		ReplayTheme.fillRound(context, left - 5, y - 3, width + 10, 13, 6, 0xC00A0F14);
+		ReplayTheme.strokeRound(context, left - 5, y - 3, width + 10, 13, 6, ReplayTheme.BORDER);
 		context.drawTextWithShadow(this.textRenderer, text, left, y, color);
 		return y + 15;
 	}
@@ -333,15 +336,13 @@ public class ReplayPreviewScreen extends Screen {
 			this.y = y;
 		}
 
-		ButtonWidget add(Text message, int width, ButtonWidget.PressAction action) {
+		ModernButton add(Text message, int width, Consumer<ModernButton> action, ModernButton.Style style) {
 			if (this.x + width > this.right && this.x > this.left) {
 				this.x = this.left;
 				this.y -= ROW_HEIGHT + GAP;
 			}
 
-			ButtonWidget button = ButtonWidget.builder(message, action)
-					.dimensions(this.x, this.y, width, ROW_HEIGHT)
-					.build();
+			ModernButton button = new ModernButton(this.x, this.y, width, ROW_HEIGHT, message, action, style);
 
 			addDrawableChild(button);
 			this.x += width + GAP;
