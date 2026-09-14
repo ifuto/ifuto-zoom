@@ -15,4 +15,4 @@ java: 21
 workdir: ifuto-replay
 artifact_path: ifuto-replay/build/libs/*.jar
 
-note: VC の声だけを別に録る（直した）
+note: Minecraft の音だけを録る（ループバック）
