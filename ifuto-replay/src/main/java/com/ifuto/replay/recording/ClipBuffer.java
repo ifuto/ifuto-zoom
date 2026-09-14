@@ -93,6 +93,9 @@ final class ClipBuffer {
 			return;
 		}
 
+		// 前回が途中で終わっていた（クラッシュ等）ときの残りを先に片付ける
+		clearCache();
+
 		// 音声は区間と違って通しで1本（止めると音が途切れるので）
 		RecordingManager.INSTANCE.startClipAudio(client, this.audioBase);
 		this.openSegment();
@@ -425,6 +428,25 @@ final class ClipBuffer {
 			Files.deleteIfExists(path);
 		} catch (IOException ignored) {
 			// 消せなくても一時置き場なので放っておく
+		}
+	}
+
+	/** 前回の残りを消す（消せなくても次の録り直しで上書きされるので気にしない） */
+	private void clearCache() {
+		try (java.util.stream.Stream<Path> files = Files.list(this.cacheDir)) {
+			files.filter(path -> {
+						String name = path.getFileName().toString();
+						return name.startsWith("clip-") || name.startsWith("clip-audio");
+					})
+					.forEach(path -> {
+						try {
+							Files.deleteIfExists(path);
+						} catch (IOException ignored) {
+							// 消せない物が残っても、上書きされるので害はない
+						}
+					});
+		} catch (IOException ignored) {
+			// 一覧できなければ何もしない
 		}
 	}
 
