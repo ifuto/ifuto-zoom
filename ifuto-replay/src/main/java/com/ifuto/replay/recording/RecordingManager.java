@@ -45,6 +45,12 @@ public final class RecordingManager {
 	/** 空き容量のチェック間隔（ms） */
 	private static final long DISK_CHECK_INTERVAL_MS = 5000L;
 
+	/** パケットにならない操作（マウス・キー・画面）の記録 */
+	private final InputTracker inputTracker = new InputTracker();
+
+	/** いま InputTracker が追っている録画（変わったら最初から記録し直す） */
+	private @Nullable RecordingSession trackedSession;
+
 	/** 容量の警告は1回でいい */
 	private boolean lowDiskWarned;
 	private boolean sizeWarned;
@@ -240,6 +246,14 @@ public final class RecordingManager {
 		if (current == null) {
 			return;
 		}
+
+		// マウス・キー・画面の操作（パケットにならない物）も差分で記録する
+		if (this.trackedSession != current) {
+			this.trackedSession = current;
+			this.inputTracker.reset();
+		}
+
+		this.inputTracker.tick(client, current);
 
 		long now = System.currentTimeMillis();
 

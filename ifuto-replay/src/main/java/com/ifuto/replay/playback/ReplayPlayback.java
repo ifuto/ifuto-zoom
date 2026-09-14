@@ -2,6 +2,7 @@ package com.ifuto.replay.playback;
 
 import com.ifuto.replay.IfutoReplayClient;
 import com.ifuto.replay.gui.BlankScreen;
+import com.ifuto.replay.mixin.MouseAccessor;
 import com.ifuto.replay.recording.RegistrySnapshot;
 import com.ifuto.replay.recording.ReplayFormat;
 import com.mojang.authlib.GameProfile;
@@ -12,6 +13,7 @@ import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.network.ClientConnectionState;
 import net.minecraft.client.network.ClientPlayNetworkHandler;
 import net.minecraft.client.network.ClientPlayerEntity;
+import net.minecraft.client.option.Perspective;
 import net.minecraft.client.world.ClientChunkLoadProgress;
 import net.minecraft.network.ClientConnection;
 import net.minecraft.network.RegistryByteBuf;
@@ -30,6 +32,8 @@ import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
 import org.jspecify.annotations.Nullable;
 
+import java.io.ByteArrayInputStream;
+import java.io.DataInputStream;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.HashMap;
@@ -105,6 +109,15 @@ public final class ReplayPlayback implements ReplayStream.Sink {
 
 	/** 「前に戻る」ときの作り直し（画面側で差し替える） */
 	private @Nullable Consumer<Long> restartHandler;
+
+	// --- パケットにならない操作（マウス・キー・画面）の再生 ---
+	private double cursorX;
+	private double cursorY;
+	private boolean cursorValid;
+	private int pendingPerspective = -1;
+	private @Nullable Boolean pendingDebug;
+	private String screenId = "";
+	private String chatText = "";
 
 	// --- カメラ ---
 	private CamSample camFrom = CamSample.ORIGIN;
@@ -327,7 +340,37 @@ public final class ReplayPlayback implements ReplayStream.Sink {
 			this.pumpDue();
 		}
 
+		this.applyInputState();
 		this.updateCamera(this.timeMs);
+	}
+
+	/**
+	 * 記録しておいた「パケットにならない操作」をクライアントへ反映する。
+	 *
+	 * <p>視点（F5）とデバッグ画面（F3）はバニラの設定をそのまま動かすので、
+	 * 録っていた本人の見え方になる。カーソルも録っていた位置へ戻す。
+	 */
+	private void applyInputState() {
+		if (this.pendingPerspective >= 0) {
+			Perspective[] perspectives = Perspective.values();
+
+			if (this.pendingPerspective < perspectives.length) {
+				this.client.options.setPerspective(perspectives[this.pendingPerspective]);
+			}
+
+			this.pendingPerspective = -1;
+		}
+
+		if (this.pendingDebug != null) {
+			this.client.options.debugEnabled = this.pendingDebug;
+			this.pendingDebug = null;
+		}
+
+		if (this.cursorValid && this.client.mouse != null) {
+			MouseAccessor mouse = (MouseAccessor) this.client.mouse;
+			mouse.ifutoReplay$setX(this.cursorX);
+			mouse.ifutoReplay$setY(this.cursorY);
+		}
 	}
 
 	/** 早送り（1フレームの予算の範囲で、目標時刻までパケットを流す） */
@@ -389,6 +432,62 @@ public final class ReplayPlayback implements ReplayStream.Sink {
 		this.pendingTimeMs = timeMs;
 		this.pendingTypeIndex = typeIndex;
 		this.pendingPayload = payload;
+	}
+
+	/**
+	 * パケットにならない操作を読み取る。
+	 *
+	 * <p>ここでは「状態」を覚えるだけ。実際にクライアントへ反映するのは tick() の中
+	 * （パケットの適用はクライアントスレッドとは限らないので）。
+	 */
+	@Override
+	public void input(long timeMs, int subtype, byte[] data, int length) {
+		if (length <= 1) {
+			return;
+		}
+
+		try (DataInputStream in = new DataInputStream(new ByteArrayInputStream(data, 1, length - 1))) {
+			switch (subtype) {
+				case ReplayFormat.INPUT_MOUSE_ABS -> {
+					this.cursorX = in.readShort();
+					this.cursorY = in.readShort();
+					this.cursorValid = true;
+				}
+				case ReplayFormat.INPUT_MOUSE_DELTA -> {
+					this.cursorX += in.readShort();
+					this.cursorY += in.readShort();
+					this.cursorValid = true;
+				}
+				case ReplayFormat.INPUT_PERSPECTIVE -> this.pendingPerspective = in.readByte();
+				case ReplayFormat.INPUT_DEBUG -> this.pendingDebug = in.readByte() != 0;
+				case ReplayFormat.INPUT_SCREEN -> this.screenId = in.readUTF();
+				case ReplayFormat.INPUT_CHAT_SET -> this.chatText = in.readUTF();
+				case ReplayFormat.INPUT_CHAT_APPEND -> {
+					int prefix = in.readInt();
+					String suffix = in.readUTF();
+
+					if (prefix >= 0 && prefix <= this.chatText.length()) {
+						this.chatText = this.chatText.substring(0, prefix) + suffix;
+					} else {
+						this.chatText = suffix;
+					}
+				}
+				default -> {
+				}
+			}
+		} catch (IOException e) {
+			this.errors++;
+		}
+	}
+
+	/** いま開いていた画面（空欄 = 開いていない） */
+	public String screenId() {
+		return this.screenId;
+	}
+
+	/** いま入力していた文字（空欄 = 入力していない） */
+	public String chatText() {
+		return this.chatText;
 	}
 
 	@Override

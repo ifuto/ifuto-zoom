@@ -51,6 +51,9 @@ public final class ReplayStream implements Closeable {
 
 		/** しおりが出てきた */
 		void marker(long timeMs, String name);
+
+		/** パケットにならない操作（マウス・キー・画面）が出てきた */
+		void input(long timeMs, int subtype, byte[] data, int length);
 	}
 
 	private final InputStream source;
@@ -210,6 +213,14 @@ public final class ReplayStream implements Closeable {
 
 					sink.packet(this.timeMs, typeIndex, payload, payload.length);
 					return true;
+				}
+				case ReplayFormat.TAG_INPUT -> {
+					this.timeMs += this.readVarInt();
+					int subtype = this.in.readByte();
+					int length = this.readVarInt();
+					byte[] data = new byte[length];
+					this.in.readFully(data);
+					sink.input(this.timeMs, subtype, data, length);
 				}
 				case ReplayFormat.TAG_INDEX -> this.readIndex();
 				case ReplayFormat.TAG_REGISTRIES -> {

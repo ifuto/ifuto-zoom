@@ -42,6 +42,32 @@ public final class ReplayFormat {
 	 */
 	public static final int TAG_REGISTRIES = 5;
 
+	/** パケットにならない操作（マウス・キー・画面）の差分 */
+	public static final int TAG_INPUT = 6;
+
+	// --- TAG_INPUT の種類 ---
+
+	/** カーソルの絶対座標（ときどき入れて、欠けても崩れないようにする） */
+	public static final int INPUT_MOUSE_ABS = 0;
+
+	/** カーソルの移動量 */
+	public static final int INPUT_MOUSE_DELTA = 1;
+
+	/** 視点（F5） */
+	public static final int INPUT_PERSPECTIVE = 2;
+
+	/** デバッグ画面（F3） */
+	public static final int INPUT_DEBUG = 3;
+
+	/** 開いている画面（空欄 = 開いていない） */
+	public static final int INPUT_SCREEN = 4;
+
+	/** チャット欄の入力中テキスト（全文） */
+	public static final int INPUT_CHAT_SET = 5;
+
+	/** チャット欄の入力中テキスト（増えた分だけ） */
+	public static final int INPUT_CHAT_APPEND = 6;
+
 	// --- パケットの向き ---
 
 	/** サーバー → クライアント */

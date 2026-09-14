@@ -251,6 +251,32 @@ public final class RecordingSession {
 		}
 	}
 
+	/**
+	 * パケットにならない操作（マウス・キー・画面）を1件記録する。
+	 *
+	 * <p>本体のパケットに比べると桁違いに小さいので、容量を気にせず記録できる。
+	 * 溜まりすぎていたら捨てる（ゲームを止めるよりマシ）。
+	 */
+	public void recordInput(byte[] data) {
+		if (this.stopping || data == null || data.length == 0) {
+			return;
+		}
+
+		if (this.queuedBytes.get() > this.maxQueuedBytes) {
+			this.droppedCount.incrementAndGet();
+			return;
+		}
+
+		long timeMs = System.currentTimeMillis() - this.startedAt;
+
+		if (!this.writer.offer(PacketTask.input(timeMs, data))) {
+			this.droppedCount.incrementAndGet();
+			return;
+		}
+
+		this.queuedBytes.addAndGet(data.length);
+	}
+
 	/** しおりを付ける */
 	public void addMarker(String name) {
 		if (this.stopping) {

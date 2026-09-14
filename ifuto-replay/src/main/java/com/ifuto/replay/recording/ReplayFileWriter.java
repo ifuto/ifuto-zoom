@@ -204,6 +204,7 @@ final class ReplayFileWriter implements Runnable {
 
 	private void handleInner(PacketTask task) throws IOException {
 		switch (task.kind) {
+			case PacketTask.KIND_INPUT -> this.writeInput(task);
 			case PacketTask.KIND_TYPE -> {
 				this.out.writeByte(ReplayFormat.TAG_PACKET_TYPE);
 				this.out.writeVarInt(task.typeIndex);
@@ -268,6 +269,20 @@ final class ReplayFileWriter implements Runnable {
 	 *
 	 * <p>NBT のまま保存する。展開は再生時にしかしないので、録画中は直列化と圧縮だけ。
 	 */
+	/** 入力（マウス・キー・画面）の差分。中身は InputTracker が組み立てた物 */
+	private void writeInput(PacketTask task) throws IOException {
+		byte[] data = task.data;
+
+		if (data == null || data.length == 0) {
+			return;
+		}
+
+		this.out.writeByte(ReplayFormat.TAG_INPUT);
+		this.out.writeVarInt(this.takeDelta(task.timeMs));
+		this.out.writeVarInt(data.length);
+		this.out.writeBytes(data);
+	}
+
 	private void writeRegistries(NbtCompound nbt) throws IOException {
 		if (nbt == null || nbt.isEmpty()) {
 			return;

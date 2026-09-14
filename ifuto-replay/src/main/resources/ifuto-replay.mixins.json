@@ -4,9 +4,11 @@
 	"package": "com.ifuto.replay.mixin",
 	"compatibilityLevel": "JAVA_21",
 	"client": [
+		"ChatScreenAccessor",
 		"ClientConnectionMixin",
 		"ClientPlayNetworkHandlerMixin",
-		"GameRendererMixin"
+		"GameRendererMixin",
+		"MouseAccessor"
 	],
 	"injectors": {
 		"defaultRequire": 1

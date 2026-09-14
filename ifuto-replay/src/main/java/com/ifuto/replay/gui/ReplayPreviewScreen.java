@@ -118,6 +118,7 @@ public class ReplayPreviewScreen extends Screen {
 	@Override
 	public void render(DrawContext context, int mouseX, int mouseY, float deltaTicks) {
 		this.drawBar(context);
+		this.drawInputOverlay(context);
 		super.render(context, mouseX, mouseY, deltaTicks);
 	}
 
@@ -166,6 +167,39 @@ public class ReplayPreviewScreen extends Screen {
 		String address = ReplayConfig.get().displayAddress(this.playback.header().serverName());
 		int addressWidth = this.textRenderer.getWidth(address);
 		context.drawText(this.textRenderer, address, left + barWidth - addressWidth, top, 0x888888, true);
+	}
+
+	/**
+	 * 「入力していた文字」と「開いていた画面」を上に出す。
+	 *
+	 * <p>どちらもパケットには残らない物。録った本人が何をしていたか分かるように、重ねて見せる。
+	 */
+	private void drawInputOverlay(DrawContext context) {
+		String screenId = this.playback.screenId();
+		String chatText = this.playback.chatText();
+
+		if (screenId.isEmpty() && chatText.isEmpty()) {
+			return;
+		}
+
+		int y = 6;
+
+		if (!screenId.isEmpty()) {
+			y = this.drawOverlayLine(context, Text.translatable("ifuto-replay.preview.screen",
+					Text.translatable("ifuto-replay.screen." + screenId)), y, 0xDDDDDD);
+		}
+
+		if (!chatText.isEmpty()) {
+			this.drawOverlayLine(context, Text.translatable("ifuto-replay.preview.typing", chatText), y, 0xFFFFFF);
+		}
+	}
+
+	private int drawOverlayLine(DrawContext context, Text text, int y, int color) {
+		int width = this.textRenderer.getWidth(text);
+		int left = this.width / 2 - width / 2;
+		context.fill(left - 5, y - 3, left + width + 5, y + 10, BAR_COLOR);
+		context.drawTextWithShadow(this.textRenderer, text, left, y, color);
+		return y + 15;
 	}
 
 	private Text stateText() {

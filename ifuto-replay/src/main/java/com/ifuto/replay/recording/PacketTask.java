@@ -22,6 +22,9 @@ final class PacketTask {
 	/** 動的レジストリの写し */
 	static final int KIND_REGISTRIES = 3;
 
+	/** パケットにならない操作（マウス・キー・画面） */
+	static final int KIND_INPUT = 4;
+
 	final int kind;
 
 	/** 録画開始からの経過ミリ秒 */
@@ -42,8 +45,11 @@ final class PacketTask {
 	/** レジストリの写し（KIND_REGISTRIES のときだけ） */
 	final NbtCompound nbt;
 
+	/** 入力イベントの中身（KIND_INPUT のときだけ） */
+	final byte[] data;
+
 	private PacketTask(int kind, long timeMs, int typeIndex, int direction, ByteBuf payload, String text,
-					   NbtCompound nbt) {
+					   NbtCompound nbt, byte[] data) {
 		this.kind = kind;
 		this.timeMs = timeMs;
 		this.typeIndex = typeIndex;
@@ -51,25 +57,34 @@ final class PacketTask {
 		this.payload = payload;
 		this.text = text;
 		this.nbt = nbt;
+		this.data = data;
 	}
 
 	static PacketTask type(int index, int direction, String identifier) {
-		return new PacketTask(KIND_TYPE, 0L, index, direction, null, identifier, null);
+		return new PacketTask(KIND_TYPE, 0L, index, direction, null, identifier, null, null);
 	}
 
 	static PacketTask packet(long timeMs, int typeIndex, int direction, ByteBuf payload) {
-		return new PacketTask(KIND_PACKET, timeMs, typeIndex, direction, payload, null, null);
+		return new PacketTask(KIND_PACKET, timeMs, typeIndex, direction, payload, null, null, null);
 	}
 
 	static PacketTask registries(NbtCompound nbt) {
-		return new PacketTask(KIND_REGISTRIES, 0L, 0, 0, null, null, nbt);
+		return new PacketTask(KIND_REGISTRIES, 0L, 0, 0, null, null, nbt, null);
 	}
 
 	static PacketTask marker(long timeMs, String name) {
-		return new PacketTask(KIND_MARKER, timeMs, 0, 0, null, name, null);
+		return new PacketTask(KIND_MARKER, timeMs, 0, 0, null, name, null, null);
+	}
+
+	static PacketTask input(long timeMs, byte[] data) {
+		return new PacketTask(KIND_INPUT, timeMs, 0, 0, null, null, null, data);
 	}
 
 	int size() {
-		return this.payload == null ? 0 : this.payload.readableBytes();
+		if (this.payload != null) {
+			return this.payload.readableBytes();
+		}
+
+		return this.data == null ? 0 : this.data.length;
 	}
 }

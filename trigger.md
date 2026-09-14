@@ -15,4 +15,4 @@ java: 21
 workdir: ifuto-replay
 artifact_path: ifuto-replay/build/libs/*.jar
 
-note: メモリと容量の自動管理
+note: 操作（マウス・入力中テキスト・F5/F3・画面）の記録
