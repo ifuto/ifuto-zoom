@@ -30,10 +30,13 @@ import java.util.zip.Deflater;
  *
  * <p>やっていることは単純で、
  * <ol>
- *     <li>録り始めから **短い区間（{@code clipSeconds} の半分）ごとにファイルを分けて** 書き続ける</li>
- *     <li>区間は **古い物から捨てる**（直近3つだけ残す）</li>
- *     <li>「クリップを保存」が押されたら、**残っている区間をつなげて1つの .ifreplay にする**</li>
+ *     <li>録り始めから **短い区間（{@code clipSeconds} の4分の1）ごとにファイルを分けて** 書き続ける</li>
+ *     <li>区間は **古い物から捨てる**（時間と容量の、先に来たほうで切る）</li>
+ *     <li>「クリップを保存」が押されたら、**新しいほうから必要な区間だけをつなげて** 1つの .ifreplay にする</li>
  * </ol>
+ *
+ * <p>転がしておく量は「クリップの長さの1.5倍」。保存される長さは「設定した長さ〜そこに
+ * 区間1つぶん足した長さ」になる（開始位置は必ず区間の先頭＝世界の写しのある所になるため）。
  *
  * <p>メモリは溜めない（書き込みスレッドがこまめにファイルへ移す）ので、
  * この方式でも「溜め込み」は起きない。ディスクを使うぶん、長く遊んでも平気。
@@ -42,11 +45,20 @@ import java.util.zip.Deflater;
  * 区間の途中からでも「そこに世界がある状態」から再生できる（= つなげた結果が必ず再生できる）。
  */
 final class ClipBuffer {
-	/** 残す区間の数（いま + 直前2つ。窓の外側を1つ余分に持っておくため） */
-	private static final int KEEP_SEGMENTS = 3;
+	/** 残す区間の数（転がしておく量 = クリップの長さの1.5倍になるように分ける） */
+	private static final int KEEP_SEGMENTS = 6;
+
+	/** 区間をいくつに分けるか（= 保存した長さが最大どれだけ伸びるか） */
+	private static final int SEGMENT_DIVISOR = 4;
 
 	/** 区間の最短（あまりに細切れになるのを防ぐ） */
 	private static final long MIN_SEGMENT_MS = 5000L;
+
+	/** 一時ファイルの下限（これより小さくは切り詰めない） */
+	private static final long MIN_CACHE_BYTES = 256L * 1024L * 1024L;
+
+	/** 上限を決めていないときの天井 */
+	private static final long MAX_CACHE_BYTES = 16L * 1024L * 1024L * 1024L;
 
 	private static final int COPY_BUFFER = 1 << 16;
 
@@ -69,6 +81,13 @@ final class ClipBuffer {
 	private @Nullable NbtCompound registries;
 	private int segmentCounter;
 	private long lastOpenAttemptMs;
+	private long lastMeasureMs;
+
+	/** 消した区間も含めた「これまでに書いた量」（速度の計算に使う） */
+	private long writtenBytes;
+
+	/** 実測の速度（バイト/分） */
+	private long bytesPerMinute;
 	private volatile boolean saving;
 	private volatile boolean closed;
 
@@ -123,6 +142,9 @@ final class ClipBuffer {
 			return;
 		}
 
+		// 書き込む速さを測り直して、容量を切り詰める
+		this.watch(System.currentTimeMillis());
+
 		if (this.writer == null) {
 			// 開けなかったとき（一時的にディスクが一杯など）は、少し待って開き直す
 			long now = System.currentTimeMillis();
@@ -146,6 +168,82 @@ final class ClipBuffer {
 		}
 
 		this.rotate(client);
+	}
+
+	/**
+	 * 一定時間ごとに、書き込む速さを測り直して容量を切り詰める。
+	 *
+	 * <p>長さで切るだけだと「掘りまくり」のときに一時ファイルが膨らむので、
+	 * **いまの速度から必要な量を逆算して** それも超えないようにする。
+	 * 書き込み量そのものを抑えることは SSD の寿命にも効く。
+	 */
+	private void watch(long now) {
+		if (now - this.lastMeasureMs < 5000L) {
+			return;
+		}
+
+		this.lastMeasureMs = now;
+		this.measure();
+		this.trimBySize();
+	}
+
+	private void measure() {
+		long minutes = Math.max(1L, this.session.elapsedMillis() / 60_000L);
+		long total = this.writtenBytes;
+		ReplayFileWriter current = this.writer;
+
+		if (current != null) {
+			total += current.bytesWritten();
+		}
+
+		this.bytesPerMinute = Math.max(1L, total / minutes);
+	}
+
+	/** 一時ファイルの上限（実測の速度から必要なぶんだけ） */
+	private long maxCacheBytes() {
+		double minutes = this.config.clipSeconds / 60.0;
+		long wanted = (long) (this.bytesPerMinute * minutes * 1.5 * 1.25);
+		long ceiling = this.config.clipBufferMb > 0
+				? (long) this.config.clipBufferMb * 1024L * 1024L
+				: MAX_CACHE_BYTES;
+
+		// 空きは常に4分の1以上残す
+		long free = freeBytes(ReplayConfig.getSaveDirectory());
+
+		if (free > 0L) {
+			ceiling = Math.min(ceiling, free / 4L);
+		}
+
+		return Math.max(MIN_CACHE_BYTES, Math.min(ceiling, wanted));
+	}
+
+	/** 上限を超えていたら、古い区間から消す（最低2つは残す） */
+	private void trimBySize() {
+		long limit = this.maxCacheBytes();
+
+		while (this.segments.size() > 2 && this.bytes() > limit) {
+			Segment oldest = this.segments.pollFirst();
+
+			if (oldest == null) {
+				return;
+			}
+
+			deleteAll(List.of(oldest));
+		}
+	}
+
+	private static long freeBytes(Path directory) {
+		Path target = directory;
+
+		try {
+			while (target != null && !Files.exists(target)) {
+				target = target.getParent();
+			}
+
+			return target == null ? 0L : Files.getFileStore(target).getUsableSpace();
+		} catch (IOException e) {
+			return 0L;
+		}
 	}
 
 	/** いま保存できる長さ（ミリ秒） */
@@ -234,7 +332,7 @@ final class ClipBuffer {
 	// --- 中身 ---
 
 	private long segmentSpanMs() {
-		return Math.max(MIN_SEGMENT_MS, (long) this.config.clipSeconds * 1000L / 2L);
+		return Math.max(MIN_SEGMENT_MS, (long) this.config.clipSeconds * 1000L / SEGMENT_DIVISOR);
 	}
 
 	private void openSegment() {
@@ -273,7 +371,10 @@ final class ClipBuffer {
 			long durationMs = closing == null ? 0L : closing.endMs - closing.startMs;
 
 			// 閉じるのは待つ必要がないので別スレッドへ
-			Thread closer = new Thread(() -> previous.finish(durationMs), "ifuto-replay-clip-close");
+			Thread closer = new Thread(() -> {
+				previous.finish(durationMs);
+				this.writtenBytes += previous.bytesWritten();
+			}, "ifuto-replay-clip-close");
 			closer.setDaemon(true);
 			closer.start();
 		}
@@ -297,7 +398,7 @@ final class ClipBuffer {
 			current.finish(elapsed);
 		}
 
-		List<Segment> parts = new ArrayList<>(this.segments);
+		List<Segment> parts = this.window();
 
 		if (parts.isEmpty()) {
 			return null;
@@ -324,10 +425,34 @@ final class ClipBuffer {
 			ReplayFileWriter.writeFooter(out, durationMs);
 		}
 
-		this.segments.clear();
+		// 使った区間だけ捨てる（窓の外にある古い区間は、まだ次のクリップには要らないので消してよい）
+		this.segments.removeAll(parts);
 		this.collectAudio(output, durationMs);
 		deleteAll(parts);
 		return output;
+	}
+
+	/**
+	 * 保存する区間を選ぶ（**新しいほうから**「クリップの長さ」ぶんだけ）。
+	 *
+	 * <p>開始位置は必ず区間の先頭（= 世界の写しがある所）になる。途中から始めると
+	 * その時点の世界が再現できないため。
+	 */
+	private List<Segment> window() {
+		long wanted = Math.max(MIN_SEGMENT_MS, (long) this.config.clipSeconds * 1000L);
+		ArrayList<Segment> picked = new ArrayList<>(this.segments);
+		ArrayList<Segment> result = new ArrayList<>();
+
+		for (int i = picked.size() - 1; i >= 0; i--) {
+			Segment segment = picked.get(i);
+			result.add(0, segment);
+
+			if (this.session.elapsedMillis() - segment.startMs >= wanted) {
+				break;
+			}
+		}
+
+		return result;
 	}
 
 	/**

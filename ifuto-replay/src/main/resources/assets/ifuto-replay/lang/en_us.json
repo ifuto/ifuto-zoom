@@ -192,7 +192,7 @@
 	"ifuto-replay.config.clip_mode": "Clip mode",
 	"ifuto-replay.config.clip_mode.tooltip": "Record continuously like Medal, then save backwards from the moment you press \"Save clip\". Nothing is kept unless you press it.",
 	"ifuto-replay.config.clip_seconds": "Clip length",
-	"ifuto-replay.config.clip_seconds.tooltip": "How far back to save, in seconds. The result can be slightly longer because of how clips are split.",
+	"ifuto-replay.config.clip_seconds.tooltip": "How far back to save (15 s up to 4 h). The result can be slightly longer because of how clips are split",
 	"ifuto-replay.config.seconds": "s",
 	"ifuto-replay.message.clip_started": "Clip mode started (keeping the last %s seconds)",
 	"ifuto-replay.message.clip_saving": "Saving clip…",
@@ -206,5 +206,12 @@
 	"ifuto-replay.config.clip_keep": "Keep clips for",
 	"ifuto-replay.config.clip_keep.tooltip": "Saved clips older than this are deleted automatically, together with their audio. Choose \"Forever\" to keep them until you delete them yourself",
 	"ifuto-replay.config.clip_keep.never": "Forever",
-	"ifuto-replay.config.clip_keep.hours": "%d h"
+	"ifuto-replay.config.clip_keep.hours": "%d h",
+	"ifuto-replay.config.clip_length.hours": "%d h",
+	"ifuto-replay.config.clip_length.minutes": "%d min",
+	"ifuto-replay.config.clip_length.seconds": "%d s",
+	"ifuto-replay.config.clip_buffer": "Clip cache size",
+	"ifuto-replay.config.clip_buffer.auto": "Auto (measured)",
+	"ifuto-replay.config.clip_buffer.tooltip": "Upper limit for the temporary files. Auto keeps just what the measured write speed needs and drops the oldest segments past that, which also keeps the amount written to your SSD down",
+	"ifuto-replay.config.gigabytes.value": "%d GB"
 }

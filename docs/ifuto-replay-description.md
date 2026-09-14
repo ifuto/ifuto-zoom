@@ -192,8 +192,11 @@ the last N seconds is written out as one `.ifreplay` (the same feeling as Medal)
 
 How it stays light:
 
-- Recording is written in **short segments** (half the configured length) and the oldest segments are
-  thrown away — nothing piles up in memory, the writer thread keeps moving data to disk
+- Recording is written in **short segments** (a quarter of the configured length) and the oldest
+  segments are thrown away — nothing piles up in memory, the writer thread keeps moving data to disk
+- Segments past **1.5× the configured length** *or* past the **size limit** (whichever comes first)
+  are dropped. The limit is normally derived from the measured write speed, so the cache never
+  outgrows what the disk can spare and the amount written to your SSD stays small
 - Every segment starts with a **snapshot of the world at that moment**, so any segment can be played
   on its own — which means the joined result is always playable
 - Saving just **concatenates the surviving segments** — no re-encoding, a few seconds of copying, done
@@ -202,8 +205,9 @@ How it stays light:
   Minecraft-only mode it means reopening the output device), and the **tail is cut out** with ffmpeg
   when you save. Voice chat is cut as its own track, so it stays a real on/off switch
 
-Because clips are split at segment boundaries, a saved clip ends up between **the configured length and
-1.5× that**. Temporary files live in `<save folder>/.clip-cache/` and are removed when you stop.
+A clip always starts at a segment boundary (that is where the world snapshot lives), so it ends up
+between **the configured length and 1.25× that** — two hours configured gives you two to two and a
+half hours. Temporary files live in `<save folder>/.clip-cache/` and are removed when you stop.
 
 Saved clips are the files whose name starts with `clip_`. Anything older than **Keep clips for**
 (24 hours by default) is cleaned up automatically when clip mode starts and after every save — audio

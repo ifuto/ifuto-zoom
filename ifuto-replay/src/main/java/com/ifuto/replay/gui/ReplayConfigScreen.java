@@ -83,10 +83,20 @@ public class ReplayConfigScreen extends Screen {
 				toggle("ifuto-replay.config.clip_mode", this.config.clipMode,
 						"ifuto-replay.config.clip_mode.tooltip",
 						value -> this.config.clipMode = value),
-				slider("ifuto-replay.config.clip_seconds", 5, 180, this.config.clipSeconds,
-						value -> value + " " + Text.translatable("ifuto-replay.config.seconds").getString(),
+				cycle("ifuto-replay.config.clip_seconds", CLIP_LENGTHS, this.config.clipSeconds,
+						ReplayConfigScreen::clipLengthText,
 						"ifuto-replay.config.clip_seconds.tooltip",
 						value -> this.config.clipSeconds = value)));
+
+		// 1.55行目: 一時ファイルの上限（SSD へ書く量もここで抑える）
+		content.add(row(
+				cycle("ifuto-replay.config.clip_buffer", CLIP_BUFFERS, this.config.clipBufferMb,
+						value -> value <= 0
+								? Text.translatable("ifuto-replay.config.clip_buffer.auto")
+								: Text.translatable("ifuto-replay.config.gigabytes.value", value / 1024),
+						"ifuto-replay.config.clip_buffer.tooltip",
+						value -> this.config.clipBufferMb = value),
+				null));
 
 		// 1.6行目: クリップの置き場の整理
 		content.add(row(
@@ -327,6 +337,25 @@ public class ReplayConfigScreen extends Screen {
 				formatter, setter);
 		slider.setTooltip(Tooltip.of(Text.translatable(tooltipKey)));
 		return slider;
+	}
+
+	/** クリップの長さとして選べる物（秒） */
+	private static final List<Integer> CLIP_LENGTHS = List.of(15, 30, 60, 180, 300, 600, 1800, 3600, 7200, 14400);
+
+	/** クリップの一時ファイルの上限として選べる物（MB。0 = 自動） */
+	private static final List<Integer> CLIP_BUFFERS = List.of(0, 1024, 2048, 4096, 8192, 16384);
+
+	/** 秒を「2 時間」「30 分」「15 秒」のように表示する */
+	private static Text clipLengthText(int seconds) {
+		if (seconds >= 3600) {
+			return Text.translatable("ifuto-replay.config.clip_length.hours", seconds / 3600);
+		}
+
+		if (seconds >= 60) {
+			return Text.translatable("ifuto-replay.config.clip_length.minutes", seconds / 60);
+		}
+
+		return Text.translatable("ifuto-replay.config.clip_length.seconds", seconds);
 	}
 
 	/**
