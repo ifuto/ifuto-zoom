@@ -68,6 +68,7 @@ final class ClipBuffer {
 	private @Nullable ReplayFileWriter writer;
 	private @Nullable NbtCompound registries;
 	private int segmentCounter;
+	private long lastOpenAttemptMs;
 	private volatile boolean saving;
 	private volatile boolean closed;
 
@@ -116,7 +117,19 @@ final class ClipBuffer {
 
 	/** 毎ティック。区間の長さを過ぎていたら次へ移る */
 	void tick(MinecraftClient client) {
-		if (this.saving || this.closed || this.writer == null) {
+		if (this.saving || this.closed) {
+			return;
+		}
+
+		if (this.writer == null) {
+			// 開けなかったとき（一時的にディスクが一杯など）は、少し待って開き直す
+			long now = System.currentTimeMillis();
+
+			if (now - this.lastOpenAttemptMs > 2000L) {
+				this.lastOpenAttemptMs = now;
+				this.openSegment();
+			}
+
 			return;
 		}
 
@@ -223,6 +236,7 @@ final class ClipBuffer {
 	}
 
 	private void openSegment() {
+		this.lastOpenAttemptMs = System.currentTimeMillis();
 		Path file = this.cacheDir.resolve("clip-" + (this.segmentCounter++) + ".bin");
 		long elapsed = this.session.elapsedMillis();
 
@@ -290,7 +304,9 @@ final class ClipBuffer {
 		Segment last = parts.get(parts.size() - 1);
 		last.endMs = Math.max(last.endMs, this.session.elapsedMillis());
 
-		Path output = uniqueClip(ReplayConfig.getSaveDirectory(), last.startEpoch);
+		Path directory = ReplayConfig.getSaveDirectory();
+		Files.createDirectories(directory);
+		Path output = uniqueClip(directory, last.startEpoch);
 		long durationMs = Math.max(0L, last.endMs - parts.get(0).startMs);
 
 		try (OutputStream stream = new BufferedOutputStream(Files.newOutputStream(output), COPY_BUFFER)) {
