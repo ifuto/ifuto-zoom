@@ -201,5 +201,6 @@
 	"ifuto-replay.message.clip_empty": "Not enough recorded yet for a clip",
 	"ifuto-replay.message.clip_stopped": "Clip mode stopped (anything you did not save is gone)",
 	"ifuto-replay.message.clip_disabled": "Clip mode is off — you can turn it on in the settings",
-	"ifuto-replay.hud.clip": "✂ Clip %s / %s"
+	"ifuto-replay.hud.clip": "✂ Clip %s / %s",
+	"ifuto-replay.menu.clip.buffered": "Holding %s right now"
 }

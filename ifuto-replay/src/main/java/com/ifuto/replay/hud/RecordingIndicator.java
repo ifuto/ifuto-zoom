@@ -50,12 +50,17 @@ public class RecordingIndicator implements HudElement {
 		boolean blink = System.currentTimeMillis() % 1000L < 600L;
 		String text;
 
+		// クリップ方式で「設定した長さ」まで溜まっているか（色を変えて合図にする）
+		boolean clipReady = false;
+
 		if (session.isClipMode()) {
 			// クリップ方式: 「いま何秒ぶん残っているか」を出す（押したら残せる目安）
-			long buffered = Math.min(session.clipBufferedMillis(), (long) config.clipSeconds * 1000L);
+			long wanted = (long) config.clipSeconds * 1000L;
+			long buffered = session.clipBufferedMillis();
+			clipReady = buffered >= wanted;
 			text = net.minecraft.text.Text.translatable("ifuto-replay.hud.clip",
-					RecordingManager.formatDuration(buffered),
-					RecordingManager.formatDuration((long) config.clipSeconds * 1000L)).getString();
+					RecordingManager.formatDuration(Math.min(buffered, wanted)),
+					RecordingManager.formatDuration(wanted)).getString();
 		} else {
 			text = RecordingManager.formatDuration(session.elapsedMillis())
 					+ "  " + RecordingManager.formatSize(session.bytesWritten());
@@ -77,17 +82,20 @@ public class RecordingIndicator implements HudElement {
 			case BOTTOM_LEFT, BOTTOM_RIGHT -> context.getScaledWindowHeight() - boxHeight - MARGIN;
 		};
 
+		// クリップが「長さぶん溜まった」ら水色にする（押しごろがひと目でわかる）
+		int accent = clipReady ? ReplayTheme.ACCENT : ReplayTheme.RECORD;
+
 		// 角丸の「札」（影つき）
 		ReplayTheme.fillRound(context, x + 1, y + 2, boxWidth, boxHeight, boxHeight / 2, ReplayTheme.SHADOW);
 		ReplayTheme.fillRound(context, x, y, boxWidth, boxHeight, boxHeight / 2, ReplayTheme.SURFACE);
 		ReplayTheme.strokeRound(context, x, y, boxWidth, boxHeight, boxHeight / 2,
-				ReplayTheme.withAlpha(ReplayTheme.RECORD, blink ? 0x66 : 0x33));
+				ReplayTheme.withAlpha(accent, clipReady ? 0x88 : (blink ? 0x66 : 0x33)));
 
-		// 赤い丸（点滅）
+		// 丸（点滅。溜まったら点滅をやめて「押せる」ことを示す）
 		int dotX = x + PADDING_X;
 		int dotY = y + (boxHeight - DOT_SIZE) / 2;
 		ReplayTheme.fillRound(context, dotX, dotY, DOT_SIZE, DOT_SIZE, DOT_SIZE / 2,
-				blink ? ReplayTheme.RECORD : ReplayTheme.withAlpha(ReplayTheme.RECORD, 0x55));
+				clipReady ? accent : (blink ? ReplayTheme.RECORD : ReplayTheme.withAlpha(ReplayTheme.RECORD, 0x55)));
 
 		int textX = dotX + DOT_SIZE + DOT_GAP;
 		int textY = y + (boxHeight - renderer.fontHeight) / 2;

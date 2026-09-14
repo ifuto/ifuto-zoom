@@ -29,6 +29,9 @@ public final class PauseMenuButtons {
 	private static final int BUTTON_HEIGHT = 22;
 	private static final int SPACING = 6;
 
+	/** ツールチップを書き換えた「秒」（毎ティック作り直さないための覚え） */
+	private static long lastClipSeconds = -1L;
+
 	private static int panelX = PANEL_MARGIN;
 	private static int panelY = PANEL_MARGIN;
 	private static int panelWidth = BUTTON_WIDTH + PANEL_PADDING * 2;
@@ -122,6 +125,18 @@ public final class PauseMenuButtons {
 		// しおりは録画中だけ意味があるので、それ以外では押せなくする
 		markerButton.active = recording;
 		// クリップは「クリップ方式で録っている」ときだけ
+		RecordingSession clipSession = RecordingManager.INSTANCE.getSession();
 		clipButton.active = RecordingManager.INSTANCE.canClip();
+
+		// いま何秒ぶん残っているかをツールチップに出す（秒が変わったときだけ作り直す）
+		long readySeconds = clipSession == null ? 0L : clipSession.clipBufferedMillis() / 1000L;
+
+		if (readySeconds != lastClipSeconds) {
+			lastClipSeconds = readySeconds;
+			clipButton.setTooltip(Tooltip.of(Text.translatable("ifuto-replay.menu.clip.tooltip")
+					.append(Text.literal("\n"))
+					.append(Text.translatable("ifuto-replay.menu.clip.buffered",
+							Text.literal(RecordingManager.formatDuration(readySeconds * 1000L))))));
+		}
 	}
 }

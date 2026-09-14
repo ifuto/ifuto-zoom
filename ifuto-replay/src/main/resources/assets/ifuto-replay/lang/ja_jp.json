@@ -201,5 +201,6 @@
 	"ifuto-replay.message.clip_empty": "まだクリップを残せるだけ録れていません",
 	"ifuto-replay.message.clip_stopped": "クリップ方式を止めました（保存していない分は残りません）",
 	"ifuto-replay.message.clip_disabled": "クリップ方式がオンになっていません（設定から切り替えられます）",
-	"ifuto-replay.hud.clip": "✂ クリップ %s / %s"
+	"ifuto-replay.hud.clip": "✂ クリップ %s / %s",
+	"ifuto-replay.menu.clip.buffered": "いま %s ぶん残っています"
 }
