@@ -317,8 +317,8 @@ single theme class, so every screen this mod adds looks like the same app.
 | Playback | rounded control bar, thin timeline with a **round handle** and yellow markers |
 | Notices | rounded buttons and a soft gradient |
 
-**It still behaves like Minecraft.** Only the drawing is swapped out — mouse handling, tooltips and
-narration are untouched. (Since 1.21.11 the button background can no longer be overridden, so these
+**It still behaves like Minecraft.** Only the drawing is swapped out — mouse handling, **keyboard
+activation (Tab to a control, Enter or Space)**, tooltips and narration all work as usual. (Since 1.21.11 the button background can no longer be overridden, so these
 widgets are built from the plain widget class instead.)
 
 ## Requirements
