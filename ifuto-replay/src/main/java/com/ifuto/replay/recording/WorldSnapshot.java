@@ -162,11 +162,11 @@ public final class WorldSnapshot {
 				continue;
 			}
 
-			if (entity.squaredDistanceTo(player.getPos()) > limitSq) {
+			if (entity.squaredDistanceTo(player.getSyncedPos()) > limitSq) {
 				continue;
 			}
 
-			packets.add(new EntitySpawnS2CPacket(entity, 0, BlockPos.ofFloored(entity.getPos())));
+			packets.add(new EntitySpawnS2CPacket(entity, 0, BlockPos.ofFloored(entity.getSyncedPos())));
 			packets.add(EntityPositionSyncS2CPacket.create(entity));
 			packets.add(new EntityVelocityUpdateS2CPacket(entity));
 			packets.add(new EntitySetHeadYawS2CPacket(entity,
