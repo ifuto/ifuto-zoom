@@ -45,7 +45,7 @@ public record ExportOptions(
 				0L,
 				Math.max(0L, durationMs),
 				output,
-				AudioTracks.pick(recording, true)
+				AudioTracks.select(recording, true)
 		);
 	}
 
