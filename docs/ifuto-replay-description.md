@@ -184,6 +184,27 @@ What each mode needs:
 The settings screen has a **Detect** button that lists the devices it can find (blank = pick one
 automatically).
 
+## Clip mode (save it after it happened)
+
+Turn **Clip mode** on and the mod records from the moment you join — but **nothing is kept unless you
+save it**. Did something cool just happen? Press **✂ Save clip** in the pause menu. Everything from
+the last N seconds is written out as one `.ifreplay` (the same feeling as Medal).
+
+How it stays light:
+
+- Recording is written in **short segments** (half the configured length) and the oldest segments are
+  thrown away — nothing piles up in memory, the writer thread keeps moving data to disk
+- Every segment starts with a **snapshot of the world at that moment**, so any segment can be played
+  on its own — which means the joined result is always playable
+- Saving just **concatenates the surviving segments** — no re-encoding, a few seconds of copying, done
+  on a worker thread so the game never stalls
+- Audio is recorded as **one continuous file** (stopping and restarting would cut the sound, and on
+  Minecraft-only mode it means reopening the output device), and the **tail is cut out** with ffmpeg
+  when you save. Voice chat is cut as its own track, so it stays a real on/off switch
+
+Because clips are split at segment boundaries, a saved clip ends up between **the configured length and
+1.5× that**. Temporary files live in `<save folder>/.clip-cache/` and are removed when you stop.
+
 ## Export
 
 Hit **Export** in the recordings list to turn a recording into an `.mp4`.
@@ -299,8 +320,11 @@ The `.ifreplay` format is append-only (no seeking while recording), self-describ
    delta-encoded and applied to vanilla's own options during playback
 7. ✅ **Audio** — **Minecraft only** or **whole PC**, muxed at export. **Voice chat is captured
    separately**, so including Simple Voice Chat is a real on/off switch
-8. ✅ **A modern interface** (this release) — rounded surfaces, toggles, thin sliders and a progress bar.
-   Only the drawing changed: input handling, tooltips and narration stay vanilla
+8. ✅ **A modern interface** — rounded surfaces, toggles, thin sliders and a progress bar. Only the
+   drawing changed: input handling, tooltips and narration stay vanilla
+9. ✅ **Clip mode** (this release) — record continuously like Medal, then **save backwards from the
+   moment you press the button**. Segments are rolled on disk so memory never grows, and every segment
+   starts with a world snapshot, so the joined clip is always playable
 
 ## Interface
 
