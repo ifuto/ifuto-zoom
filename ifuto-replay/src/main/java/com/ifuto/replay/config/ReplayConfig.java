@@ -135,8 +135,11 @@ public class ReplayConfig {
 	 *
 	 * <p>音は「いま鳴っている物」をその場で取るしかないので、録画と同時に別ファイルへ書く。
 	 * 取れない環境でも録画そのものは必ず残る（音声なしになるだけ）。
+	 *
+	 * <p>既定は **Minecraft だけ**。取り出せない環境では PC 全体の音へ回す
+	 * （まったく録れないよりマシなので。設定で「録らない」にもできる）。
 	 */
-	public AudioMode audioMode = AudioMode.OFF;
+	public AudioMode audioMode = AudioMode.MINECRAFT;
 
 	/** 音声のビットレート（kbps）。Opus なら 96 もあれば十分 */
 	public int audioBitrateKbps = 96;

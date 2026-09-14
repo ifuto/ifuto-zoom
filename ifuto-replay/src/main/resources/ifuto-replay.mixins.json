@@ -9,7 +9,8 @@
 		"ClientPlayNetworkHandlerMixin",
 		"GameRendererMixin",
 		"MinecraftClientAccessor",
-		"MouseAccessor"
+		"MouseAccessor",
+		"SoundEngineMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

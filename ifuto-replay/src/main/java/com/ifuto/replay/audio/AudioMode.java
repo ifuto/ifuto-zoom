@@ -17,7 +17,7 @@ public enum AudioMode {
 	 * ほかのアプリの音は入らない。VC Mod（Simple Voice Chat / Plasmo Voice）は
 	 * **それぞれ別の出力機器を開く** ので、こちらには入らない。
 	 */
-	MINECRAFT("minecraft", false),
+	MINECRAFT("minecraft", true),
 
 	/**
 	 * PC 全体の音。

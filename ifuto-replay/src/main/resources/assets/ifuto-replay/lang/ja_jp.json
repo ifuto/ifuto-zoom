@@ -184,5 +184,6 @@
 	"ifuto-replay.export.audio_on": "＋音声",
 	"ifuto-replay.export.audio_dropped": "＋音声なし（VC なしの音声が無い）",
 	"ifuto-replay.config.record_voice_chat": "VC の声も録る",
-	"ifuto-replay.config.record_voice_chat.tooltip": "Simple Voice Chat の声を別のファイルに録ります（書き出しのときに入れるか選べます）"
+	"ifuto-replay.config.record_voice_chat.tooltip": "Simple Voice Chat の声を別のファイルに録ります（書き出しのときに入れるか選べます）",
+	"ifuto-replay.message.audio_fallback": "Minecraft の音だけを録れないので、PC 全体の音で録ります（%s）。設定の「音声を録る」で変えられます"
 }

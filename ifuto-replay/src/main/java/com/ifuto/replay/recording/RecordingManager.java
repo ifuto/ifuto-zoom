@@ -1,7 +1,9 @@
 package com.ifuto.replay.recording;
 
 import com.ifuto.replay.IfutoReplayClient;
+import com.ifuto.replay.audio.AudioMode;
 import com.ifuto.replay.audio.AudioRecorder;
+import com.ifuto.replay.audio.MinecraftAudioCapture;
 import com.ifuto.replay.audio.AudioTracks;
 import com.ifuto.replay.audio.VoiceChatBridge;
 import com.ifuto.replay.config.ReplayConfig;
@@ -216,6 +218,7 @@ public final class RecordingManager {
 
 		this.session = null;
 		this.audioRecorder.stop();
+		MinecraftAudioCapture.get().stop(client);
 		VoiceChatBridge.get().stop();
 		RecordingSession.Stats stats = current.finish();
 		IfutoReplayClient.LOGGER.info("[ifuto-replay] {} を保存しました ({} パケット, 破棄 {}, 失敗 {})",
@@ -249,6 +252,11 @@ public final class RecordingManager {
 			return;
 		}
 
+		if (config.audioMode == AudioMode.MINECRAFT) {
+			this.startMinecraftAudio(client, config, recordingFile);
+			return;
+		}
+
 		Path target = AudioTracks.pathFor(recordingFile, config.audioMode);
 
 		if (this.audioRecorder.start(target)) {
@@ -259,6 +267,36 @@ public final class RecordingManager {
 		String failure = this.audioRecorder.failure();
 
 		if (!failure.isEmpty()) {
+			notify(client, "ifuto-replay.message.audio_failed", Text.literal(failure));
+		}
+	}
+
+	/**
+	 * Minecraft の音だけを録る（OpenAL のループバック）。
+	 *
+	 * <p>環境によっては取り出せない（対応していない OpenAL、機器を2つ開けない等）。
+	 * そのときは **無音にせず PC 全体の音へ回す**（設定で「録らない」にもできる）。
+	 */
+	private void startMinecraftAudio(MinecraftClient client, ReplayConfig config, Path recordingFile) {
+		Path target = AudioTracks.pathFor(recordingFile, AudioMode.MINECRAFT);
+
+		if (MinecraftAudioCapture.get().start(client, target, config.audioBitrateKbps, config.ffmpegPath)) {
+			this.startVoiceChat(config, recordingFile);
+			return;
+		}
+
+		String failure = MinecraftAudioCapture.get().failure();
+		IfutoReplayClient.LOGGER.warn("[ifuto-replay] Minecraft の音を録れないので PC 全体の音で代用します: {}", failure);
+
+		Path fallback = AudioTracks.systemTrack(recordingFile);
+
+		if (this.audioRecorder.start(fallback)) {
+			notify(client, "ifuto-replay.message.audio_fallback", Text.literal(String.valueOf(failure)));
+			this.startVoiceChat(config, recordingFile);
+			return;
+		}
+
+		if (failure != null && !failure.isEmpty()) {
 			notify(client, "ifuto-replay.message.audio_failed", Text.literal(failure));
 		}
 	}
@@ -305,11 +343,21 @@ public final class RecordingManager {
 
 		this.inputTracker.tick(client, current);
 
+		// Minecraft の音はゲーム側のスレッドで取り出す（溜まっている分だけ）
+		MinecraftAudioCapture.get().renderTick();
+
 		// 録音が勝手に終わっていたら理由を出す（録画は止めない）
 		String audioFailure = this.audioRecorder.pollFailure();
 
 		if (!audioFailure.isEmpty()) {
 			notify(client, "ifuto-replay.message.audio_failed", Text.literal(audioFailure));
+		}
+
+		String minecraftFailure = MinecraftAudioCapture.get().pollFailure();
+
+		if (!minecraftFailure.isEmpty()) {
+			notify(client, "ifuto-replay.message.audio_failed", Text.literal(minecraftFailure));
+			MinecraftAudioCapture.get().stop(client);
 		}
 
 		long now = System.currentTimeMillis();
