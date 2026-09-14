@@ -171,15 +171,17 @@ public final class ReplayExporter {
 
 		// 音声は「録っているときに録った別ファイル」。実時間より先に進むので、
 		// 書き出す範囲のぶんだけ切り出して、絵と同じ長さにする
-		Path audio = this.audioInput();
+		List<Path> audio = this.audioInputs();
+		double startSec = this.startMs / 1000.0;
+		double lengthSec = this.totalFrames * this.frameStepMs / 1000.0;
 
-		if (audio != null) {
+		for (Path track : audio) {
 			command.add("-ss");
-			command.add(seconds(this.startMs / 1000.0));
+			command.add(seconds(startSec));
 			command.add("-t");
-			command.add(seconds(this.totalFrames * this.frameStepMs / 1000.0));
+			command.add(seconds(lengthSec));
 			command.add("-i");
-			command.add(audio.toAbsolutePath().toString());
+			command.add(track.toAbsolutePath().toString());
 		}
 
 		command.add("-c:v");
@@ -191,7 +193,7 @@ public final class ReplayExporter {
 		command.add("-b:v");
 		command.add(this.options.bitrateKbps() + "k");
 
-		if (audio != null) {
+		if (audio.size() == 1) {
 			command.add("-map");
 			command.add("0:v:0");
 			command.add("-map");
@@ -200,10 +202,25 @@ public final class ReplayExporter {
 			command.add("aac");
 			command.add("-b:a");
 			command.add("192k");
-			// 絵が先に終わったらそこで切る（音だけ長く残さない）
-			command.add("-shortest");
+		} else if (audio.size() >= 2) {
+			// 2本（Minecraft の音 + VC の声）を混ぜる。どちらも同じ時刻から始まっている
+			command.add("-filter_complex");
+			command.add("[1:a][2:a]amix=inputs=2:duration=longest:normalize=0[a]");
+			command.add("-map");
+			command.add("0:v:0");
+			command.add("-map");
+			command.add("[a]");
+			command.add("-c:a");
+			command.add("aac");
+			command.add("-b:a");
+			command.add("192k");
 		} else {
 			command.add("-an");
+		}
+
+		if (!audio.isEmpty()) {
+			// 絵が先に終わったらそこで切る（音だけ長く残さない）
+			command.add("-shortest");
 		}
 
 		command.add(this.options.output().toString());
@@ -226,15 +243,23 @@ public final class ReplayExporter {
 		active = this;
 	}
 
-	/** 一緒に詰める音声（無ければ null） */
-	private @Nullable Path audioInput() {
-		Path audio = this.options.audio();
+	/** 一緒に詰める音声（1本または2本。無ければ空） */
+	private List<Path> audioInputs() {
+		List<Path> audio = this.options.audio();
 
-		if (audio == null || !Files.isRegularFile(audio)) {
-			return null;
+		if (audio == null) {
+			return List.of();
 		}
 
-		return audio;
+		List<Path> usable = new ArrayList<>();
+
+		for (Path track : audio) {
+			if (track != null && Files.isRegularFile(track) && !usable.contains(track)) {
+				usable.add(track);
+			}
+		}
+
+		return usable;
 	}
 
 	/** ffmpeg に渡す秒（小数点以下3けた。小数点を落とすとずれるので） */

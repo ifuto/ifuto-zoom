@@ -179,8 +179,10 @@
 	"ifuto-replay.export.include_audio": "音声を含める",
 	"ifuto-replay.export.include_audio.tooltip": "録画と一緒に録っておいた音声を動画に詰めます",
 	"ifuto-replay.export.include_vc": "VC の音声を含める",
-	"ifuto-replay.export.include_vc.tooltip": "Simple Voice Chat / Plasmo Voice の声を入れます（PC 全体の音として録られた物）",
-	"ifuto-replay.export.include_vc.tooltip_only": "この録画の音声は PC 全体の音だけです。VC を外すには音声ごと除くことになります",
+	"ifuto-replay.export.include_vc.tooltip": "Simple Voice Chat の声を入れます（別に録っておいた「声だけ」の音声）",
+	"ifuto-replay.export.include_vc.tooltip_only": "この録画には Minecraft だけの音声が無いので、VC を外すと音声その物が入らなくなります",
 	"ifuto-replay.export.audio_on": "＋音声",
-	"ifuto-replay.export.audio_dropped": "＋音声なし（VC なしの音声が無い）"
+	"ifuto-replay.export.audio_dropped": "＋音声なし（VC なしの音声が無い）",
+	"ifuto-replay.config.record_voice_chat": "VC の声も録る",
+	"ifuto-replay.config.record_voice_chat.tooltip": "Simple Voice Chat の声を別のファイルに録ります（書き出しのときに入れるか選べます）"
 }

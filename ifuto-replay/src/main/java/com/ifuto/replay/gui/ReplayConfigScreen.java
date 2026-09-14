@@ -214,6 +214,12 @@ public class ReplayConfigScreen extends Screen {
 				.build();
 		detectButton.setTooltip(Tooltip.of(Text.translatable("ifuto-replay.config.audio_device.detect.tooltip")));
 		content.add(row(deviceField, detectButton));
+		content.add(row(CyclingButtonWidget.onOffBuilder(this.config.recordVoiceChat)
+						.tooltip(value -> Tooltip.of(Text.translatable("ifuto-replay.config.record_voice_chat.tooltip")))
+						.build(0, 0, WIDGET_WIDTH * 2 + COLUMN_GAP, WIDGET_HEIGHT,
+								Text.translatable("ifuto-replay.config.record_voice_chat"),
+								(button, value) -> this.config.recordVoiceChat = value),
+				null));
 
 		// 8行目: 書き出しの既定値（FPS / 解像度）
 		String currentResolution = this.config.exportWidth + "x" + this.config.exportHeight;

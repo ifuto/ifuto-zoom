@@ -3,6 +3,7 @@ package com.ifuto.replay.recording;
 import com.ifuto.replay.IfutoReplayClient;
 import com.ifuto.replay.audio.AudioRecorder;
 import com.ifuto.replay.audio.AudioTracks;
+import com.ifuto.replay.audio.VoiceChatBridge;
 import com.ifuto.replay.config.ReplayConfig;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.MinecraftClient;
@@ -215,6 +216,7 @@ public final class RecordingManager {
 
 		this.session = null;
 		this.audioRecorder.stop();
+		VoiceChatBridge.get().stop();
 		RecordingSession.Stats stats = current.finish();
 		IfutoReplayClient.LOGGER.info("[ifuto-replay] {} を保存しました ({} パケット, 破棄 {}, 失敗 {})",
 				stats.file().getFileName(), stats.packets(), stats.dropped(), stats.errors());
@@ -250,6 +252,7 @@ public final class RecordingManager {
 		Path target = AudioTracks.pathFor(recordingFile, config.audioMode);
 
 		if (this.audioRecorder.start(target)) {
+			this.startVoiceChat(config, recordingFile);
 			return;
 		}
 
@@ -258,6 +261,20 @@ public final class RecordingManager {
 		if (!failure.isEmpty()) {
 			notify(client, "ifuto-replay.message.audio_failed", Text.literal(failure));
 		}
+	}
+
+	/**
+	 * VC の声だけを別に録り始める（Simple Voice Chat が入っているときだけ）。
+	 *
+	 * <p>VC Mod は Minecraft とは別の出力機器を開くので、こうしないと声だけを分けられない。
+	 */
+	private void startVoiceChat(ReplayConfig config, Path recordingFile) {
+		if (!config.recordVoiceChat || !VoiceChatBridge.isAvailable()) {
+			return;
+		}
+
+		VoiceChatBridge.get().start(AudioTracks.voiceTrack(recordingFile), config.audioBitrateKbps,
+				config.ffmpegPath);
 	}
 
 	/** しおりを付ける（あとで再生・書き出しの起点にする） */

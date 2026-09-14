@@ -21,6 +21,9 @@
 		],
 		"modmenu": [
 			"com.ifuto.replay.compat.ModMenuIntegration"
+		],
+		"voicechat": [
+			"com.ifuto.replay.compat.voicechat.VoiceChatPlugin"
 		]
 	},
 	"mixins": [

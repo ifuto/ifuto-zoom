@@ -7,6 +7,7 @@ import org.jspecify.annotations.Nullable;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 
 /**
  * 書き出しの設定1回分。
@@ -23,7 +24,7 @@ public record ExportOptions(
 		long startMs,
 		long endMs,
 		Path output,
-		@Nullable Path audio
+		@Nullable List<Path> audio
 ) {
 	/** 録画1本ぶんの既定の設定を作る */
 	public static ExportOptions defaultFor(ReplayConfig config, Path recording, long durationMs) {

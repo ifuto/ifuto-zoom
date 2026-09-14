@@ -6,20 +6,27 @@ import org.jspecify.annotations.Nullable;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 
 /**
- * 録画と一対で作られる音声ファイル（隣に置くだけの別ファイル）。
+ * 録画と一対で作られる音声ファイル（本体の隣に置くだけの別ファイル）。
  *
  * <p>本体（`.ifreplay`）には手を入れないので、音声が無い録画もそのまま再生できるし、
  * 音声だけ消しても壊れない。
  *
- * <p>取り方によってファイルを分けているのは、**あとから VC の音を外せるようにするため**。
- * VC Mod は Minecraft とは別の出力機器を開くので、「Minecraft だけ」で録った音には
- * そもそも VC が入らない。だから「VC を入れる」を選んだときだけ PC 全体の音を使う。
+ * <p>取り方ごとにファイルを分けているのは、**あとから VC の声を足したり外したりするため**。
+ * <ul>
+ *     <li>`.audio.ogg` — Minecraft の音だけ（VC は入らない）</li>
+ *     <li>`.voice.ogg` — VC Mod の声だけ</li>
+ *     <li>`.system.ogg` — PC 全体の音（声も入っている。取り出し元が違うので別に持つ）</li>
+ * </ul>
  */
 public final class AudioTracks {
 	/** Minecraft の音だけ（VC は入らない） */
 	public static final String MINECRAFT_SUFFIX = ".audio.ogg";
+
+	/** VC Mod の声だけ */
+	public static final String VOICE_SUFFIX = ".voice.ogg";
 
 	/** PC 全体の音（VC の音も入る） */
 	public static final String SYSTEM_SUFFIX = ".system.ogg";
@@ -38,59 +45,96 @@ public final class AudioTracks {
 		return recording.resolveSibling(name);
 	}
 
-	public static Path pathFor(Path recording, AudioMode mode) {
-		Path base = base(recording);
-		return base.resolveSibling(base.getFileName().toString() + suffix(mode));
+	/** Minecraft の音だけのファイル */
+	public static Path minecraftTrack(Path recording) {
+		return withSuffix(recording, MINECRAFT_SUFFIX);
 	}
 
-	private static String suffix(AudioMode mode) {
-		return mode == AudioMode.SYSTEM ? SYSTEM_SUFFIX : MINECRAFT_SUFFIX;
+	/** VC の声だけのファイル */
+	public static Path voiceTrack(Path recording) {
+		return withSuffix(recording, VOICE_SUFFIX);
+	}
+
+	/** PC 全体の音のファイル */
+	public static Path systemTrack(Path recording) {
+		return withSuffix(recording, SYSTEM_SUFFIX);
+	}
+
+	/** 取り方に応じたファイル */
+	public static Path pathFor(Path recording, AudioMode mode) {
+		return mode == AudioMode.SYSTEM ? systemTrack(recording) : minecraftTrack(recording);
+	}
+
+	private static Path withSuffix(Path recording, String suffix) {
+		Path base = base(recording);
+		return base.resolveSibling(base.getFileName().toString() + suffix);
 	}
 
 	/**
-	 * 使う音声ファイルを選ぶ。
+	 * 書き出しで使う音声を選ぶ。
 	 *
-	 * @param wantVoiceChat VC の音（Simple Voice Chat / Plasmo Voice）を入れたいか
-	 * @return 使うファイル。無ければ null（その場合は音声なしで書き出す）
+	 * @param wantVoiceChat VC の声（Simple Voice Chat / Plasmo Voice）を入れたいか
+	 * @return 使うファイル（1本または2本）。無ければ null
 	 */
-	public static @Nullable Path pick(Path recording, boolean wantVoiceChat) {
-		Path minecraft = pathFor(recording, AudioMode.MINECRAFT);
-		Path system = pathFor(recording, AudioMode.SYSTEM);
+	public static @Nullable List<Path> select(Path recording, boolean wantVoiceChat) {
+		Path minecraft = minecraftTrack(recording);
+		Path voice = voiceTrack(recording);
+		Path system = systemTrack(recording);
 		boolean hasMinecraft = exists(minecraft);
+		boolean hasVoice = exists(voice);
 		boolean hasSystem = exists(system);
 
 		if (wantVoiceChat) {
-			// VC の音が入っているのは PC 全体の音だけ
+			// PC 全体の音には最初から声が入っている
 			if (hasSystem) {
-				return system;
+				return List.of(system);
 			}
 
-			return hasMinecraft ? minecraft : null;
+			// 別々に録ってあるなら、書き出しのときに混ぜる
+			if (hasMinecraft && hasVoice) {
+				return List.of(minecraft, voice);
+			}
+
+			if (hasMinecraft) {
+				return List.of(minecraft);
+			}
+
+			return hasVoice ? List.of(voice) : null;
 		}
 
-		// VC を外したい。Minecraft だけの音があればそれを使う。
-		// PC 全体の音しか無い場合は「分けられない」ので音声ごと除く（呼び出し側で説明する）
-		return hasMinecraft ? minecraft : null;
+		// 声を外したい。Minecraft だけの音があればそれだけで足りる
+		if (hasMinecraft) {
+			return List.of(minecraft);
+		}
+
+		// Minecraft だけの音が無い場合は「声だけ」か「PC 全体」しか無いので、音声ごと除く
+		return null;
 	}
 
-	/** 音声があるか（書き出し画面の「音声を含める」を出すかどうか） */
+	/** 音声があるか（書き出し画面に「音声を含める」を出すかどうか） */
 	public static boolean hasAny(Path recording) {
-		return exists(pathFor(recording, AudioMode.MINECRAFT)) || exists(pathFor(recording, AudioMode.SYSTEM));
+		return exists(minecraftTrack(recording)) || exists(voiceTrack(recording)) || exists(systemTrack(recording));
 	}
 
-	/** VC の音が入っている音声しか無いか（これだと VC だけを外せない） */
-	public static boolean onlySystem(Path recording) {
-		return !exists(pathFor(recording, AudioMode.MINECRAFT)) && exists(pathFor(recording, AudioMode.SYSTEM));
+	/**
+	 * 「VC を外す」を選ぶと音声その物が無くなってしまうか。
+	 *
+	 * <p>Minecraft だけの音が無く、PC 全体の音（あるいは声だけ）しか無い場合がこれに当たる。
+	 * 画面では、そのことを先に説明するために使う。
+	 */
+	public static boolean losesAudioWithoutVoiceChat(Path recording) {
+		return !exists(minecraftTrack(recording)) && (exists(systemTrack(recording)) || exists(voiceTrack(recording)));
 	}
 
-	private static boolean exists(Path path) {
+	private static boolean exists(@Nullable Path path) {
 		return path != null && Files.isRegularFile(path);
 	}
 
-	/** 要らない音声ファイルを消す（0バイトで終わった時など） */
+	/** 要らない音声ファイルを消す（取れていなかったときなど） */
 	public static void discard(Path recording) {
-		delete(pathFor(recording, AudioMode.MINECRAFT));
-		delete(pathFor(recording, AudioMode.SYSTEM));
+		delete(minecraftTrack(recording));
+		delete(voiceTrack(recording));
+		delete(systemTrack(recording));
 	}
 
 	private static void delete(Path path) {

@@ -179,8 +179,10 @@
 	"ifuto-replay.export.include_audio": "Include audio",
 	"ifuto-replay.export.include_audio.tooltip": "Mux the audio that was captured alongside the recording into the video",
 	"ifuto-replay.export.include_vc": "Include voice chat",
-	"ifuto-replay.export.include_vc.tooltip": "Include Simple Voice Chat / Plasmo Voice (only present in whole-PC audio)",
-	"ifuto-replay.export.include_vc.tooltip_only": "This recording only has whole-PC audio, so excluding voice chat means dropping the audio track entirely",
+	"ifuto-replay.export.include_vc.tooltip": "Include Simple Voice Chat voices (captured as a separate voice-only track)",
+	"ifuto-replay.export.include_vc.tooltip_only": "This recording has no Minecraft-only audio, so excluding voice chat drops the audio track entirely",
 	"ifuto-replay.export.audio_on": "+ audio",
-	"ifuto-replay.export.audio_dropped": "+ no audio (there is no voice-chat-free track)"
+	"ifuto-replay.export.audio_dropped": "+ no audio (there is no voice-chat-free track)",
+	"ifuto-replay.config.record_voice_chat": "Record voice chat",
+	"ifuto-replay.config.record_voice_chat.tooltip": "Record Simple Voice Chat voices into a separate file (include or drop them when exporting)"
 }

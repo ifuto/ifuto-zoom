@@ -168,7 +168,7 @@ public class ExportScreen extends Screen {
 								this.updateSummary();
 							});
 			// VC は「PC 全体の音」にしか入っていない。外せるのは Minecraft だけの音があるとき
-			voiceToggle.setTooltip(Tooltip.of(Text.translatable(AudioTracks.onlySystem(this.info.file())
+			voiceToggle.setTooltip(Tooltip.of(Text.translatable(AudioTracks.losesAudioWithoutVoiceChat(this.info.file())
 					? "ifuto-replay.export.include_vc.tooltip_only"
 					: "ifuto-replay.export.include_vc.tooltip")));
 			content.add(row(audioToggle, voiceToggle));
@@ -279,7 +279,7 @@ public class ExportScreen extends Screen {
 				Text.literal(String.valueOf(frames)));
 
 		if (this.includeAudio) {
-			boolean hasTrack = AudioTracks.pick(this.info.file(), this.includeVoiceChat) != null;
+			boolean hasTrack = AudioTracks.select(this.info.file(), this.includeVoiceChat) != null;
 			summary = Text.empty().append(summary).append(Text.literal("  "))
 					.append(Text.translatable(hasTrack
 							? "ifuto-replay.export.audio_on" : "ifuto-replay.export.audio_dropped"));
@@ -333,7 +333,7 @@ public class ExportScreen extends Screen {
 		Path output = ExportOptions.uniqueOutput(ReplayConfig.getSaveDirectory().resolve("exports")
 				.resolve(this.fileName()));
 		// 音声は「録画の隣に置いてある別ファイル」。VC を外したいときは Minecraft だけの音を選ぶ
-		Path audio = this.includeAudio ? AudioTracks.pick(this.info.file(), this.includeVoiceChat) : null;
+		List<Path> audio = this.includeAudio ? AudioTracks.select(this.info.file(), this.includeVoiceChat) : null;
 		ExportOptions options = new ExportOptions(config.exportFps, config.exportWidth, config.exportHeight,
 				config.exportBitrateKbps, config.ffmpegPath, startMs, endMs, output, audio);
 

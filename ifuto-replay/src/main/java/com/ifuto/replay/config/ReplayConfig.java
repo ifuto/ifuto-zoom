@@ -144,6 +144,13 @@ public class ReplayConfig {
 	/** 音声を取る機器（空欄 = 自動で探す）。Windows は `audio=…` に入る名前、Linux は pactl の名前 */
 	public String audioDevice = "";
 
+	/**
+	 * VC Mod（Simple Voice Chat）の声も別に録る。
+	 *
+	 * <p>声だけを別ファイルにしておくと、書き出しのときに「声を入れる / 入れない」を選べる。
+	 */
+	public boolean recordVoiceChat = true;
+
 	public static ReplayConfig get() {
 		if (instance == null) {
 			instance = load();
@@ -271,6 +278,7 @@ public class ReplayConfig {
 		this.audioMode = defaults.audioMode;
 		this.audioBitrateKbps = defaults.audioBitrateKbps;
 		this.audioDevice = defaults.audioDevice;
+		this.recordVoiceChat = defaults.recordVoiceChat;
 	}
 
 	/** 手書き編集や古いファイルで壊れていても落ちないように丸める */
