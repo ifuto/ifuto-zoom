@@ -44,6 +44,11 @@ any camera angle you want.** **Start recording whenever you like, even in the mi
 - **Written once per packet type.** Names are stored in a definition frame the first time a type appears;
   later packets only store a one-byte-ish index.
 - **Keep-alives are skipped** by default — they don't affect playback.
+- **Nothing piles up in memory.** Buffered data is moved to the file on a timer (every 2 seconds by
+  default), and the memory budget is **picked from your environment** (a fixed value is optional).
+- **It stops before the disk runs out.** You get a warning when free space drops below a threshold
+  (1 GB by default), and the recording is **saved and stopped automatically** when space gets critical
+  (256 MB by default).
 
 ## Using it
 
@@ -126,6 +131,25 @@ Known limits:
   data isn't part of the snapshot).
 - A world you joined **before installing the mod** has no `GameJoin` to reuse — rejoin once.
 
+## Recording what never becomes a packet
+
+A packet only carries what the server and you exchanged. Things that stay **on your machine** are
+recorded separately — and reproduced during playback and export:
+
+| Recorded | What |
+| --- | --- |
+| Mouse cursor | which slot or button you were pointing at |
+| Text as you type | the chat line **while you are still typing it** (nothing reaches the server until you press enter) |
+| Perspective (F5) | first person / third person / front |
+| Debug screen (F3) | whether F3 was open |
+| Open screen | inventory, chest, chat, ... (only *which* screen — its contents are in the packets) |
+
+Everything is **delta-encoded**: the cursor stores movement with the odd absolute position mixed in,
+and typed text stores only what was added. When nothing changes, nothing is written.
+
+Playback drives **vanilla's own options**, so you see it exactly the way the person recording did, and the
+preview shows the open screen and the text being typed at the top of the screen.
+
 ## Export
 
 Hit **Export** in the recordings list to turn a recording into an `.mp4`.
@@ -174,6 +198,10 @@ How it differs from screen recording:
 | Compression | Off / Fast / Balanced (runs on the writer thread) | Off |
 | Size Limit | Stop and save past this size (0 = unlimited) | Unlimited |
 | Time Limit | Stop and save after this long (0 = unlimited) | Unlimited |
+| Memory Buffer | How much may wait in memory before being written (**0 = decide from the environment**) | Auto |
+| Flush Interval | How often buffered data is moved to the file (shorter = lighter on memory) | 2 s |
+| Low Disk Warning | Warn when free space drops below this (0 = don't watch) | 1024 MB |
+| Critical Disk Space | **Save and stop recording** when free space drops below this (0 = never stop) | 256 MB |
 | Recording HUD | Corner indicator with elapsed time and size | On |
 | HUD Position | Which corner | Top Left |
 | Chat Notices | Print start / save / marker to chat | On |
@@ -223,8 +251,12 @@ The `.ifreplay` format is append-only (no seeking while recording), self-describ
    drag-to-seek, live resource pack and Iris shader switching
 3. ✅ **Export** (this release) — render at **any FPS, resolution and bitrate**, pipe raw frames to
    ffmpeg, with range selection and cancel
-4. ✅ **Mid-session recordings** (this release) — snapshot the world state as vanilla packets when you
-   hit record, so a recording is playable no matter when you started it
+4. ✅ **Mid-session recordings** — snapshot the world state as vanilla packets when you hit record, so a
+   recording is playable no matter when you started it
+5. ✅ **Automatic memory and disk care** (this release) — buffered data is flushed on a timer, the memory
+   budget is picked from your environment, and the recording is saved and stopped before the disk runs out
+6. ✅ **Recording what never becomes a packet** (this release) — cursor, text as you type, F5, F3 and the
+   open screen, delta-encoded and applied to vanilla's own options during playback
 
 ## Requirements
 

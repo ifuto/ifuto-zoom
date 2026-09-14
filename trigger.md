@@ -15,4 +15,4 @@ java: 21
 workdir: ifuto-replay
 artifact_path: ifuto-replay/build/libs/*.jar
 
-note: 操作の記録（F3 は DebugHudProfile から）
+note: 操作の記録（+ ドキュメント）
