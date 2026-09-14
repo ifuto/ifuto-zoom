@@ -335,6 +335,48 @@ public final class RecordingManager {
 	}
 
 	/**
+	 * クリップ方式: 音声を録り始める。
+	 *
+	 * <p>区間（映像）とは違って、**音声は止めて録り直すと途切れる**
+	 * （とくに Minecraft の音は出力機器を開き直す必要がある）。
+	 * なのでクリップ方式ではずっと1本で録っておき、保存するときに
+	 * **いちばん後ろのぶんだけ** を切り出している（{@code AudioTracks#tail}）。
+	 */
+	public synchronized void startClipAudio(MinecraftClient client, Path target) {
+		this.stopClipAudio(client);
+
+		ReplayConfig config = ReplayConfig.get();
+
+		if (config.audioMode == null || !config.audioMode.records()) {
+			return;
+		}
+
+		if (config.audioMode == AudioMode.MINECRAFT) {
+			Path track = AudioTracks.pathFor(target, AudioMode.MINECRAFT);
+
+			if (MinecraftAudioCapture.get().start(client, track, config.audioBitrateKbps, config.ffmpegPath)) {
+				this.startVoiceChat(config, target);
+				return;
+			}
+
+			// 取れない環境では PC 全体の音で代用する（ふつうの録画と同じ考え方）
+			this.audioRecorder.start(AudioTracks.pathFor(target, AudioMode.SYSTEM));
+			this.startVoiceChat(config, target);
+			return;
+		}
+
+		this.audioRecorder.start(AudioTracks.pathFor(target, config.audioMode));
+		this.startVoiceChat(config, target);
+	}
+
+	/** クリップをまとめる前に、いま録っている音声を閉じる（クライアントスレッドから） */
+	public void stopClipAudio(MinecraftClient client) {
+		this.audioRecorder.stop();
+		MinecraftAudioCapture.get().stop(client);
+		VoiceChatBridge.get().stop();
+	}
+
+	/**
 	 * クリップを保存する（いま残っている区間を1つにまとめる）。
 	 *
 	 * <p>Medal と同じで「さっきの出来事をあとから残す」操作。

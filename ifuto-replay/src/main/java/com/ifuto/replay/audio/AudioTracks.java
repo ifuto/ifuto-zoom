@@ -1,12 +1,17 @@
 package com.ifuto.replay.audio;
 
+import com.ifuto.replay.IfutoReplayClient;
 import com.ifuto.replay.recording.ReplayFormat;
 import org.jspecify.annotations.Nullable;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 /**
  * 録画と一対で作られる音声ファイル（本体の隣に置くだけの別ファイル）。
@@ -128,6 +133,77 @@ public final class AudioTracks {
 
 	private static boolean exists(@Nullable Path path) {
 		return path != null && Files.isRegularFile(path);
+	}
+
+	/**
+	 * クリップ方式むけ: **いちばん後ろの {@code seconds} 秒だけ** を切り出す。
+	 *
+	 * <p>音声は区間と違って「止めて録り直す」と音が途切れる（特に Minecraft の音は
+	 * 出力機器を開き直す必要がある）ので、ずっと1本で録っておいて、
+	 * 保存するときに後ろだけ切り出している。
+	 *
+	 * @return 切り出せたら true
+	 */
+	public static boolean tail(Path input, Path output, double seconds, String ffmpegPath) {
+		if (!exists(input)) {
+			return false;
+		}
+
+		String offset = String.format(java.util.Locale.ROOT, "-%.3f", Math.max(0.1, seconds));
+
+		// まずは「そのままコピー」。失敗したら作り直す（Opus なら音質の劣化はほぼ無い）
+		if (run(ffmpegPath, List.of("-y", "-sseof", offset, "-i", input.toAbsolutePath().toString(),
+				"-c", "copy", output.toAbsolutePath().toString()))) {
+			return exists(output);
+		}
+
+		return run(ffmpegPath, List.of("-y", "-sseof", offset, "-i", input.toAbsolutePath().toString(),
+				"-c:a", "libopus", "-b:a", "96k", output.toAbsolutePath().toString())) && exists(output);
+	}
+
+	private static boolean run(String ffmpegPath, List<String> args) {
+		List<String> command = new ArrayList<>();
+		command.add(ffmpegPath);
+		command.addAll(args);
+
+		try {
+			ProcessBuilder builder = new ProcessBuilder(command);
+			builder.redirectErrorStream(true);
+			Process process = builder.start();
+			drain(process);
+
+			if (!process.waitFor(120L, TimeUnit.SECONDS)) {
+				process.destroyForcibly();
+				return false;
+			}
+
+			return process.exitValue() == 0;
+		} catch (IOException | InterruptedException e) {
+			if (e instanceof InterruptedException) {
+				Thread.currentThread().interrupt();
+			}
+
+			IfutoReplayClient.LOGGER.warn("[ifuto-replay] ffmpeg を実行できませんでした", e);
+			return false;
+		}
+	}
+
+	/** ffmpeg が詰まらないように、出力を読み捨てる */
+	private static void drain(Process process) {
+		Thread thread = new Thread(() -> {
+			try (InputStream in = process.getInputStream()) {
+				byte[] buffer = new byte[4096];
+
+				while (in.read(buffer) > 0) {
+					// 読むだけ（ログは出さない。うるさいので）
+				}
+			} catch (IOException ignored) {
+				// 終わっただけで問題ない
+			}
+		}, "ifuto-replay-audio-drain");
+
+		thread.setDaemon(true);
+		thread.start();
 	}
 
 	/** 要らない音声ファイルを消す（取れていなかったときなど） */

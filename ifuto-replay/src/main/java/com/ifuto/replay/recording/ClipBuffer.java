@@ -1,6 +1,7 @@
 package com.ifuto.replay.recording;
 
 import com.ifuto.replay.IfutoReplayClient;
+import com.ifuto.replay.audio.AudioTracks;
 import com.ifuto.replay.config.ReplayConfig;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.nbt.NbtCompound;
@@ -58,6 +59,9 @@ final class ClipBuffer {
 	private final boolean recordsC2S;
 	private final AtomicLong queuedBytes;
 
+	/** 音声の録り置き場（クリップ方式では通しで1本だけ録る） */
+	private final Path audioBase;
+
 	/** 古い順。末尾が「いま書いている区間」 */
 	private final Deque<Segment> segments = new ArrayDeque<>();
 
@@ -77,6 +81,7 @@ final class ClipBuffer {
 		this.playerName = playerName;
 		this.recordsC2S = recordsC2S;
 		this.queuedBytes = queuedBytes;
+		this.audioBase = cacheDir.resolve("clip-audio");
 	}
 
 	/** 一時置き場を作って、1つめの区間を書き始める（クライアントスレッドから） */
@@ -88,6 +93,8 @@ final class ClipBuffer {
 			return;
 		}
 
+		// 音声は区間と違って通しで1本（止めると音が途切れるので）
+		RecordingManager.INSTANCE.startClipAudio(client, this.audioBase);
 		this.openSegment();
 		// 先頭に世界の写しを置く（これがあるので、この区間から単独で再生できる）
 		this.session.captureSnapshot(client);
@@ -165,6 +172,8 @@ final class ClipBuffer {
 		}
 
 		this.saving = true;
+		// いま録っている音声を先に閉じる（最後の区間の分を確定させるため）
+		RecordingManager.INSTANCE.stopClipAudio(client);
 
 		Thread thread = new Thread(() -> {
 			Path saved = null;
@@ -189,6 +198,9 @@ final class ClipBuffer {
 	/** 録画を終える。一時ファイルは全部消す */
 	void close() {
 		this.closed = true;
+		delete(AudioTracks.minecraftTrack(this.audioBase));
+		delete(AudioTracks.systemTrack(this.audioBase));
+		delete(AudioTracks.voiceTrack(this.audioBase));
 		ReplayFileWriter current = this.writer;
 		this.writer = null;
 
@@ -287,12 +299,43 @@ final class ClipBuffer {
 				this.copy(segment.file, out);
 			}
 
-			ReplayFileWriter.writeFooter(out, last.endMs - parts.get(0).startMs);
+			long durationMs = last.endMs - parts.get(0).startMs;
+		ReplayFileWriter.writeFooter(out, durationMs);
 		}
 
 		this.segments.clear();
+		this.collectAudio(output, durationMs);
 		deleteAll(parts);
 		return output;
+	}
+
+	/**
+	 * 音声を「いちばん後ろのクリップぶん」だけ切り出して、クリップの隣に置く。
+	 *
+	 * <p>取れていなければ何もしない（音声なしのクリップとして残る）。
+	 */
+	private void collectAudio(Path clip, long durationMs) {
+		String ffmpeg = ReplayConfig.get().ffmpegPath;
+		double seconds = Math.max(0.5, durationMs / 1000.0);
+
+		cut(AudioTracks.minecraftTrack(this.audioBase), AudioTracks.minecraftTrack(clip), seconds, ffmpeg);
+		cut(AudioTracks.systemTrack(this.audioBase), AudioTracks.systemTrack(clip), seconds, ffmpeg);
+		cut(AudioTracks.voiceTrack(this.audioBase), AudioTracks.voiceTrack(clip), seconds, ffmpeg);
+	}
+
+	private static void cut(Path input, Path output, double seconds, String ffmpeg) {
+		if (!Files.isRegularFile(input)) {
+			return;
+		}
+
+		if (!AudioTracks.tail(input, output, seconds, ffmpeg)) {
+			// 切り出せなくても本体（映像）は残る。音声だけ無かったことにする
+			try {
+				Files.deleteIfExists(output);
+			} catch (IOException ignored) {
+				// 消せなくても害はない
+			}
+		}
 	}
 
 	private void afterSave(MinecraftClient client, @Nullable Path saved, @Nullable Throwable failure) {
@@ -302,7 +345,8 @@ final class ClipBuffer {
 			return;
 		}
 
-		// 保存したあとも録り続ける（区間は作り直す）
+		// 保存したあとも録り続ける（音声と区間は作り直す）
+		RecordingManager.INSTANCE.startClipAudio(client, this.audioBase);
 		this.openSegment();
 		this.session.captureSnapshot(client);
 		RecordingManager.INSTANCE.notifyClipSaved(client, saved, failure);
@@ -368,11 +412,19 @@ final class ClipBuffer {
 
 	private static void deleteAll(List<Segment> segments) {
 		for (Segment segment : segments) {
-			try {
-				Files.deleteIfExists(segment.file);
-			} catch (IOException ignored) {
-				// 消せなくても一時置き場なので放っておく（次回の起動時に邪魔にはならない）
-			}
+			delete(segment.file);
+			// 区間ごとの音声も一緒に消す
+			delete(AudioTracks.minecraftTrack(segment.file));
+			delete(AudioTracks.systemTrack(segment.file));
+			delete(AudioTracks.voiceTrack(segment.file));
+		}
+	}
+
+	private static void delete(Path path) {
+		try {
+			Files.deleteIfExists(path);
+		} catch (IOException ignored) {
+			// 消せなくても一時置き場なので放っておく
 		}
 	}
 
