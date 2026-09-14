@@ -71,8 +71,10 @@ final class ClipBuffer {
 	private final boolean recordsC2S;
 	private final AtomicLong queuedBytes;
 
-	/** 音声の録り置き場（クリップ方式では通しで1本だけ録る） */
-	private final Path audioBase;
+	/** 音声の区間（クリップを保存するたびに1つ増える。古い物も捨てない） */
+	private final Deque<AudioChunk> audioChunks = new ArrayDeque<>();
+
+	private int audioIndex;
 
 	/** 古い順。末尾が「いま書いている区間」 */
 	private final Deque<Segment> segments = new ArrayDeque<>();
@@ -101,7 +103,6 @@ final class ClipBuffer {
 		this.playerName = playerName;
 		this.recordsC2S = recordsC2S;
 		this.queuedBytes = queuedBytes;
-		this.audioBase = cacheDir.resolve("clip-audio");
 	}
 
 	/** 一時置き場を作って、1つめの区間を書き始める（クライアントスレッドから） */
@@ -118,8 +119,12 @@ final class ClipBuffer {
 		// 置きっぱなしのクリップも、この機会に片付ける
 		ClipCleanup.prune(this.config.clipKeepHours);
 
-		// 音声は区間と違って通しで1本（止めると音が途切れるので）
-		RecordingManager.INSTANCE.startClipAudio(client, this.audioBase);
+		// 音声は通しで録り続ける（止めると音が途切れるので）
+		Path audio = this.audioBase(this.audioIndex++);
+
+		if (RecordingManager.INSTANCE.startClipAudio(client, audio)) {
+			this.audioChunks.addLast(new AudioChunk(audio, System.currentTimeMillis()));
+		}
 		this.openSegment();
 		// 先頭に世界の写しを置く（これがあるので、この区間から単独で再生できる）
 		this.session.captureSnapshot(client);
@@ -276,6 +281,23 @@ final class ClipBuffer {
 		this.registries = nbt;
 	}
 
+	/** 音声の区間（保存するたびに1つ増える。消さずに取っておく） */
+	private static final class AudioChunk {
+		private final Path base;
+		private final long startMs;
+		private long endMs;
+
+		AudioChunk(Path base, long startMs) {
+			this.base = base;
+			this.startMs = startMs;
+			this.endMs = startMs;
+		}
+
+		double seconds() {
+			return Math.max(0.0, (this.endMs - this.startMs) / 1000.0);
+		}
+	}
+
 	/**
 	 * 残っている区間を1つの .ifreplay にまとめる。
 	 *
@@ -288,15 +310,15 @@ final class ClipBuffer {
 		}
 
 		this.saving = true;
-		// いま録っている音声を先に閉じる（最後の区間の分を確定させるため）
-		RecordingManager.INSTANCE.stopClipAudio(client);
+		// 保存した時点までの音声を確定させる（音そのものは止めない → 次のクリップにも音が付く）
+		List<AudioChunk> audio = this.rotateAudio(client);
 
 		Thread thread = new Thread(() -> {
 			Path saved = null;
 			Throwable failure = null;
 
 			try {
-				saved = this.assemble();
+				saved = this.assemble(audio);
 			} catch (Throwable t) {
 				failure = t;
 				IfutoReplayClient.LOGGER.error("[ifuto-replay] クリップを保存できませんでした", t);
@@ -314,9 +336,12 @@ final class ClipBuffer {
 	/** 録画を終える。一時ファイルは全部消す */
 	void close() {
 		this.closed = true;
-		delete(AudioTracks.minecraftTrack(this.audioBase));
-		delete(AudioTracks.systemTrack(this.audioBase));
-		delete(AudioTracks.voiceTrack(this.audioBase));
+
+		for (AudioChunk chunk : this.audioChunks) {
+			AudioTracks.discard(chunk.base);
+		}
+
+		this.audioChunks.clear();
 		ReplayFileWriter current = this.writer;
 		this.writer = null;
 
@@ -388,8 +413,8 @@ final class ClipBuffer {
 		}
 	}
 
-	/** いまの区間を閉じて、残っている区間を順番につなげる */
-	private @Nullable Path assemble() throws IOException {
+	/** いまの区間を閉じて、選んだ区間を順番につなげる */
+	private @Nullable Path assemble(List<AudioChunk> audio) throws IOException {
 		ReplayFileWriter current = this.writer;
 		this.writer = null;
 
@@ -427,7 +452,7 @@ final class ClipBuffer {
 
 		// 使った区間だけ捨てる（窓の外にある古い区間は、まだ次のクリップには要らないので消してよい）
 		this.segments.removeAll(parts);
-		this.collectAudio(output, durationMs);
+		this.collectAudio(output, durationMs, audio);
 		deleteAll(parts);
 		return output;
 	}
@@ -456,17 +481,122 @@ final class ClipBuffer {
 	}
 
 	/**
-	 * 音声を「いちばん後ろのクリップぶん」だけ切り出して、クリップの隣に置く。
+	 * いまの音声の区間を閉じて、次を始める（**音そのものは止めない**）。
+	 *
+	 * @return 保存した時点までの音声の区間（古い順）
+	 */
+	private List<AudioChunk> rotateAudio(MinecraftClient client) {
+		long now = System.currentTimeMillis();
+		AudioChunk current = this.audioChunks.peekLast();
+
+		if (current != null) {
+			current.endMs = now;
+		}
+
+		Path next = this.audioBase(this.audioIndex++);
+		boolean running = RecordingManager.INSTANCE.rotateClipAudio(client, next);
+
+		if (running) {
+			this.audioChunks.addLast(new AudioChunk(next, now));
+		} else if (current != null && RecordingManager.INSTANCE.startClipAudio(client, next)) {
+			// 落ちていた（ffmpeg が死んだ等）ときは、いちから録り直す
+			this.audioChunks.clear();
+			this.audioChunks.addLast(new AudioChunk(next, now));
+		}
+
+		return List.copyOf(this.audioChunks);
+	}
+
+	private Path audioBase(int index) {
+		return this.cacheDir.resolve("clip-audio-" + index);
+	}
+
+	/**
+	 * 音声を「いまのクリップぶん」だけ切り出して、クリップの隣に置く。
+	 *
+	 * <p>保存するたびに音声のファイルは分かれているので、**新しいほうから必要なぶん** を
+	 * 集めてつなぐ。長さが合わないと絵と音がずれるので、いちばん古い区間は後ろだけを使う。
 	 *
 	 * <p>取れていなければ何もしない（音声なしのクリップとして残る）。
 	 */
-	private void collectAudio(Path clip, long durationMs) {
-		String ffmpeg = ReplayConfig.get().ffmpegPath;
-		double seconds = Math.max(0.5, durationMs / 1000.0);
+	private void collectAudio(Path clip, long durationMs, List<AudioChunk> chunks) {
+		if (chunks.isEmpty()) {
+			return;
+		}
 
-		cut(AudioTracks.minecraftTrack(this.audioBase), AudioTracks.minecraftTrack(clip), seconds, ffmpeg);
-		cut(AudioTracks.systemTrack(this.audioBase), AudioTracks.systemTrack(clip), seconds, ffmpeg);
-		cut(AudioTracks.voiceTrack(this.audioBase), AudioTracks.voiceTrack(clip), seconds, ffmpeg);
+		String ffmpeg = ReplayConfig.get().ffmpegPath;
+		double needed = Math.max(0.5, durationMs / 1000.0);
+		Deque<AudioChunk> picked = new ArrayDeque<>();
+		double covered = 0.0;
+
+		for (int i = chunks.size() - 1; i >= 0; i--) {
+			AudioChunk chunk = chunks.get(i);
+			picked.addFirst(chunk);
+			covered += chunk.seconds();
+
+			if (covered >= needed) {
+				break;
+			}
+		}
+
+		// はみ出した分は、いちばん古い区間から捨てる（捨てきれないなら区間ごと外す）
+		double excess = covered - needed;
+		AudioChunk head = picked.peekFirst();
+
+		while (head != null && picked.size() > 1 && excess >= head.seconds() - 0.05) {
+			excess -= head.seconds();
+			picked.pollFirst();
+			head = picked.peekFirst();
+		}
+
+		double headKeep = 0.0;
+
+		if (head != null) {
+			headKeep = Math.min(head.seconds(), Math.max(0.1, head.seconds() - excess));
+		}
+
+		List<Path> targets = AudioTracks.allTracks(clip);
+
+		for (int track = 0; track < targets.size(); track++) {
+			List<Path> sources = new ArrayList<>();
+
+			for (AudioChunk chunk : picked) {
+				sources.add(AudioTracks.allTracks(chunk.base).get(track));
+			}
+
+			this.buildTrack(targets.get(track), sources, headKeep, ffmpeg);
+		}
+	}
+
+	/** 1本の音声を作る（複数に分かれていたら、頭を切りそろえてからつなぐ） */
+	private void buildTrack(Path target, List<Path> sources, double headKeep, String ffmpeg) {
+		if (sources.isEmpty()) {
+			return;
+		}
+
+		if (sources.size() == 1) {
+			this.cut(sources.get(0), target, headKeep, ffmpeg);
+			return;
+		}
+
+		Path temporary = this.cacheDir.resolve("head-" + target.getFileName());
+		this.cut(sources.get(0), temporary, headKeep, ffmpeg);
+
+		if (!Files.isRegularFile(temporary)) {
+			// 頭を切りそろえられないと長さが合わずにずれるので、音声は諦める
+			return;
+		}
+
+		List<Path> parts = new ArrayList<>();
+		parts.add(temporary);
+		parts.addAll(sources.subList(1, sources.size()));
+
+		if (AudioTracks.concat(parts, target, ffmpeg)) {
+			delete(temporary);
+		} else {
+			delete(temporary);
+			delete(target);
+		}
 	}
 
 	private static void cut(Path input, Path output, double seconds, String ffmpeg) {
@@ -491,8 +621,7 @@ final class ClipBuffer {
 			return;
 		}
 
-		// 保存したあとも録り続ける（音声と区間は作り直す）
-		RecordingManager.INSTANCE.startClipAudio(client, this.audioBase);
+		// 保存したあとも録り続ける（音声は rotateAudio がすでに次を始めている）
 		this.openSegment();
 		this.session.captureSnapshot(client);
 		RecordingManager.INSTANCE.notifyClipSaved(client, saved, failure);

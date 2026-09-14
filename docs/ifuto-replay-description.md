@@ -201,9 +201,11 @@ How it stays light:
   on its own — which means the joined result is always playable
 - Saving just **concatenates the surviving segments** — no re-encoding, a few seconds of copying, done
   on a worker thread so the game never stalls
-- Audio is recorded as **one continuous file** (stopping and restarting would cut the sound, and on
-  Minecraft-only mode it means reopening the output device), and the **tail is cut out** with ffmpeg
-  when you save. Voice chat is cut as its own track, so it stays a real on/off switch
+- Audio **never stops recording** (stopping and restarting would cut the sound, and on Minecraft-only
+  mode it means reopening the output device). Saving only **switches the file the sound is written to**
+  — the loopback device stays open — so saving twice in a row still gives the second clip its sound.
+  The **tail is cut out** with ffmpeg when you save. Voice chat is cut as its own track, so it stays
+  a real on/off switch
 
 A clip always starts at a segment boundary (that is where the world snapshot lives), so it ends up
 between **the configured length and 1.25× that** — two hours configured gives you two to two and a

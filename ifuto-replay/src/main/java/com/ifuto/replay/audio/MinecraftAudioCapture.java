@@ -198,6 +198,41 @@ public final class MinecraftAudioCapture {
 		return true;
 	}
 
+	/**
+	 * 音を止めずに、書き出し先を次のファイルへ移す（クリップを保存したあとに使う）。
+	 *
+	 * <p>装置（ループバック）は開いたままにして、**出す先だけ** を入れ替える。
+	 * 止めて録り直すと、長いクリップを2回保存したときに2回めへ音が付かない。
+	 *
+	 * @return 移せたら true
+	 */
+	public synchronized boolean rotate(Path output, int bitrateKbps, String ffmpegPath) {
+		if (!this.running) {
+			return false;
+		}
+
+		PcmCapture started = PcmCapture.start(ffmpegPath, output, SAMPLE_RATE, CHANNELS, bitrateKbps,
+				FRAMES_PER_CHUNK * CHANNELS);
+
+		if (started == null) {
+			this.failure = "ffmpeg を起動できませんでした";
+			return false;
+		}
+
+		PcmCapture previous = this.capture;
+		this.capture = started;
+		this.output = output;
+
+		if (previous != null) {
+			// もう新しいファイルへ流れているので、閉じるのは待たなくていい
+			Thread closer = new Thread(previous::stop, "ifuto-replay-mc-audio-rotate");
+			closer.setDaemon(true);
+			closer.start();
+		}
+
+		return true;
+	}
+
 	/** 録り終える。音はかならず元の鳴り方へ戻す。 */
 	public synchronized void stop(MinecraftClient client) {
 		if (!this.running) {

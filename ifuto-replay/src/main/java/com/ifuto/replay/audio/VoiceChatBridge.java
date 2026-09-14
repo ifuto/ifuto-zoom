@@ -40,6 +40,11 @@ public final class VoiceChatBridge {
 		this.capture.stop();
 	}
 
+	/** 録り続けたまま、書き出し先を次へ移す */
+	public boolean rotate(Path output, int bitrateKbps, String ffmpegPath) {
+		return available && this.capture.rotate(output, bitrateKbps, ffmpegPath);
+	}
+
 	public boolean isRunning() {
 		return this.capture.isRunning();
 	}

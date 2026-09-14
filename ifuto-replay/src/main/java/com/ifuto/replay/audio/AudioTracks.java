@@ -70,6 +70,60 @@ public final class AudioTracks {
 		return mode == AudioMode.SYSTEM ? systemTrack(recording) : minecraftTrack(recording);
 	}
 
+	/** 3本まとめて（Minecraft / VC / PC全体。順番は固定） */
+	public static List<Path> allTracks(Path base) {
+		return List.of(minecraftTrack(base), voiceTrack(base), systemTrack(base));
+	}
+
+	/**
+	 * 何本かを1本にまとめる（**再圧縮しない**）。
+	 *
+	 * <p>クリップを保存するたびに音声のファイルを分けているので、
+	 * 保存したときに「必要なぶん」だけをあとからつなげるのに使う。
+	 *
+	 * @return まとめられたら true
+	 */
+	public static boolean concat(List<Path> inputs, Path output, String ffmpegPath) {
+		List<Path> files = new ArrayList<>();
+
+		for (Path input : inputs) {
+			if (exists(input)) {
+				files.add(input);
+			}
+		}
+
+		if (files.isEmpty()) {
+			return false;
+		}
+
+		Path list = output.resolveSibling(output.getFileName() + ".parts.txt");
+
+		try {
+			StringBuilder text = new StringBuilder();
+
+			for (Path file : files) {
+				text.append("file '").append(file.toAbsolutePath().toString().replace("'", "'\\''")).append("'\n");
+			}
+
+			Files.writeString(list, text.toString(), StandardCharsets.UTF_8);
+		} catch (IOException e) {
+			IfutoReplayClient.LOGGER.warn("[ifuto-replay] 音声をつなぐ一覧を作れませんでした", e);
+			return false;
+		}
+
+		try {
+			return run(ffmpegPath, List.of("-y", "-hide_banner", "-loglevel", "warning",
+					"-f", "concat", "-safe", "0", "-i", list.toAbsolutePath().toString(),
+					"-c", "copy", output.toAbsolutePath().toString())) && exists(output);
+		} finally {
+			try {
+				Files.deleteIfExists(list);
+			} catch (IOException ignored) {
+				// 残っても一時フォルダの掃除で消える
+			}
+		}
+	}
+
 	private static Path withSuffix(Path recording, String suffix) {
 		Path base = base(recording);
 		return base.resolveSibling(base.getFileName().toString() + suffix);

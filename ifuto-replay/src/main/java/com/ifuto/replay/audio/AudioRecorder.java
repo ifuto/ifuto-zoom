@@ -106,6 +106,22 @@ public final class AudioRecorder {
 		}
 	}
 
+	/**
+	 * 書き出し先を次のファイルへ移す（PC 全体の音むけ）。
+	 *
+	 * <p>こちらは ffmpeg が機器を直接読んでいるので、**入れ替えの瞬間だけ音が途切れる**
+	 * （Minecraft の音のように「開いたまま出し先だけ変える」ことはできない）。
+	 * 途切れるのは保存した瞬間の一瞬だけで、それ以前の音はファイルに残る。
+	 */
+	public synchronized boolean rotate(Path target) {
+		if (this.process == null) {
+			return false;
+		}
+
+		this.stop();
+		return this.start(target);
+	}
+
 	/** 録音を止めて、取れた音声を残す（取れていなければ捨てる） */
 	public synchronized void stop() {
 		Process current = this.process;

@@ -342,31 +342,73 @@ public final class RecordingManager {
 	 * なのでクリップ方式ではずっと1本で録っておき、保存するときに
 	 * **いちばん後ろのぶんだけ** を切り出している（{@code AudioTracks#tail}）。
 	 */
-	public synchronized void startClipAudio(MinecraftClient client, Path target) {
+	public synchronized boolean startClipAudio(MinecraftClient client, Path target) {
 		this.stopClipAudio(client);
 
 		ReplayConfig config = ReplayConfig.get();
 
 		if (config.audioMode == null || !config.audioMode.records()) {
-			return;
+			return false;
 		}
 
 		if (config.audioMode == AudioMode.MINECRAFT) {
 			Path track = AudioTracks.pathFor(target, AudioMode.MINECRAFT);
 
-			if (MinecraftAudioCapture.get().start(client, track, config.audioBitrateKbps, config.ffmpegPath)) {
-				this.startVoiceChat(config, target);
-				return;
+			if (!MinecraftAudioCapture.get().start(client, track, config.audioBitrateKbps, config.ffmpegPath)) {
+				// 取れない環境では PC 全体の音で代用する（ふつうの録画と同じ考え方）
+				this.audioRecorder.start(AudioTracks.pathFor(target, AudioMode.SYSTEM));
 			}
 
-			// 取れない環境では PC 全体の音で代用する（ふつうの録画と同じ考え方）
-			this.audioRecorder.start(AudioTracks.pathFor(target, AudioMode.SYSTEM));
 			this.startVoiceChat(config, target);
-			return;
+			return this.isClipAudioRunning();
 		}
 
 		this.audioRecorder.start(AudioTracks.pathFor(target, config.audioMode));
 		this.startVoiceChat(config, target);
+		return this.isClipAudioRunning();
+	}
+
+	/**
+	 * **音を止めずに**、音声の書き出し先を次のファイルへ移す（クリップを保存したあとに使う）。
+	 *
+	 * <p>止めて録り直すと「いままでの音」が消えてしまう。2時間のクリップを2回保存したら
+	 * 2回めには音が付かない、ということになる。
+	 *
+	 * <p>Minecraft の音は装置（ループバック）を開いたまま **出し先だけ** を入れ替えるので、
+	 * 音は途切れない。PC 全体の音は ffmpeg が機器を読んでいるので入れ替えの瞬間だけ途切れるが、
+	 * それ以前の音は別のファイルとして残る。
+	 *
+	 * @return 音声を録れている状態なら true（設定で録らないとき / 落ちているときは false）
+	 */
+	public synchronized boolean rotateClipAudio(MinecraftClient client, Path target) {
+		ReplayConfig config = ReplayConfig.get();
+
+		if (config.audioMode == null || !config.audioMode.records()) {
+			return false;
+		}
+
+		if (MinecraftAudioCapture.get().isRunning()) {
+			if (!MinecraftAudioCapture.get().rotate(AudioTracks.pathFor(target, AudioMode.MINECRAFT),
+					config.audioBitrateKbps, config.ffmpegPath)) {
+				return false;
+			}
+		} else if (this.audioRecorder.isRunning()) {
+			this.audioRecorder.rotate(AudioTracks.pathFor(target, AudioMode.SYSTEM));
+		} else {
+			return false;
+		}
+
+		if (config.recordVoiceChat && VoiceChatBridge.isAvailable()) {
+			VoiceChatBridge.get().rotate(AudioTracks.voiceTrack(target), config.audioBitrateKbps,
+					config.ffmpegPath);
+		}
+
+		return true;
+	}
+
+	/** クリップ用の音声を録れているか */
+	private boolean isClipAudioRunning() {
+		return MinecraftAudioCapture.get().isRunning() || this.audioRecorder.isRunning();
 	}
 
 	/** クリップをまとめる前に、いま録っている音声を閉じる（クライアントスレッドから） */

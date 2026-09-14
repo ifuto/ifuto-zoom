@@ -58,6 +58,35 @@ public final class VoiceChatCapture {
 		return true;
 	}
 
+	/**
+	 * 声を取り続けたまま、書き出し先を次のファイルへ移す。
+	 *
+	 * <p>{@link MinecraftAudioCapture#rotate} と同じ考え方。止めると、そのあいだの
+	 * 声が消えてしまう（長いクリップを2回保存したときに2回めへ声が付かない）。
+	 */
+	public synchronized boolean rotate(Path output, int bitrateKbps, String ffmpegPath) {
+		if (!this.running) {
+			return false;
+		}
+
+		PcmCapture started = PcmCapture.start(ffmpegPath, output, SAMPLE_RATE, 1, bitrateKbps, FRAME_SIZE);
+
+		if (started == null) {
+			return false;
+		}
+
+		PcmCapture previous = this.capture;
+		this.capture = started;
+
+		if (previous != null) {
+			Thread closer = new Thread(previous::stop, "ifuto-replay-voice-rotate");
+			closer.setDaemon(true);
+			closer.start();
+		}
+
+		return true;
+	}
+
 	/** 録り終える */
 	public synchronized void stop() {
 		this.running = false;
