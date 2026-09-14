@@ -1,5 +1,7 @@
 package com.ifuto.replay.gui;
 
+import com.ifuto.replay.audio.AudioMode;
+import com.ifuto.replay.audio.SystemAudioCapture;
 import com.ifuto.replay.config.CompressionMode;
 import com.ifuto.replay.config.IndicatorPosition;
 import com.ifuto.replay.config.ReplayConfig;
@@ -182,6 +184,37 @@ public class ReplayConfigScreen extends Screen {
 		folderField.setChangedListener(value -> this.config.saveFolder = value.trim());
 		content.add(row(folderField, null));
 
+		// 7.5行目: 音声
+		content.add(row(
+				CyclingButtonWidget.<AudioMode>builder(mode -> Text.translatable(mode.translationKey()),
+								this.config.audioMode)
+						.values(AudioMode.available())
+						.tooltip(value -> Tooltip.of(Text.translatable("ifuto-replay.config.audio_mode.tooltip")))
+						.build(0, 0, WIDGET_WIDTH, WIDGET_HEIGHT,
+								Text.translatable("ifuto-replay.config.audio_mode"),
+								(button, value) -> this.config.audioMode = value),
+				new OptionSlider(0, 0, WIDGET_WIDTH, WIDGET_HEIGHT, "ifuto-replay.config.audio_bitrate",
+						32, 256, this.config.audioBitrateKbps,
+						value -> value + " kbps",
+						value -> this.config.audioBitrateKbps = value)
+						.tooltip("ifuto-replay.config.audio_bitrate.tooltip")));
+
+		TextFieldWidget deviceField = new TextFieldWidget(this.textRenderer,
+				0, 0, WIDGET_WIDTH, WIDGET_HEIGHT,
+				Text.translatable("ifuto-replay.config.audio_device"));
+		deviceField.setMaxLength(120);
+		deviceField.setText(this.config.audioDevice);
+		deviceField.setPlaceholder(Text.translatable("ifuto-replay.config.audio_device.placeholder"));
+		deviceField.setTooltip(Tooltip.of(Text.translatable("ifuto-replay.config.audio_device.tooltip")));
+		deviceField.setChangedListener(value -> this.config.audioDevice = value.trim());
+		ButtonWidget detectButton = ButtonWidget.builder(
+						Text.translatable("ifuto-replay.config.audio_device.detect"),
+						button -> this.detectAudioDevice(deviceField))
+				.width(WIDGET_WIDTH)
+				.build();
+		detectButton.setTooltip(Tooltip.of(Text.translatable("ifuto-replay.config.audio_device.detect.tooltip")));
+		content.add(row(deviceField, detectButton));
+
 		// 8行目: 書き出しの既定値（FPS / 解像度）
 		String currentResolution = this.config.exportWidth + "x" + this.config.exportHeight;
 		List<String> resolutions = new ArrayList<>();
@@ -254,6 +287,43 @@ public class ReplayConfigScreen extends Screen {
 
 		this.layout.forEachChild(this::addDrawableChild);
 		this.refreshWidgetPositions();
+	}
+
+	/**
+	 * 音声を取れる機器を探す。
+	 *
+	 * <p>ffmpeg（や pactl）を起動するので画面を止めないように別スレッドで探し、
+	 * 見つかったら項目へ入れる。見つかった機器はツールチップに一覧で出しておく。
+	 */
+	private void detectAudioDevice(TextFieldWidget field) {
+		field.setText(Text.translatable("ifuto-replay.config.audio_device.detecting").getString());
+		MinecraftClient client = MinecraftClient.getInstance();
+		String ffmpegPath = this.config.ffmpegPath;
+
+		Thread thread = new Thread(() -> {
+			List<String> devices = SystemAudioCapture.detectDevices(ffmpegPath);
+			String best = SystemAudioCapture.autoDevice(ffmpegPath);
+
+			client.execute(() -> {
+				if (best == null) {
+					field.setText("");
+					field.setTooltip(Tooltip.of(Text.translatable("ifuto-replay.config.audio_device.not_found")));
+					return;
+				}
+
+				field.setText(best);
+				StringBuilder list = new StringBuilder(best);
+
+				for (int i = 0; i < devices.size() && i < 8; i++) {
+					list.append("\n").append(devices.get(i));
+				}
+
+				field.setTooltip(Tooltip.of(Text.literal(list.toString())));
+			});
+		}, "ifuto-replay-audio-devices");
+
+		thread.setDaemon(true);
+		thread.start();
 	}
 
 	private void openFolder() {

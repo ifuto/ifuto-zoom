@@ -6,15 +6,18 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.texture.NativeImage;
 import net.minecraft.client.util.ScreenshotRecorder;
 import net.minecraft.text.Text;
+import org.jspecify.annotations.Nullable;
 
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.file.Files;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 /**
  * 再生している世界を、好きな FPS / 解像度 / ビットレートで動画にする。
@@ -165,7 +168,20 @@ public final class ReplayExporter {
 		command.add(String.valueOf(this.options.fps()));
 		command.add("-i");
 		command.add("-");
-		command.add("-an");
+
+		// 音声は「録っているときに録った別ファイル」。実時間より先に進むので、
+		// 書き出す範囲のぶんだけ切り出して、絵と同じ長さにする
+		Path audio = this.audioInput();
+
+		if (audio != null) {
+			command.add("-ss");
+			command.add(seconds(this.startMs / 1000.0));
+			command.add("-t");
+			command.add(seconds(this.totalFrames * this.frameStepMs / 1000.0));
+			command.add("-i");
+			command.add(audio.toAbsolutePath().toString());
+		}
+
 		command.add("-c:v");
 		command.add("libx264");
 		command.add("-preset");
@@ -174,6 +190,22 @@ public final class ReplayExporter {
 		command.add("yuv420p");
 		command.add("-b:v");
 		command.add(this.options.bitrateKbps() + "k");
+
+		if (audio != null) {
+			command.add("-map");
+			command.add("0:v:0");
+			command.add("-map");
+			command.add("1:a:0");
+			command.add("-c:a");
+			command.add("aac");
+			command.add("-b:a");
+			command.add("192k");
+			// 絵が先に終わったらそこで切る（音だけ長く残さない）
+			command.add("-shortest");
+		} else {
+			command.add("-an");
+		}
+
 		command.add(this.options.output().toString());
 
 		this.process = new ProcessBuilder(command).start();
@@ -192,6 +224,22 @@ public final class ReplayExporter {
 		this.lastProgressMs = this.startedAtMs;
 		this.playback.setPaused(false);
 		active = this;
+	}
+
+	/** 一緒に詰める音声（無ければ null） */
+	private @Nullable Path audioInput() {
+		Path audio = this.options.audio();
+
+		if (audio == null || !Files.isRegularFile(audio)) {
+			return null;
+		}
+
+		return audio;
+	}
+
+	/** ffmpeg に渡す秒（小数点以下3けた。小数点を落とすとずれるので） */
+	private static String seconds(double value) {
+		return String.format(Locale.ROOT, "%.3f", Math.max(0.0, value));
 	}
 
 	/** 描画の前に呼ぶ。次のフレームの時刻へ進める */

@@ -1,6 +1,8 @@
 package com.ifuto.replay.recording;
 
 import com.ifuto.replay.IfutoReplayClient;
+import com.ifuto.replay.audio.AudioRecorder;
+import com.ifuto.replay.audio.AudioTracks;
 import com.ifuto.replay.config.ReplayConfig;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.MinecraftClient;
@@ -47,6 +49,9 @@ public final class RecordingManager {
 
 	/** パケットにならない操作（マウス・キー・画面）の記録 */
 	private final InputTracker inputTracker = new InputTracker();
+
+	/** 音声の録音（外の ffmpeg に任せる） */
+	private final AudioRecorder audioRecorder = new AudioRecorder();
 
 	/** いま InputTracker が追っている録画（変わったら最初から記録し直す） */
 	private @Nullable RecordingSession trackedSession;
@@ -196,6 +201,7 @@ public final class RecordingManager {
 
 		this.session = created;
 		notify(client, "ifuto-replay.message.started", Text.literal(file.getFileName().toString()));
+		this.startAudio(client, file);
 		return true;
 	}
 
@@ -208,6 +214,7 @@ public final class RecordingManager {
 		}
 
 		this.session = null;
+		this.audioRecorder.stop();
 		RecordingSession.Stats stats = current.finish();
 		IfutoReplayClient.LOGGER.info("[ifuto-replay] {} を保存しました ({} パケット, 破棄 {}, 失敗 {})",
 				stats.file().getFileName(), stats.packets(), stats.dropped(), stats.errors());
@@ -224,6 +231,32 @@ public final class RecordingManager {
 			this.stop(client);
 		} else {
 			this.start(client, client == null ? null : client.getNetworkHandler());
+		}
+	}
+
+	/**
+	 * 音声の録音を始める。
+	 *
+	 * <p>取れない環境（ffmpeg が無い、機器が無い等）でも **録画は止めない**。
+	 * そのときは理由を出して、音声なしで続ける。
+	 */
+	private void startAudio(MinecraftClient client, Path recordingFile) {
+		ReplayConfig config = ReplayConfig.get();
+
+		if (config.audioMode == null || !config.audioMode.records()) {
+			return;
+		}
+
+		Path target = AudioTracks.pathFor(recordingFile, config.audioMode);
+
+		if (this.audioRecorder.start(target)) {
+			return;
+		}
+
+		String failure = this.audioRecorder.failure();
+
+		if (!failure.isEmpty()) {
+			notify(client, "ifuto-replay.message.audio_failed", Text.literal(failure));
 		}
 	}
 
@@ -254,6 +287,13 @@ public final class RecordingManager {
 		}
 
 		this.inputTracker.tick(client, current);
+
+		// 録音が勝手に終わっていたら理由を出す（録画は止めない）
+		String audioFailure = this.audioRecorder.pollFailure();
+
+		if (!audioFailure.isEmpty()) {
+			notify(client, "ifuto-replay.message.audio_failed", Text.literal(audioFailure));
+		}
 
 		long now = System.currentTimeMillis();
 

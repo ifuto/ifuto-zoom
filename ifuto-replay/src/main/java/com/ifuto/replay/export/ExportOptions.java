@@ -1,7 +1,9 @@
 package com.ifuto.replay.export;
 
+import com.ifuto.replay.audio.AudioTracks;
 import com.ifuto.replay.config.ReplayConfig;
 import com.ifuto.replay.recording.ReplayFormat;
+import org.jspecify.annotations.Nullable;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -20,7 +22,8 @@ public record ExportOptions(
 		String ffmpegPath,
 		long startMs,
 		long endMs,
-		Path output
+		Path output,
+		@Nullable Path audio
 ) {
 	/** 録画1本ぶんの既定の設定を作る */
 	public static ExportOptions defaultFor(ReplayConfig config, Path recording, long durationMs) {
@@ -40,7 +43,8 @@ public record ExportOptions(
 				config.ffmpegPath,
 				0L,
 				Math.max(0L, durationMs),
-				output
+				output,
+				AudioTracks.pick(recording, true)
 		);
 	}
 

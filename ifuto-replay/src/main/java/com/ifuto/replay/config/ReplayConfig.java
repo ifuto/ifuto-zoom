@@ -3,6 +3,7 @@ package com.ifuto.replay.config;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.ifuto.replay.IfutoReplayClient;
+import com.ifuto.replay.audio.AudioMode;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.fabricmc.loader.api.FabricLoader;
@@ -126,6 +127,22 @@ public class ReplayConfig {
 
 	/** ffmpeg の実行ファイル（パスが通っていれば "ffmpeg" のままでOK） */
 	public String ffmpegPath = "ffmpeg";
+
+	// --- 音声 ---
+
+	/**
+	 * 音声をどう録るか。
+	 *
+	 * <p>音は「いま鳴っている物」をその場で取るしかないので、録画と同時に別ファイルへ書く。
+	 * 取れない環境でも録画そのものは必ず残る（音声なしになるだけ）。
+	 */
+	public AudioMode audioMode = AudioMode.OFF;
+
+	/** 音声のビットレート（kbps）。Opus なら 96 もあれば十分 */
+	public int audioBitrateKbps = 96;
+
+	/** 音声を取る機器（空欄 = 自動で探す）。Windows は `audio=…` に入る名前、Linux は pactl の名前 */
+	public String audioDevice = "";
 
 	public static ReplayConfig get() {
 		if (instance == null) {
@@ -251,6 +268,9 @@ public class ReplayConfig {
 		this.exportBitrateKbps = defaults.exportBitrateKbps;
 		this.ffmpegPath = defaults.ffmpegPath;
 		this.snapshotRadius = defaults.snapshotRadius;
+		this.audioMode = defaults.audioMode;
+		this.audioBitrateKbps = defaults.audioBitrateKbps;
+		this.audioDevice = defaults.audioDevice;
 	}
 
 	/** 手書き編集や古いファイルで壊れていても落ちないように丸める */
@@ -283,6 +303,16 @@ public class ReplayConfig {
 
 		if (this.ffmpegPath == null) {
 			this.ffmpegPath = "ffmpeg";
+		}
+
+		if (this.audioMode == null) {
+			this.audioMode = AudioMode.OFF;
+		}
+
+		this.audioBitrateKbps = clampStrict(this.audioBitrateKbps, 32, 512, 96);
+
+		if (this.audioDevice == null) {
+			this.audioDevice = "";
 		}
 	}
 

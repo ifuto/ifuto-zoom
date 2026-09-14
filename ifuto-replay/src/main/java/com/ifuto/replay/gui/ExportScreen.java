@@ -1,6 +1,7 @@
 package com.ifuto.replay.gui;
 
 import com.ifuto.replay.IfutoReplayClient;
+import com.ifuto.replay.audio.AudioTracks;
 import com.ifuto.replay.config.ReplayConfig;
 import com.ifuto.replay.export.ExportOptions;
 import com.ifuto.replay.export.ReplayExporter;
@@ -57,6 +58,8 @@ public class ExportScreen extends Screen {
 	private TextFieldWidget ffmpegField;
 	private TextFieldWidget nameField;
 	private TextWidget summaryText;
+	private boolean includeAudio;
+	private boolean includeVoiceChat = true;
 	private int startSec;
 	private int endSec;
 	private int fps;
@@ -71,6 +74,7 @@ public class ExportScreen extends Screen {
 		this.startSec = 0;
 		this.endSec = this.durationSec;
 		this.fps = config.exportFps;
+		this.includeAudio = AudioTracks.hasAny(info.file());
 	}
 
 	@Override
@@ -145,6 +149,30 @@ public class ExportScreen extends Screen {
 				Text.translatable("ifuto-replay.export.name"));
 		this.nameField.setText(this.defaultFileName());
 		content.add(row(this.nameField, null));
+
+		// 6行目: 音声（録画と一緒に録られていたときだけ出す）
+		if (AudioTracks.hasAny(this.info.file())) {
+			CyclingButtonWidget<Boolean> audioToggle = CyclingButtonWidget.onOffBuilder(this.includeAudio)
+					.tooltip(value -> Tooltip.of(Text.translatable("ifuto-replay.export.include_audio.tooltip")))
+					.build(0, 0, WIDGET_WIDTH, WIDGET_HEIGHT,
+							Text.translatable("ifuto-replay.export.include_audio"),
+							(button, value) -> {
+								this.includeAudio = value;
+								this.updateSummary();
+							});
+			CyclingButtonWidget<Boolean> voiceToggle = CyclingButtonWidget.onOffBuilder(this.includeVoiceChat)
+					.build(0, 0, WIDGET_WIDTH, WIDGET_HEIGHT,
+							Text.translatable("ifuto-replay.export.include_vc"),
+							(button, value) -> {
+								this.includeVoiceChat = value;
+								this.updateSummary();
+							});
+			// VC は「PC 全体の音」にしか入っていない。外せるのは Minecraft だけの音があるとき
+			voiceToggle.setTooltip(Tooltip.of(Text.translatable(AudioTracks.onlySystem(this.info.file())
+					? "ifuto-replay.export.include_vc.tooltip_only"
+					: "ifuto-replay.export.include_vc.tooltip")));
+			content.add(row(audioToggle, voiceToggle));
+		}
 
 		this.summaryText = new TextWidget(Text.empty(), this.textRenderer);
 		this.summaryText.setMaxWidth(WIDGET_WIDTH * 2 + COLUMN_GAP);
@@ -244,11 +272,20 @@ public class ExportScreen extends Screen {
 		}
 
 		long frames = Math.max(1L, Math.round((endMs - startMs) / 1000.0 * this.fps));
-		this.summaryText.setMessage(Text.translatable("ifuto-replay.export.summary",
+		Text summary = Text.translatable("ifuto-replay.export.summary",
 				Text.literal(width + "x" + height),
 				Text.literal(formatDuration(startMs)),
 				Text.literal(formatDuration(endMs)),
-				Text.literal(String.valueOf(frames))));
+				Text.literal(String.valueOf(frames)));
+
+		if (this.includeAudio) {
+			boolean hasTrack = AudioTracks.pick(this.info.file(), this.includeVoiceChat) != null;
+			summary = Text.empty().append(summary).append(Text.literal("  "))
+					.append(Text.translatable(hasTrack
+							? "ifuto-replay.export.audio_on" : "ifuto-replay.export.audio_dropped"));
+		}
+
+		this.summaryText.setMessage(summary);
 	}
 
 	private static int intValue(TextFieldWidget field, int fallback) {
@@ -295,8 +332,10 @@ public class ExportScreen extends Screen {
 
 		Path output = ExportOptions.uniqueOutput(ReplayConfig.getSaveDirectory().resolve("exports")
 				.resolve(this.fileName()));
+		// 音声は「録画の隣に置いてある別ファイル」。VC を外したいときは Minecraft だけの音を選ぶ
+		Path audio = this.includeAudio ? AudioTracks.pick(this.info.file(), this.includeVoiceChat) : null;
 		ExportOptions options = new ExportOptions(config.exportFps, config.exportWidth, config.exportHeight,
-				config.exportBitrateKbps, config.ffmpegPath, startMs, endMs, output);
+				config.exportBitrateKbps, config.ffmpegPath, startMs, endMs, output, audio);
 
 		startExport(this.client, this.info.file(), options, this.parent);
 	}
