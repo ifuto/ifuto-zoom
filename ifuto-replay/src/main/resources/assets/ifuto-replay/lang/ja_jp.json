@@ -186,5 +186,20 @@
 	"ifuto-replay.config.record_voice_chat": "VC の声も録る",
 	"ifuto-replay.config.record_voice_chat.tooltip": "Simple Voice Chat の声を別のファイルに録ります（書き出しのときに入れるか選べます）",
 	"ifuto-replay.message.audio_fallback": "Minecraft の音だけを録れないので、PC 全体の音で録ります（%s）。設定の「音声を録る」で変えられます",
-	"ifuto-replay.menu.stop.tooltip": "録画をやめて、いまの録画を保存します"
+	"ifuto-replay.menu.stop.tooltip": "録画をやめて、いまの録画を保存します",
+	"ifuto-replay.menu.clip": "✂ クリップ保存",
+	"ifuto-replay.menu.clip.tooltip": "いま残っている「さっきの数秒」を1つの録画として保存します（クリップ方式のときだけ押せます）。",
+	"ifuto-replay.config.clip_mode": "クリップ方式",
+	"ifuto-replay.config.clip_mode.tooltip": "Medal のように録り続け、「クリップ保存」を押した時点から遡って保存します。押さなければ残りません。",
+	"ifuto-replay.config.clip_seconds": "クリップの長さ",
+	"ifuto-replay.config.clip_seconds.tooltip": "さかのぼって保存する長さ（秒）。区間の都合でこれより少し長くなることがあります。",
+	"ifuto-replay.config.seconds": "秒",
+	"ifuto-replay.message.clip_started": "クリップ方式で録り始めました（直近 %s 秒を保持します）",
+	"ifuto-replay.message.clip_saving": "クリップを保存しています…",
+	"ifuto-replay.message.clip_saved": "クリップを保存しました: %s (%s)",
+	"ifuto-replay.message.clip_failed": "クリップを保存できませんでした",
+	"ifuto-replay.message.clip_empty": "まだクリップを残せるだけ録れていません",
+	"ifuto-replay.message.clip_stopped": "クリップ方式を止めました（保存していない分は残りません）",
+	"ifuto-replay.message.clip_disabled": "クリップ方式がオンになっていません（設定から切り替えられます）",
+	"ifuto-replay.hud.clip": "✂ クリップ %s / %s"
 }

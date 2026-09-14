@@ -48,8 +48,18 @@ public class RecordingIndicator implements HudElement {
 
 		// 点滅（1秒ごと。録っていることがひと目でわかるように）
 		boolean blink = System.currentTimeMillis() % 1000L < 600L;
-		String text = RecordingManager.formatDuration(session.elapsedMillis())
-				+ "  " + RecordingManager.formatSize(session.bytesWritten());
+		String text;
+
+		if (session.isClipMode()) {
+			// クリップ方式: 「いま何秒ぶん残っているか」を出す（押したら残せる目安）
+			long buffered = Math.min(session.clipBufferedMillis(), (long) config.clipSeconds * 1000L);
+			text = net.minecraft.text.Text.translatable("ifuto-replay.hud.clip",
+					RecordingManager.formatDuration(buffered),
+					RecordingManager.formatDuration((long) config.clipSeconds * 1000L)).getString();
+		} else {
+			text = RecordingManager.formatDuration(session.elapsedMillis())
+					+ "  " + RecordingManager.formatSize(session.bytesWritten());
+		}
 
 		TextRenderer renderer = client.textRenderer;
 		int textWidth = renderer.getWidth(text);

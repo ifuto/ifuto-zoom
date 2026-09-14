@@ -186,5 +186,20 @@
 	"ifuto-replay.config.record_voice_chat": "Record voice chat",
 	"ifuto-replay.config.record_voice_chat.tooltip": "Record Simple Voice Chat voices into a separate file (include or drop them when exporting)",
 	"ifuto-replay.message.audio_fallback": "Could not capture Minecraft-only audio, recording whole-PC audio instead (%s). Change it under \"Record audio\" in the settings",
-	"ifuto-replay.menu.stop.tooltip": "Stop recording and save what you have so far"
+	"ifuto-replay.menu.stop.tooltip": "Stop recording and save what you have so far",
+	"ifuto-replay.menu.clip": "✂ Save clip",
+	"ifuto-replay.menu.clip.tooltip": "Save the last few seconds as a recording. Only available in clip mode.",
+	"ifuto-replay.config.clip_mode": "Clip mode",
+	"ifuto-replay.config.clip_mode.tooltip": "Record continuously like Medal, then save backwards from the moment you press \"Save clip\". Nothing is kept unless you press it.",
+	"ifuto-replay.config.clip_seconds": "Clip length",
+	"ifuto-replay.config.clip_seconds.tooltip": "How far back to save, in seconds. The result can be slightly longer because of how clips are split.",
+	"ifuto-replay.config.seconds": "s",
+	"ifuto-replay.message.clip_started": "Clip mode started (keeping the last %s seconds)",
+	"ifuto-replay.message.clip_saving": "Saving clip…",
+	"ifuto-replay.message.clip_saved": "Clip saved: %s (%s)",
+	"ifuto-replay.message.clip_failed": "Could not save the clip",
+	"ifuto-replay.message.clip_empty": "Not enough recorded yet for a clip",
+	"ifuto-replay.message.clip_stopped": "Clip mode stopped (anything you did not save is gone)",
+	"ifuto-replay.message.clip_disabled": "Clip mode is off — you can turn it on in the settings",
+	"ifuto-replay.hud.clip": "✂ Clip %s / %s"
 }

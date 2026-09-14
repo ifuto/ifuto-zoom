@@ -19,7 +19,9 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Supplier;
 import java.util.zip.Deflater;
+import org.jspecify.annotations.Nullable;
 
 /**
  * 録画ファイルへの書き込みを専門にするスレッド。
@@ -47,6 +49,9 @@ final class ReplayFileWriter implements Runnable {
 	private final long maxBytes;
 	private final long flushIntervalMs;
 
+	/** 区間ファイルのとき、書き始めに置く「パケットの種類」の定義 */
+	private final @Nullable Supplier<List<PacketTask>> preamble;
+
 	private final Thread thread;
 	private volatile boolean running = true;
 	private volatile boolean limitReached;
@@ -61,20 +66,45 @@ final class ReplayFileWriter implements Runnable {
 	private Deflater deflater;
 	private byte[] deflateScratch = new byte[8192];
 
+	/** ふつうの録画（先頭にヘッダを書く） */
 	ReplayFileWriter(Path file, String mcVersion, String serverName, String playerName, long startedAt,
 					 boolean recordsC2S, CompressionMode compression, int indexIntervalMs, long maxBytes,
 					 long flushIntervalMs,
 					 int queueCapacity, AtomicLong queuedBytes) throws IOException {
+		this(file, compression, indexIntervalMs, maxBytes, flushIntervalMs, queueCapacity, queuedBytes,
+				0L, null);
+
+		writeHeader(this.out, mcVersion, serverName, playerName, startedAt, recordsC2S);
+	}
+
+	/**
+	 * クリップ用の「区間」ファイル。
+	 *
+	 * <p>ヘッダは書かない（あとで1個にまとめるときに書く）。かわりに
+	 * **書き始めにパケットの種類の定義を全部置く**。こうしておくと
+	 * どの区間からでも単独で再生できる（古い区間を消しても壊れない）。
+	 */
+	ReplayFileWriter(Path file, CompressionMode compression, long flushIntervalMs, int queueCapacity,
+					 AtomicLong queuedBytes, long initialTimeMs,
+					 Supplier<List<PacketTask>> preamble) throws IOException {
+		this(file, compression, 0, 0L, flushIntervalMs, queueCapacity, queuedBytes, initialTimeMs, preamble);
+	}
+
+	private ReplayFileWriter(Path file, CompressionMode compression, int indexIntervalMs, long maxBytes,
+							 long flushIntervalMs, int queueCapacity, AtomicLong queuedBytes,
+							 long initialTimeMs, @Nullable Supplier<List<PacketTask>> preamble)
+			throws IOException {
 		this.queue = new ArrayBlockingQueue<>(Math.max(64, queueCapacity));
 		this.compression = compression;
 		this.indexIntervalMs = indexIntervalMs;
 		this.maxBytes = maxBytes;
 		this.flushIntervalMs = Math.max(100L, flushIntervalMs);
 		this.queuedBytes = queuedBytes;
+		this.preamble = preamble;
+		this.lastTimeMs = Math.max(0L, initialTimeMs);
 
 		OutputStream stream = new BufferedOutputStream(Files.newOutputStream(file), BUFFER_SIZE);
 		this.out = new ReplayDataOutput(stream);
-		this.writeHeader(mcVersion, serverName, playerName, startedAt, recordsC2S);
 
 		this.thread = new Thread(this, "ifuto-replay-writer");
 		this.thread.setDaemon(true);
@@ -115,6 +145,17 @@ final class ReplayFileWriter implements Runnable {
 	@Override
 	public void run() {
 		try {
+			// 区間ファイルでは「いままでに出てきた種類」を先に書く（本体より必ず前になる）
+			if (this.preamble != null) {
+				List<PacketTask> preamble = this.preamble.get();
+
+				if (preamble != null) {
+					for (PacketTask task : preamble) {
+						this.handle(task);
+					}
+				}
+			}
+
 			while (this.running) {
 				PacketTask task = this.queue.poll(POLL_TIMEOUT_MS, TimeUnit.MILLISECONDS);
 
@@ -179,18 +220,19 @@ final class ReplayFileWriter implements Runnable {
 
 	// --- 中身 ---
 
-	private void writeHeader(String mcVersion, String serverName, String playerName, long startedAt,
-							 boolean recordsC2S) throws IOException {
+	/** ファイルの先頭（クリップをまとめるときも同じ物を書く） */
+	static void writeHeader(ReplayDataOutput out, String mcVersion, String serverName, String playerName,
+							long startedAt, boolean recordsC2S) throws IOException {
 		for (byte magic : ReplayFormat.MAGIC) {
-			this.out.writeByte(magic);
+			out.writeByte(magic);
 		}
 
-		this.out.writeVarInt(ReplayFormat.VERSION);
-		this.out.writeVarInt(recordsC2S ? ReplayFormat.FLAG_HAS_C2S : 0);
-		this.out.writeString(mcVersion);
-		this.out.writeFixedLong(startedAt);
-		this.out.writeString(serverName);
-		this.out.writeString(playerName);
+		out.writeVarInt(ReplayFormat.VERSION);
+		out.writeVarInt(recordsC2S ? ReplayFormat.FLAG_HAS_C2S : 0);
+		out.writeString(mcVersion);
+		out.writeFixedLong(startedAt);
+		out.writeString(serverName);
+		out.writeString(playerName);
 	}
 
 	private void handle(PacketTask task) throws IOException {
@@ -301,6 +343,23 @@ final class ReplayFileWriter implements Runnable {
 		this.out.writeVarInt(packed.length);
 		this.out.writeVarInt(rawBytes.length);
 		this.out.writeBytes(packed);
+	}
+
+	/** 目印なしの巻末（クリップをまとめるときに使う） */
+	static void writeFooter(ReplayDataOutput out, long durationMs) throws IOException {
+		long indexOffset = out.position();
+
+		out.writeByte(ReplayFormat.TAG_INDEX);
+		out.writeVarInt(0);
+		out.writeVarLong(Math.max(0L, durationMs));
+		out.writeByte(ReplayFormat.TAG_END);
+
+		for (byte magic : ReplayFormat.MAGIC) {
+			out.writeByte(magic);
+		}
+
+		out.writeFixedLong(indexOffset);
+		out.flush();
 	}
 
 	private void writeFooter() throws IOException {

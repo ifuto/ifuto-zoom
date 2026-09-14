@@ -13,6 +13,9 @@ import net.minecraft.util.Identifier;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -32,6 +35,9 @@ public final class RecordingSession {
 	private final long startedAt;
 	private final ReplayConfig config;
 	private final ReplayFileWriter writer;
+
+	/** クリップ方式のとき、区間の管理はこちらが持つ（ふつうの録画では null） */
+	private final ClipBuffer clip;
 	private final long maxQueuedBytes;
 	private final long maxDurationMs;
 
@@ -64,14 +70,25 @@ public final class RecordingSession {
 
 		long maxBytes = config.maxFileSizeMb > 0 ? (long) config.maxFileSizeMb * 1024L * 1024L : 0L;
 
-		this.writer = new ReplayFileWriter(file, mcVersion, serverName, playerName, startedAt,
-				config.recordClientPackets, config.compression, config.indexIntervalMs, maxBytes,
-						config.flushIntervalMs, config.queuePackets, this.queuedBytes);
+		if (config.clipMode) {
+			// クリップ方式: 本体のファイルは作らず、区間を回し続ける
+			Path cache = ReplayConfig.getSaveDirectory().resolve(".clip-cache");
+			this.writer = null;
+			this.clip = new ClipBuffer(this, config, cache, mcVersion, serverName, playerName,
+					config.recordClientPackets, this.queuedBytes);
+		} else {
+			this.writer = new ReplayFileWriter(file, mcVersion, serverName, playerName, startedAt,
+					config.recordClientPackets, config.compression, config.indexIntervalMs, maxBytes,
+							config.flushIntervalMs, config.queuePackets, this.queuedBytes);
+			this.clip = null;
+		}
 	}
 
-	/** ファイルを開いて書き込みスレッドを開始する */
+	/** ファイル（または最初の区間）を開いて書き込みスレッドを開始する */
 	public void start() {
-		this.writer.start();
+		if (this.writer != null) {
+			this.writer.start();
+		}
 	}
 
 	/**
@@ -87,6 +104,18 @@ public final class RecordingSession {
 
 		this.registriesCaptured = true;
 
+		// クリップ方式ではファイルがいくつも分かれるので、最後にまとめるときに1回だけ書く
+		if (this.clip != null) {
+			try {
+				NbtCompound nbt = RegistrySnapshot.capture(handler.getRegistryManager());
+				this.clip.setRegistries(nbt);
+			} catch (Throwable t) {
+				IfutoReplayClient.LOGGER.warn("[ifuto-replay] レジストリの写しを保存できませんでした", t);
+			}
+
+			return;
+		}
+
 		try {
 			long startedAt = System.nanoTime();
 			NbtCompound nbt = RegistrySnapshot.capture(handler.getRegistryManager());
@@ -95,7 +124,7 @@ public final class RecordingSession {
 				return;
 			}
 
-			if (!this.writer.offer(PacketTask.registries(nbt))) {
+			if (!this.offer(PacketTask.registries(nbt))) {
 				IfutoReplayClient.LOGGER.warn("[ifuto-replay] レジストリを保存できませんでした（キューが一杯）");
 				return;
 			}
@@ -196,7 +225,7 @@ public final class RecordingSession {
 		int direction = outbound ? ReplayFormat.DIRECTION_C2S : ReplayFormat.DIRECTION_S2C;
 		PacketTask task = PacketTask.packet(timeMs, info.index(), direction, buffer);
 
-		if (!this.writer.offer(task)) {
+		if (!this.offer(task)) {
 			buffer.release();
 			this.droppedCount.incrementAndGet();
 			return;
@@ -269,7 +298,7 @@ public final class RecordingSession {
 
 		long timeMs = System.currentTimeMillis() - this.startedAt;
 
-		if (!this.writer.offer(PacketTask.input(timeMs, data))) {
+		if (!this.offer(PacketTask.input(timeMs, data))) {
 			this.droppedCount.incrementAndGet();
 			return;
 		}
@@ -288,7 +317,7 @@ public final class RecordingSession {
 				? "Marker " + this.markerCount.incrementAndGet()
 				: name;
 
-		if (!this.writer.offer(PacketTask.marker(timeMs, text))) {
+		if (!this.offer(PacketTask.marker(timeMs, text))) {
 			this.droppedCount.incrementAndGet();
 		}
 	}
@@ -297,6 +326,14 @@ public final class RecordingSession {
 	public Stats finish() {
 		this.stopping = true;
 		long durationMs = System.currentTimeMillis() - this.startedAt;
+
+		if (this.clip != null) {
+			// クリップ方式は「押したときだけ残る」。録画を止めたら一時ファイルは消す
+			this.clip.close();
+			return new Stats(this.file, durationMs, this.clip.bytes(), this.packetCount.get(),
+					this.droppedCount.get(), this.errorCount.get());
+		}
+
 		this.writer.finish(durationMs);
 
 		return new Stats(this.file, durationMs, this.writer.bytesWritten(), this.writer.packetsWritten(),
@@ -305,17 +342,50 @@ public final class RecordingSession {
 
 	/** いままでに書いた量（バイト） */
 	public long bytesWritten() {
-		return this.writer.bytesWritten();
+		return this.clip != null ? this.clip.bytes() : this.writer.bytesWritten();
 	}
 
-	/** 時間の上限に達したか */
+	/** 時間の上限に達したか（クリップ方式はずっと回し続けるので上限なし） */
 	public boolean isOverDuration() {
-		return this.maxDurationMs > 0L && System.currentTimeMillis() - this.startedAt >= this.maxDurationMs;
+		return this.clip == null && this.maxDurationMs > 0L
+				&& System.currentTimeMillis() - this.startedAt >= this.maxDurationMs;
 	}
 
-	/** サイズの上限に達したか */
+	/** サイズの上限に達したか（クリップ方式は古い区間から捨てるので上限なし） */
 	public boolean isLimitReached() {
-		return this.writer.isLimitReached();
+		return this.clip == null && this.writer.isLimitReached();
+	}
+
+	// --- クリップ方式 ---
+
+	public boolean isClipMode() {
+		return this.clip != null;
+	}
+
+	/** 区間を開いて録り始める（クライアントスレッドから1回だけ） */
+	public void startClip(MinecraftClient client) {
+		if (this.clip != null) {
+			this.clip.start(client);
+		}
+	}
+
+	/** 毎ティックの区間の入れ替え */
+	public void tickClip(MinecraftClient client) {
+		if (this.clip != null) {
+			this.clip.tick(client);
+		}
+	}
+
+	/** いま保存できる長さ（ミリ秒） */
+	public long clipBufferedMillis() {
+		return this.clip == null ? 0L : this.clip.bufferedMillis();
+	}
+
+	/** 残っている区間を1つにまとめて保存する（別スレッドで） */
+	public void saveClip(MinecraftClient client) {
+		if (this.clip != null) {
+			this.clip.saveAsync(client);
+		}
 	}
 
 	// --- 画面表示よう ---
@@ -362,10 +432,10 @@ public final class RecordingSession {
 
 			int index = this.nextTypeIndex.getAndIncrement();
 			int direction = outbound ? ReplayFormat.DIRECTION_C2S : ReplayFormat.DIRECTION_S2C;
-			this.types.put(type, new TypeInfo(index, isNoisy(identifier)));
+			this.types.put(type, new TypeInfo(index, isNoisy(identifier), direction, identifier));
 
 			// 本体より先に定義が書かれるように、同じキューに順番で積む
-			if (!this.writer.offer(PacketTask.type(index, direction, identifier))) {
+			if (!this.offer(PacketTask.type(index, direction, identifier))) {
 				this.types.remove(type);
 				return null;
 			}
@@ -380,10 +450,38 @@ public final class RecordingSession {
 		return lower.contains("keep_alive") || lower.contains("ping") || lower.contains("pong");
 	}
 
+	/**
+	 * いままでに登録したパケットの種類。
+	 *
+	 * <p>クリップ方式では区間ごとにファイルが分かれるので、**区間の先頭にこれを全部書き直す**。
+	 * こうしておくと、古い区間を消しても残った区間だけで再生できる。
+	 */
+	List<PacketTask> typeDefinitions() {
+		List<TypeInfo> snapshot;
+
+		synchronized (this.registerLock) {
+			snapshot = new ArrayList<>(this.types.values());
+		}
+
+		snapshot.sort(Comparator.comparingInt(TypeInfo::index));
+		List<PacketTask> result = new ArrayList<>(snapshot.size());
+
+		for (TypeInfo info : snapshot) {
+			result.add(PacketTask.type(info.index(), info.direction(), info.name()));
+		}
+
+		return result;
+	}
+
+	/** 積む先（クリップ方式なら区間、そうでなければファイル） */
+	private boolean offer(PacketTask task) {
+		return this.clip != null ? this.clip.offer(task) : this.writer.offer(task);
+	}
+
 	/** 録画の結果 */
 	public record Stats(Path file, long durationMs, long bytes, long packets, long dropped, long errors) {
 	}
 
-	private record TypeInfo(int index, boolean noisy) {
+	private record TypeInfo(int index, boolean noisy, int direction, String name) {
 	}
 }

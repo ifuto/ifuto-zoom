@@ -32,7 +32,7 @@ public final class PauseMenuButtons {
 	private static int panelX = PANEL_MARGIN;
 	private static int panelY = PANEL_MARGIN;
 	private static int panelWidth = BUTTON_WIDTH + PANEL_PADDING * 2;
-	private static int panelHeight = BUTTON_HEIGHT * 4 + SPACING * 3 + PANEL_PADDING * 2;
+	private static int panelHeight = BUTTON_HEIGHT * 5 + SPACING * 4 + PANEL_PADDING * 2;
 
 	private PauseMenuButtons() {
 	}
@@ -71,19 +71,27 @@ public final class PauseMenuButtons {
 				button -> client.setScreen(new ReplayConfigScreen(screen)), ModernButton.Style.NORMAL);
 		settingsButton.setTooltip(Tooltip.of(Text.translatable("ifuto-replay.menu.settings.tooltip")));
 
+		// 「さっきの数秒」をあとから残す（クリップ方式のときだけ押せる）
+		y += BUTTON_HEIGHT + SPACING;
+		ModernButton clipButton = new ModernButton(x, y, BUTTON_WIDTH, BUTTON_HEIGHT,
+				Text.translatable("ifuto-replay.menu.clip"),
+				button -> RecordingManager.INSTANCE.saveClip(client), ModernButton.Style.PRIMARY);
+		clipButton.setTooltip(Tooltip.of(Text.translatable("ifuto-replay.menu.clip.tooltip")));
+
 		Screens.getButtons(screen).add(recordButton);
 		Screens.getButtons(screen).add(markerButton);
 		Screens.getButtons(screen).add(listButton);
 		Screens.getButtons(screen).add(settingsButton);
+		Screens.getButtons(screen).add(clipButton);
 
-		refresh(client, recordButton, markerButton);
+		refresh(client, recordButton, markerButton, clipButton);
 
 		// ボタンの下に板を敷く（ボタンより先に描く）
 		ScreenEvents.beforeRender(screen).register((target, context, mouseX, mouseY, delta) ->
 				drawPanel(context));
 
 		// 録画中は経過時間をボタンに出すので、毎ティック書き換える
-		ScreenEvents.afterTick(screen).register(ignored -> refresh(client, recordButton, markerButton));
+		ScreenEvents.afterTick(screen).register(ignored -> refresh(client, recordButton, markerButton, clipButton));
 	}
 
 	/** 操作ボタンをまとめる板 */
@@ -91,7 +99,8 @@ public final class PauseMenuButtons {
 		ReplayTheme.panel(context, panelX, panelY, panelWidth, panelHeight, 10);
 	}
 
-	private static void refresh(MinecraftClient client, ModernButton recordButton, ModernButton markerButton) {
+	private static void refresh(MinecraftClient client, ModernButton recordButton, ModernButton markerButton,
+								ModernButton clipButton) {
 		boolean recording = RecordingManager.INSTANCE.isRecording();
 
 		if (recording) {
@@ -110,5 +119,7 @@ public final class PauseMenuButtons {
 
 		// しおりは録画中だけ意味があるので、それ以外では押せなくする
 		markerButton.active = recording;
+		// クリップは「クリップ方式で録っている」ときだけ
+		clipButton.active = RecordingManager.INSTANCE.canClip();
 	}
 }

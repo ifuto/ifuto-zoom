@@ -78,6 +78,16 @@ public class ReplayConfigScreen extends Screen {
 						"ifuto-replay.config.record_client_packets.tooltip",
 						value -> this.config.recordClientPackets = value)));
 
+		// 1.5行目: Medal みたいな「あとから保存」
+		content.add(row(
+				toggle("ifuto-replay.config.clip_mode", this.config.clipMode,
+						"ifuto-replay.config.clip_mode.tooltip",
+						value -> this.config.clipMode = value),
+				slider("ifuto-replay.config.clip_seconds", 5, 180, this.config.clipSeconds,
+						value -> value + " " + Text.translatable("ifuto-replay.config.seconds").getString(),
+						"ifuto-replay.config.clip_seconds.tooltip",
+						value -> this.config.clipSeconds = value)));
+
 		// 2行目: 軽さの調整
 		content.add(row(
 				cycle("ifuto-replay.config.compression", List.of(CompressionMode.values()),

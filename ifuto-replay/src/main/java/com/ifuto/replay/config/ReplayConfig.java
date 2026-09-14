@@ -37,6 +37,18 @@ public class ReplayConfig {
 	/** 自分の操作（C2S パケット）も記録する */
 	public boolean recordClientPackets = true;
 
+	/**
+	 * クリップ方式（Medal みたいな「さっきの数秒をあとから保存」）。
+	 *
+	 * <p>入ったらすぐ録り始め、直近 {\@code clipSeconds} 秒ぶんだけを
+	 * 保存用の一時ファイルに持ち続ける。「クリップを保存」を押した時点で
+	 * そのぶんを1つの .ifreplay にまとめる。押さなければ消えるだけ（残らない）。
+	 */
+	public boolean clipMode = false;
+
+	/** クリップとして残す長さ（秒）。実際は区間の都合でこれより少し長くなる */
+	public int clipSeconds = 30;
+
 	/** KeepAlive / Ping などの通信維持用パケットを除外する */
 	public boolean skipKeepAlive = true;
 
@@ -282,6 +294,8 @@ public class ReplayConfig {
 		this.audioBitrateKbps = defaults.audioBitrateKbps;
 		this.audioDevice = defaults.audioDevice;
 		this.recordVoiceChat = defaults.recordVoiceChat;
+		this.clipMode = defaults.clipMode;
+		this.clipSeconds = defaults.clipSeconds;
 	}
 
 	/** 手書き編集や古いファイルで壊れていても落ちないように丸める */
@@ -321,6 +335,7 @@ public class ReplayConfig {
 		}
 
 		this.audioBitrateKbps = clampStrict(this.audioBitrateKbps, 32, 512, 96);
+		this.clipSeconds = clampStrict(this.clipSeconds, 5, 600, 30);
 
 		if (this.audioDevice == null) {
 			this.audioDevice = "";

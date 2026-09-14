@@ -138,7 +138,9 @@ public final class RecordingManager {
 	public void onJoin(MinecraftClient client, ClientPlayNetworkHandler handler) {
 		this.lastJoinTimeMs = System.currentTimeMillis();
 
-		if (ReplayConfig.get().autoRecord) {
+		ReplayConfig config = ReplayConfig.get();
+
+		if (config.autoRecord || config.clipMode) {
 			start(client, handler);
 		}
 	}
@@ -184,6 +186,15 @@ public final class RecordingManager {
 
 			created.start();
 
+			if (created.isClipMode()) {
+				// クリップ方式: 区間を回し始める（区間の先頭に世界の写しが入る）
+				created.startClip(client);
+				notify(client, "ifuto-replay.message.clip_started",
+						Text.literal(String.valueOf(config.clipSeconds)));
+				this.session = created;
+				return true;
+			}
+
 			if (System.currentTimeMillis() - this.lastJoinTimeMs > PARTIAL_START_MS) {
 				// 途中から録り始めたので、いまの世界の写しを先頭に置いて再生できるようにする
 				if (created.captureSnapshot(client)) {
@@ -220,7 +231,15 @@ public final class RecordingManager {
 		this.audioRecorder.stop();
 		MinecraftAudioCapture.get().stop(client);
 		VoiceChatBridge.get().stop();
+		boolean clipMode = current.isClipMode();
 		RecordingSession.Stats stats = current.finish();
+
+		if (clipMode) {
+			// クリップ方式は「押したときだけ残る」。止めた時点で一時ファイルは消えている
+			notify(client, "ifuto-replay.message.clip_stopped");
+			return;
+		}
+
 		IfutoReplayClient.LOGGER.info("[ifuto-replay] {} を保存しました ({} パケット, 破棄 {}, 失敗 {})",
 				stats.file().getFileName(), stats.packets(), stats.dropped(), stats.errors());
 
@@ -315,6 +334,56 @@ public final class RecordingManager {
 				config.ffmpegPath);
 	}
 
+	/**
+	 * クリップを保存する（いま残っている区間を1つにまとめる）。
+	 *
+	 * <p>Medal と同じで「さっきの出来事をあとから残す」操作。
+	 * 実際の処理は別スレッドでやるので、ここはすぐ戻る。
+	 */
+	public void saveClip(MinecraftClient client) {
+		RecordingSession current = this.session;
+
+		if (current == null || !current.isClipMode()) {
+			notify(client, "ifuto-replay.message.clip_disabled");
+			return;
+		}
+
+		if (current.clipBufferedMillis() <= 0L) {
+			notify(client, "ifuto-replay.message.clip_empty");
+			return;
+		}
+
+		notify(client, "ifuto-replay.message.clip_saving");
+		current.saveClip(client);
+	}
+
+	/** クリップ方式で録っているか（ボタンの有効・無効よう） */
+	public boolean canClip() {
+		RecordingSession current = this.session;
+		return current != null && current.isClipMode();
+	}
+
+	/** まとめ終わったので知らせる（ClipBuffer からクライアントスレッドで呼ばれる） */
+	public void notifyClipSaved(MinecraftClient client, @Nullable Path saved, @Nullable Throwable failure) {
+		if (failure != null || saved == null) {
+			notify(client, "ifuto-replay.message.clip_failed");
+			return;
+		}
+
+		long bytes;
+
+		try {
+			bytes = Files.size(saved);
+		} catch (IOException e) {
+			bytes = 0L;
+		}
+
+		notify(client, "ifuto-replay.message.clip_saved",
+				Text.literal(saved.getFileName().toString()),
+				Text.literal(formatSize(bytes)));
+		IfutoReplayClient.LOGGER.info("[ifuto-replay] クリップを保存しました: {}", saved.getFileName());
+	}
+
 	/** しおりを付ける（あとで再生・書き出しの起点にする） */
 	public void addMarker(MinecraftClient client, String name) {
 		RecordingSession current = this.session;
@@ -342,6 +411,9 @@ public final class RecordingManager {
 		}
 
 		this.inputTracker.tick(client, current);
+
+		// クリップ方式: 区間の長さを過ぎたら次へ移る（古い区間は捨てる）
+		current.tickClip(client);
 
 		// Minecraft の音はゲーム側のスレッドで取り出す（溜まっている分だけ）
 		MinecraftAudioCapture.get().renderTick();

@@ -104,6 +104,11 @@ public final class ReplayStream implements Closeable {
 						stream.timeMs += stream.readVarInt();
 						markers.add(new Marker(stream.timeMs, stream.readString()));
 					}
+					case ReplayFormat.TAG_INPUT -> {
+						stream.timeMs += stream.readVarInt();
+						stream.in.readByte();
+						stream.skipExactly(stream.readVarInt());
+					}
 					case ReplayFormat.TAG_INDEX -> durationMs = stream.readIndex();
 					case ReplayFormat.TAG_REGISTRIES -> {
 						int packed = stream.readVarInt();
