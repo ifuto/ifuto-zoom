@@ -15,7 +15,6 @@ import net.minecraft.inventory.Inventory;
 import net.minecraft.item.ItemStack;
 import net.minecraft.network.packet.Packet;
 import net.minecraft.network.packet.s2c.play.ChunkDataS2CPacket;
-import net.minecraft.network.packet.s2c.play.DifficultyS2CPacket;
 import net.minecraft.network.packet.s2c.play.EntityAttributesS2CPacket;
 import net.minecraft.network.packet.s2c.play.EntityEquipmentUpdateS2CPacket;
 import net.minecraft.network.packet.s2c.play.EntityPassengersSetS2CPacket;
@@ -30,9 +29,7 @@ import net.minecraft.network.packet.s2c.play.GameStateChangeS2CPacket;
 import net.minecraft.network.packet.s2c.play.HealthUpdateS2CPacket;
 import net.minecraft.network.packet.s2c.play.PlayerAbilitiesS2CPacket;
 import net.minecraft.network.packet.s2c.play.PlayerPositionLookS2CPacket;
-import net.minecraft.network.packet.s2c.play.SetPlayerInventoryS2CPacket;
-import net.minecraft.network.packet.s2c.play.UpdateSelectedSlotS2CPacket;
-import net.minecraft.network.packet.s2c.play.WorldTimeUpdateS2CPacket;
+import net.minecraft.network.packet.s2c.play.ScreenHandlerSlotUpdateS2CPacket;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkPos;
 import net.minecraft.util.math.MathHelper;
@@ -41,7 +38,6 @@ import net.minecraft.world.chunk.ChunkManager;
 import net.minecraft.world.chunk.ChunkStatus;
 import net.minecraft.world.chunk.WorldChunk;
 import net.minecraft.world.chunk.light.LightingProvider;
-import net.minecraft.world.rule.GameRules;
 import org.jspecify.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -107,12 +103,8 @@ public final class WorldSnapshot {
 			packets.add(respawn);
 		}
 
-		// 2) 世界の情報
-		packets.add(new DifficultyS2CPacket(world.getDifficulty(), world.getLevelProperties().isDifficultyLocked()));
+		// 2) 世界の情報（時刻は「入った直後」の物がそのまま残るので送らない）
 		packets.add(new PlayerAbilitiesS2CPacket(player.getAbilities()));
-		packets.add(new UpdateSelectedSlotS2CPacket(player.getInventory().selectedSlot));
-		packets.add(new WorldTimeUpdateS2CPacket(world.getTime(), world.getTimeOfDay(),
-				world.getGameRules().getValue(GameRules.ADVANCE_TIME)));
 		packets.add(new GameStateChangeS2CPacket(GameStateChangeS2CPacket.RAIN_GRADIENT_CHANGED,
 				world.getRainGradient(1.0F)));
 		packets.add(new GameStateChangeS2CPacket(GameStateChangeS2CPacket.THUNDER_GRADIENT_CHANGED,
@@ -122,14 +114,14 @@ public final class WorldSnapshot {
 			packets.add(new GameStateChangeS2CPacket(GameStateChangeS2CPacket.RAIN_STARTED, 0.0F));
 		}
 
-		// 3) 持ち物（空の枠は送らない）
+		// 3) 持ち物（syncId が -1 は「自分の持ち物」というバニラの決まり。空の枠は送らない）
 		Inventory inventory = player.getInventory();
 
 		for (int slot = 0; slot < inventory.size(); slot++) {
 			ItemStack stack = inventory.getStack(slot);
 
 			if (!stack.isEmpty()) {
-				packets.add(new SetPlayerInventoryS2CPacket(slot, stack.copy()));
+				packets.add(new ScreenHandlerSlotUpdateS2CPacket(-1, 0, slot, stack.copy()));
 			}
 		}
 
@@ -139,9 +131,7 @@ public final class WorldSnapshot {
 				player.getHungerManager().getSaturationLevel()));
 		packets.add(new ExperienceBarUpdateS2CPacket(player.experienceProgress, player.experienceLevel,
 				player.totalExperience));
-		packets.add(new PlayerPositionLookS2CPacket(0,
-				new EntityPosition(player.getPos(), player.getVelocity(), player.getYaw(), player.getPitch()),
-				Set.of()));
+		packets.add(PlayerPositionLookS2CPacket.of(0, EntityPosition.fromEntity(player), Set.of()));
 
 		// 5) 地形（明るさもバニラのプロバイダからそのまま持ってくる）
 		ChunkPos center = player.getChunkPos();
@@ -167,8 +157,8 @@ public final class WorldSnapshot {
 		double limitSq = limit * limit;
 		int entityCount = 0;
 
-		for (Entity entity : world.getEntities()) {
-			if (entity == player || !entity.isAlive() || entity.isRemoved()) {
+		for (Object found : world.getEntities()) {
+			if (!(found instanceof Entity entity) || entity == player || !entity.isAlive() || entity.isRemoved()) {
 				continue;
 			}
 
