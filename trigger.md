@@ -15,4 +15,4 @@ java: 21
 workdir: ifuto-replay
 artifact_path: ifuto-replay/build/libs/*.jar
 
-note: GUI の土台（角丸テーマと部品）
+note: GUI の土台（直した）
