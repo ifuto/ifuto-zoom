@@ -15,4 +15,4 @@ java: 21
 workdir: ifuto-replay
 artifact_path: ifuto-replay/build/libs/*.jar
 
-note: getSyncedPos に修正して再ビルド
+note: 0.5.0（途中録画の世界の写し）
