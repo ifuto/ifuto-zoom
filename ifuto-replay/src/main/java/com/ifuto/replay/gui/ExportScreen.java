@@ -12,6 +12,7 @@ import com.ifuto.replay.gui.widget.ModernSlider;
 import com.ifuto.replay.gui.widget.ModernTextField;
 import com.ifuto.replay.gui.widget.ModernToggle;
 import com.ifuto.replay.playback.ReplayPlayback;
+import com.ifuto.replay.recording.ClipRemux;
 import com.ifuto.replay.recording.ReplayFileReader;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
@@ -79,7 +80,9 @@ public class ExportScreen extends Screen {
 		this.config = config;
 		this.durationMs = info.hasDuration() ? Math.max(0L, info.durationMs()) : 0L;
 		this.durationSec = (int) Math.max(0L, this.durationMs / 1000L);
-		this.startSec = 0;
+		// 編集で先頭を落とした物は「ここから見せる」位置から始める（前書きを出さない）
+		long trimMs = ClipRemux.findTrimStartMs(info.file(), 128L << 20);
+		this.startSec = trimMs > 0L ? (int) Math.min(this.durationSec, trimMs / 1000L) : 0;
 		this.endSec = this.durationSec;
 		this.fps = config.exportFps;
 		this.includeAudio = AudioTracks.hasAny(info.file());

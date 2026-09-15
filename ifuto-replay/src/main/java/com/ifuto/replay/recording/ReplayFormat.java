@@ -131,6 +131,22 @@ public final class ReplayFormat {
 	/** C2S（自分の操作）も入っている */
 	public static final int FLAG_HAS_C2S = 1;
 
+	/**
+	 * 区間の先頭（世界の写しがある場所）を示すしおりの名前。
+	 *
+	 * <p>録画側が自動で付ける。編集で切り出すときの起点にする。
+	 * 再生の一覧には出さない（構造用なので）。
+	 */
+	public static final String SNAP_MARKER = "__snap__";
+
+	/**
+	 * トリミングした開始位置を示すしおりの名前。
+	 *
+	 * <p>編集で先頭を落としたファイルの「ここから見せる」位置。再生はここへ自動で飛ぶ。
+	 * 再生の一覧には出さない。
+	 */
+	public static final String TRIM_MARKER = "__start__";
+
 	private ReplayFormat() {
 	}
 }

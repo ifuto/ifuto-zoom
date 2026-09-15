@@ -20,8 +20,10 @@ import java.time.LocalDateTime;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.zip.Deflater;
 
@@ -45,11 +47,13 @@ import java.util.zip.Deflater;
  * 区間の途中からでも「そこに世界がある状態」から再生できる（= つなげた結果が必ず再生できる）。
  */
 final class ClipBuffer {
-	/** 残す区間の数（転がしておく量 = クリップの長さの1.5倍になるように分ける） */
-	private static final int KEEP_SEGMENTS = 6;
-
-	/** 区間をいくつに分けるか（= 保存した長さが最大どれだけ伸びるか） */
-	private static final int SEGMENT_DIVISOR = 4;
+	/**
+	 * 区間の長さの目安（5分）。
+	 *
+	 * <p>短いほど「保存の粒度」と「編集の切り出し起点」が細かくなる。
+	 * クリップ自体が短いときは設定の長さに合わせる（下の {@link #segmentSpanMs}）。
+	 */
+	private static final long TARGET_SEGMENT_MS = 5L * 60L * 1000L;
 
 	/** 区間の最短（あまりに細切れになるのを防ぐ） */
 	private static final long MIN_SEGMENT_MS = 5000L;
@@ -95,7 +99,13 @@ final class ClipBuffer {
 
 	/** 実測の速度（バイト/分） */
 	private long bytesPerMinute;
-	private volatile boolean saving;
+
+	/** まとめている最中か（まとめている区間の破棄だけ止める。録画そのものは裏で続く） */
+	private volatile boolean assembling;
+
+	/** いままとめている区間（破棄の対象から外す。失敗したら戻す） */
+	private final Set<Segment> assemblingSegments = new HashSet<>();
+
 	private volatile boolean closed;
 
 	ClipBuffer(RecordingSession session, ReplayConfig config, Path cacheDir, String mcVersion,
@@ -130,21 +140,26 @@ final class ClipBuffer {
 		if (RecordingManager.INSTANCE.startClipAudio(client, audio)) {
 			this.audioChunks.addLast(new AudioChunk(audio, System.currentTimeMillis()));
 		}
+		// 写しは開く前に組み立てる（開いてからだと、そのあいだのパケットが写しより先に入る）
+		WorldSnapshot.Snapshot snapshot = this.session.buildSnapshot(client);
 		this.openSegment();
+
 		// 先頭に世界の写しを置く（これがあるので、この区間から単独で再生できる）
-		this.session.captureSnapshot(client);
+		if (snapshot != null) {
+			this.session.offerSnapshot(snapshot);
+		}
 	}
 
 	/** まとめている最中か（画面に出すよう） */
 	boolean isSaving() {
-		return this.saving;
+		return this.assembling;
 	}
 
 	boolean offer(PacketTask task) {
-		// まとめている最中は受け取らない（ほんの少しのあいだだけ）
+		// まとめている最中も録り続ける（区間を先に移してあるので止めなくてよい）
 		ReplayFileWriter current = this.writer;
 
-		if (current == null || this.saving || this.closed) {
+		if (current == null || this.closed) {
 			return false;
 		}
 
@@ -153,7 +168,7 @@ final class ClipBuffer {
 
 	/** 毎ティック。区間の長さを過ぎていたら次へ移る */
 	void tick(MinecraftClient client) {
-		if (this.saving || this.closed) {
+		if (this.closed) {
 			return;
 		}
 
@@ -232,17 +247,18 @@ final class ClipBuffer {
 		return Math.max(MIN_CACHE_BYTES, Math.min(ceiling, wanted));
 	}
 
-	/** 上限を超えていたら、古い区間から消す（最低2つは残す） */
+	/** 上限を超えていたら、古い区間から消す（最低2つは残す。まとめている区間は外す） */
 	private void trimBySize() {
 		long limit = this.maxCacheBytes();
 
 		while (this.segments.size() > 2 && this.bytes() > limit) {
-			Segment oldest = this.segments.pollFirst();
+			Segment oldest = this.segments.peekFirst();
 
-			if (oldest == null) {
+			if (oldest == null || this.assemblingSegments.contains(oldest)) {
 				return;
 			}
 
+			this.segments.pollFirst();
 			deleteAll(List.of(oldest));
 		}
 	}
@@ -311,6 +327,15 @@ final class ClipBuffer {
 		}
 	}
 
+	/** まとめている最中に録画を止められた（エラーではなく静かにやめるため） */
+	private static final class ClosedDuringSaveException extends IOException {
+		private static final long serialVersionUID = 1L;
+
+		ClosedDuringSaveException() {
+			super("closed during save");
+		}
+	}
+
 	/** 音声の区間（保存するたびに1つ増える。消さずに取っておく） */
 	private static final class AudioChunk {
 		private final Path base;
@@ -332,26 +357,60 @@ final class ClipBuffer {
 	 * 残っている区間を1つの .ifreplay にまとめる。
 	 *
 	 * <p>重いので **別スレッドで** やる（ゲームを止めない）。
-	 * 終わったらクライアントスレッドに戻して、新しい区間を作り直す。
+	 * 始める前に区間を移しておくので、まとめているあいだの録画も欠けない。
+	 * 終わったらクライアントスレッドに戻して、使った区間を捨てる。
 	 */
 	void saveAsync(MinecraftClient client) {
-		if (this.saving || this.closed) {
+		if (this.assembling || this.closed) {
 			return;
 		}
 
-		this.saving = true;
 		// 保存した時点までの音声を確定させる（音そのものは止めない → 次のクリップにも音が付く）
 		List<AudioChunk> audio = this.rotateAudio(client);
+		// この時点の窓を確定させる（ここから先の録画は新しい区間へ。まとめているあいだも欠けない）
+		List<Segment> parts = this.window();
+
+		if (parts.isEmpty()) {
+			RecordingManager.INSTANCE.notifyClipSaved(client, null, null);
+			return;
+		}
+
+		this.assembling = true;
+		this.assemblingSegments.addAll(parts);
+
+		// 写しは開く前に組み立てる（開いてからだと、そのあいだのパケットが写しより先に入る）
+		WorldSnapshot.Snapshot snapshot = this.session.buildSnapshot(client);
+		ReplayFileWriter previous = this.writer;
+		Segment closing = this.segments.peekLast();
+
+		if (closing != null) {
+			closing.endMs = this.session.elapsedMillis();
+		}
+
+		this.openSegment();
+
+		if (snapshot != null) {
+			this.session.offerSnapshot(snapshot);
+		}
 
 		Thread thread = new Thread(() -> {
 			Path saved = null;
 			Throwable failure = null;
 
 			try {
-				saved = this.assemble(audio);
+				// 閉じていた区間を終わらせる（ここが済むまで窓の中身は読める状態にならない）
+				if (previous != null) {
+					previous.finish(this.session.elapsedMillis());
+					this.writtenBytes += previous.bytesWritten();
+				}
+
+				saved = this.assemble(parts, audio);
 			} catch (Throwable t) {
-				failure = t;
-				IfutoReplayClient.LOGGER.error("[ifuto-replay] クリップを保存できませんでした", t);
+				failure = this.closed ? null : t;
+
+				if (failure != null) {
+					IfutoReplayClient.LOGGER.error("[ifuto-replay] クリップを保存できませんでした", t);
+				}
 			}
 
 			Path result = saved;
@@ -387,7 +446,16 @@ final class ClipBuffer {
 	// --- 中身 ---
 
 	private long segmentSpanMs() {
-		return Math.max(MIN_SEGMENT_MS, (long) this.config.clipSeconds * 1000L / SEGMENT_DIVISOR);
+		// 目安は5分。クリップ自体が短いときは設定の長さの4分の1に合わせる
+		long span = Math.min(TARGET_SEGMENT_MS, (long) this.config.clipSeconds * 1000L / 4L);
+		return Math.max(MIN_SEGMENT_MS, span);
+	}
+
+	/** 残す区間の数（転がしておく量 = クリップの長さの1.5倍になるように数える） */
+	private int keepSegments() {
+		long span = Math.max(1L, this.segmentSpanMs());
+		long keepMs = (long) this.config.clipSeconds * 1000L * 3L / 2L;
+		return (int) Math.max(2L, keepMs / span + 1L);
 	}
 
 	private void openSegment() {
@@ -410,6 +478,8 @@ final class ClipBuffer {
 
 	/** 区間を次へ移す（古い区間は別スレッドで閉じ、残す数を超えた分は消す） */
 	private void rotate(MinecraftClient client) {
+		// 写しは開く前に組み立てる（開いてからだと、そのあいだのパケットが写しより先に入る）
+		WorldSnapshot.Snapshot snapshot = this.session.buildSnapshot(client);
 		ReplayFileWriter previous = this.writer;
 		Segment closing = this.segments.peekLast();
 
@@ -419,8 +489,11 @@ final class ClipBuffer {
 
 		// 先に次を作る（ここから先に来たパケットは新しい区間へ入る）
 		this.openSegment();
+
 		// 新しい区間の先頭に世界の写しを置く
-		this.session.captureSnapshot(client);
+		if (snapshot != null) {
+			this.session.offerSnapshot(snapshot);
+		}
 
 		if (previous != null) {
 			long durationMs = closing == null ? 0L : closing.endMs - closing.startMs;
@@ -434,28 +507,26 @@ final class ClipBuffer {
 			closer.start();
 		}
 
-		while (this.segments.size() > KEEP_SEGMENTS) {
-			Segment oldest = this.segments.pollFirst();
+		while (this.segments.size() > this.keepSegments()) {
+			Segment oldest = this.segments.peekFirst();
 
-			if (oldest != null) {
-				deleteAll(List.of(oldest));
+			if (oldest == null || this.assemblingSegments.contains(oldest)) {
+				break;
 			}
+
+			this.segments.pollFirst();
+			deleteAll(List.of(oldest));
 		}
 	}
 
-	/** いまの区間を閉じて、選んだ区間を順番につなげる */
-	private @Nullable Path assemble(List<AudioChunk> audio) throws IOException {
-		ReplayFileWriter current = this.writer;
-		this.writer = null;
-
-		if (current != null) {
-			long elapsed = this.session.elapsedMillis();
-			current.finish(elapsed);
-		}
-
-		List<Segment> parts = this.window();
-
-		if (parts.isEmpty()) {
+	/**
+	 * 選んだ区間を順番につなげる（別スレッドで動く）。
+	 *
+	 * <p>録画はそのあいだも新しい区間へ続いている。終わったら {@link #afterSave} で
+	 * 後片付けする。録画を止められたら静かにやめる（壊れた途中ファイルは残さない）。
+	 */
+	private @Nullable Path assemble(List<Segment> parts, List<AudioChunk> audio) throws IOException {
+		if (this.closed || parts.isEmpty()) {
 			return null;
 		}
 
@@ -487,11 +558,19 @@ final class ClipBuffer {
 				this.writeRegistries(out);
 
 				for (Segment segment : parts) {
+					if (this.closed) {
+						throw new ClosedDuringSaveException();
+					}
+
 					this.copy(segment.file, out);
 				}
 
 				ReplayFileWriter.writeFooter(out, durationMs);
 			}
+		} catch (ClosedDuringSaveException e) {
+			delete(output);
+			AudioTracks.discard(output);
+			return null;
 		} catch (Throwable t) {
 			// 途中まで書いた物は残さない（長いクリップでは数GB になる）
 			delete(output);
@@ -499,10 +578,13 @@ final class ClipBuffer {
 			throw t;
 		}
 
-		// 使った区間だけ捨てる（窓の外にある古い区間は、まだ次のクリップには要らないので消してよい）
-		this.segments.removeAll(parts);
+		if (this.closed) {
+			delete(output);
+			AudioTracks.discard(output);
+			return null;
+		}
+
 		this.collectAudio(output, durationMs, audio);
-		deleteAll(parts);
 		return output;
 	}
 
@@ -664,15 +746,20 @@ final class ClipBuffer {
 	}
 
 	private void afterSave(MinecraftClient client, @Nullable Path saved, @Nullable Throwable failure) {
-		this.saving = false;
+		this.assembling = false;
+		List<Segment> done = new ArrayList<>(this.assemblingSegments);
+		this.assemblingSegments.clear();
+
+		// 使った区間は出力に残っているので捨てる。失敗したら残して次に託す
+		if (saved != null) {
+			this.segments.removeAll(done);
+			deleteAll(done);
+		}
 
 		if (this.closed) {
 			return;
 		}
 
-		// 保存したあとも録り続ける（音声は rotateAudio がすでに次を始めている）
-		this.openSegment();
-		this.session.captureSnapshot(client);
 		RecordingManager.INSTANCE.notifyClipSaved(client, saved, failure);
 
 		if (saved != null) {

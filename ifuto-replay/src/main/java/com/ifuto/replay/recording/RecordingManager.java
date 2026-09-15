@@ -207,6 +207,9 @@ public final class RecordingManager {
 							+ "設定の「自動録画」を ON にしてください）");
 					notify(client, "ifuto-replay.message.partial_start");
 				}
+			} else {
+				// 入った直後なのでパケットが最初から揃っている。「ここから完全」の印だけ置く
+				created.addMarker(ReplayFormat.SNAP_MARKER);
 			}
 		} catch (IOException e) {
 			IfutoReplayClient.LOGGER.error("[ifuto-replay] {} を開けませんでした", file, e);

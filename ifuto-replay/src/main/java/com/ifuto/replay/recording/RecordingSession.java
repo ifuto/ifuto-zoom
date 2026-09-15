@@ -11,6 +11,7 @@ import net.minecraft.network.packet.Packet;
 import net.minecraft.network.packet.PacketType;
 import net.minecraft.network.packet.c2s.play.PlayerMoveC2SPacket;
 import net.minecraft.util.Identifier;
+import org.jspecify.annotations.Nullable;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -268,17 +269,51 @@ public final class RecordingSession {
 	 * @return 作れたら true（作れないときは「最初から」録れていないのと同じ扱いになる）
 	 */
 	public boolean captureSnapshot(MinecraftClient client) {
-		if (this.stopping || client == null || this.config.snapshotRadius <= 0) {
+		WorldSnapshot.Snapshot snapshot = this.buildSnapshot(client);
+
+		if (snapshot == null) {
 			return false;
+		}
+
+		this.offerSnapshot(snapshot);
+		return true;
+	}
+
+	/**
+	 * 世界の写しを組み立てる（まだファイルには書かない）。
+	 *
+	 * <p>区間の切り替えでは「組み立て → 新区間を開く → 書く」の順にする。
+	 * 開いてから組み立てると、そのあいだのパケットが写しより先に入って欠けるため。
+	 *
+	 * @return 写し。作れなかったら null
+	 */
+	public @Nullable WorldSnapshot.Snapshot buildSnapshot(MinecraftClient client) {
+		if (this.stopping || client == null || this.config.snapshotRadius <= 0) {
+			return null;
+		}
+
+		try {
+			return WorldSnapshot.build(client, this.config.snapshotRadius);
+		} catch (Throwable t) {
+			IfutoReplayClient.LOGGER.warn("[ifuto-replay] 世界の写しを作れませんでした", t);
+			return null;
+		}
+	}
+
+	/**
+	 * 組み立てた写しをファイルに書く。
+	 *
+	 * <p>写しの直前に「ここに写しがある」のしおり（{@code __snap__}）を置く。
+	 * 編集で切り出すときの起点に使う。再生の一覧には出さない。
+	 */
+	public void offerSnapshot(WorldSnapshot.Snapshot snapshot) {
+		if (this.stopping || snapshot == null) {
+			return;
 		}
 
 		try {
 			long startedAt = System.nanoTime();
-			WorldSnapshot.Snapshot snapshot = WorldSnapshot.build(client, this.config.snapshotRadius);
-
-			if (snapshot == null) {
-				return false;
-			}
+			this.addMarker(ReplayFormat.SNAP_MARKER);
 
 			long droppedBefore = this.droppedCount.get();
 
@@ -296,10 +331,8 @@ public final class RecordingSession {
 			IfutoReplayClient.LOGGER.info("[ifuto-replay] 世界の写しを保存しました (チャンク {}, エンティティ {}, {} パケット, {} ms)",
 					snapshot.chunks(), snapshot.entities(), snapshot.packets().size(),
 					(System.nanoTime() - startedAt) / 1_000_000L);
-			return true;
 		} catch (Throwable t) {
-			IfutoReplayClient.LOGGER.warn("[ifuto-replay] 世界の写しを作れませんでした", t);
-			return false;
+			IfutoReplayClient.LOGGER.warn("[ifuto-replay] 世界の写しを書けませんでした", t);
 		}
 	}
 

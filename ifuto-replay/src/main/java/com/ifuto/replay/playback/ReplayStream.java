@@ -139,8 +139,14 @@ public final class ReplayStream implements Closeable {
 					}
 					case ReplayFormat.TAG_INPUT -> {
 						stream.timeMs += stream.readVarInt();
-						stream.in.readByte();
-						stream.skipExactly(stream.readVarInt());
+
+						if (stream.header.version() < 5) {
+							// v4 以前は種類が中身の先頭にしかない（外にバイトが無い）
+							stream.skipExactly(stream.readVarInt());
+						} else {
+							stream.in.readByte();
+							stream.skipExactly(stream.readVarInt());
+						}
 					}
 					case ReplayFormat.TAG_LOCAL -> {
 						stream.timeMs += stream.readVarInt();
@@ -282,11 +288,20 @@ public final class ReplayStream implements Closeable {
 				}
 				case ReplayFormat.TAG_INPUT -> {
 					this.timeMs += this.readVarInt();
-					int subtype = this.in.readByte();
-					int length = this.readVarInt();
-					byte[] data = new byte[length];
-					this.in.readFully(data);
-					sink.input(this.timeMs, subtype, data, length);
+
+					if (this.header.version() < 5) {
+						// v4 以前は種類が中身の先頭にしかない（再生側とのずれをここで吸う）
+						int legacyLength = this.readVarInt();
+						byte[] legacy = new byte[legacyLength];
+						this.in.readFully(legacy);
+						sink.input(this.timeMs, legacyLength > 0 ? legacy[0] & 0xFF : 0, legacy, legacyLength);
+					} else {
+						int subtype = this.in.readByte();
+						int length = this.readVarInt();
+						byte[] data = new byte[length];
+						this.in.readFully(data);
+						sink.input(this.timeMs, subtype, data, length);
+					}
 				}
 				case ReplayFormat.TAG_LOCAL -> {
 					this.timeMs += this.readVarInt();

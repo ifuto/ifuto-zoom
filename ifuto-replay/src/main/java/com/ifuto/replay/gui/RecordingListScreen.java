@@ -37,7 +37,7 @@ import java.util.Locale;
  */
 @Environment(EnvType.CLIENT)
 public class RecordingListScreen extends Screen {
-	private static final int LIST_WIDTH = 384;
+	private static final int LIST_WIDTH = 448;
 	private static final int LABEL_WIDTH = 168;
 	private static final int SMALL_BUTTON_WIDTH = 62;
 	private static final int BUTTON_HEIGHT = 20;
@@ -129,7 +129,14 @@ public class RecordingListScreen extends Screen {
 				ModernButton.Style.NORMAL);
 		exportButton.setTooltip(Tooltip.of(Text.translatable("ifuto-replay.list.export.tooltip")));
 
+		ModernButton editButton = new ModernButton(0, 0, SMALL_BUTTON_WIDTH, BUTTON_HEIGHT,
+				Text.translatable("ifuto-replay.list.edit"),
+				button -> ClipEditorScreen.open(MinecraftClient.getInstance(), info.file(), this.parent),
+				ModernButton.Style.NORMAL);
+		editButton.setTooltip(Tooltip.of(Text.translatable("ifuto-replay.list.edit.tooltip")));
+
 		row.add(labels);
+		row.add(editButton);
 		row.add(exportButton);
 		row.add(deleteButton);
 		row.add(playButton);

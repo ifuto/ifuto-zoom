@@ -108,6 +108,9 @@ public class ReplayPreviewScreen extends Screen {
 			this.addressButton.setMessage(this.addressText());
 		}, ModernButton.Style.NORMAL);
 
+		tools.add(Text.translatable("ifuto-replay.preview.edit"), 72, button -> this.openEditor(),
+				ModernButton.Style.NORMAL);
+
 		tools.add(Text.literal("✕"), 26, button -> this.close(), ModernButton.Style.DANGER)
 				.setTooltip(Tooltip.of(Text.translatable("ifuto-replay.preview.close")));
 	}
@@ -294,6 +297,21 @@ public class ReplayPreviewScreen extends Screen {
 		}
 	}
 
+	/** 編集画面へ（いま見ている位置から始める） */
+	private void openEditor() {
+		MinecraftClient client = MinecraftClient.getInstance();
+
+		try {
+			long at = this.playback.timeMs();
+			Path file = this.playback.file();
+			this.playback.dispose();
+			ClipEditorScreen.openAt(client, file, at);
+		} catch (Exception e) {
+			IfutoReplayClient.LOGGER.error("[ifuto-replay] 編集を開けませんでした", e);
+			client.setScreen(new RecordingListScreen(new TitleScreen()));
+		}
+	}
+
 	// --- 表示する文字 ---
 
 	private Text playPauseText() {
@@ -379,6 +397,12 @@ public class ReplayPreviewScreen extends Screen {
 
 		try {
 			ReplayPlayback playback = ReplayPlayback.start(client, file);
+
+			// 編集で先頭を落としたファイルは「ここから見せる」位置へ飛ぶ（前書きは見せない）
+			if (playback.trimStartMs() > 0L) {
+				playback.jumpTo(playback.trimStartMs());
+			}
+
 			client.setScreen(new ReplayPreviewScreen(playback));
 		} catch (Exception e) {
 			IfutoReplayClient.LOGGER.error("[ifuto-replay] 再生を始められませんでした", e);

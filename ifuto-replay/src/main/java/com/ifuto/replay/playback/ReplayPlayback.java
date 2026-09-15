@@ -39,6 +39,7 @@ import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -92,6 +93,9 @@ public final class ReplayPlayback implements ReplayStream.Sink {
 	private final List<ReplayStream.Marker> markers;
 	private final long durationMs;
 
+	/** 編集で先頭を落としたファイルの「ここから見せる」位置（無ければ -1） */
+	private final long trimStartMs;
+
 	/** 読んだけど「まだ時刻が来ていない」パケット */
 	private boolean pending;
 	private long pendingTimeMs;
@@ -139,7 +143,22 @@ public final class ReplayPlayback implements ReplayStream.Sink {
 		this.file = file;
 		this.meta = meta;
 		this.durationMs = Math.max(0L, meta.durationMs());
-		this.markers = List.copyOf(meta.markers());
+		// 構造用のしおり（__snap__ / __start__）は一覧に出さない。__start__ は開始位置に使う
+		long trim = -1L;
+		List<ReplayStream.Marker> visible = new ArrayList<>();
+
+		for (ReplayStream.Marker marker : meta.markers()) {
+			if (ReplayFormat.TRIM_MARKER.equals(marker.name())) {
+				if (trim < 0L) {
+					trim = marker.timeMs();
+				}
+			} else if (!ReplayFormat.SNAP_MARKER.equals(marker.name())) {
+				visible.add(marker);
+			}
+		}
+
+		this.markers = List.copyOf(visible);
+		this.trimStartMs = trim;
 		this.stream = new ReplayStream(file);
 
 		DynamicRegistryManager.Immutable registries = resolveRegistries(client, this.stream.registries());
@@ -215,6 +234,11 @@ public final class ReplayPlayback implements ReplayStream.Sink {
 
 	public List<ReplayStream.Marker> markers() {
 		return this.markers;
+	}
+
+	/** 編集で先頭を落としたファイルの「ここから見せる」位置（無ければ -1） */
+	public long trimStartMs() {
+		return this.trimStartMs;
 	}
 
 	public ReplayStream.Header header() {
