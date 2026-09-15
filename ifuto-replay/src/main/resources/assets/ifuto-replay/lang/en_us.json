@@ -224,5 +224,7 @@
 	"ifuto-replay.export.speed": "Export speed",
 	"ifuto-replay.export.speed.tooltip": "100%: every frame is drawn at the same pace as the original, so effects that look at real time (motion blur accumulation, temporal shaders) behave exactly as they did live (an hour of footage takes about an hour). 200/400%: that many times faster (those effects change). Fastest: frames are drawn as fast as the GPU allows",
 	"ifuto-replay.export.speed.value": "%1$s%%",
-	"ifuto-replay.export.speed.fastest": "Fastest"
+	"ifuto-replay.export.speed.fastest": "Fastest",
+	"ifuto-replay.export.finishing": "Finishing (ffmpeg is muxing the video)…",
+	"ifuto-replay.export.error_ffmpeg": "ffmpeg exited abnormally (exit code %s)"
 }

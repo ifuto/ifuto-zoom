@@ -82,7 +82,9 @@ final class ClipBuffer {
 	/** 古い順。末尾が「いま書いている区間」 */
 	private final Deque<Segment> segments = new ArrayDeque<>();
 
-	private @Nullable ReplayFileWriter writer;
+	// クライアントスレッドで差し替え、Netty 側から読むので volatile（古い物を見ると
+	// 閉じた区間に積んでパケットを失う＋中身を返せずメモリが漏れる）
+	private volatile @Nullable ReplayFileWriter writer;
 	private @Nullable NbtCompound registries;
 	private int segmentCounter;
 	private long lastOpenAttemptMs;

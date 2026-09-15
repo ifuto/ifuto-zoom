@@ -97,6 +97,8 @@ public final class ReplayPlayback implements ReplayStream.Sink {
 	private long pendingTimeMs;
 	private int pendingTypeIndex;
 	private byte @Nullable [] pendingPayload;
+	private int pendingOffset;
+	private int pendingLength;
 
 	private long timeMs;
 	private long previousTickMs;
@@ -437,11 +439,14 @@ public final class ReplayPlayback implements ReplayStream.Sink {
 	}
 
 	@Override
-	public void packet(long timeMs, int typeIndex, byte[] payload, int length) {
+	public void packet(long timeMs, int typeIndex, byte[] payload, int offset, int length) {
+		// 未適用のあいだは読み進めないので、かたまりの中身を指したままで安全
 		this.pending = true;
 		this.pendingTimeMs = timeMs;
 		this.pendingTypeIndex = typeIndex;
 		this.pendingPayload = payload;
+		this.pendingOffset = offset;
+		this.pendingLength = length;
 	}
 
 	/**
@@ -499,6 +504,8 @@ public final class ReplayPlayback implements ReplayStream.Sink {
 	public void local(long timeMs, int subtype, byte[] data, int length) {
 		if (subtype == LocalEvents.TYPE_PARTICLE) {
 			LocalEvents.playParticle(this.client, data);
+		} else if (subtype == LocalEvents.TYPE_PARTICLE_BATCH) {
+			LocalEvents.playBatch(this.client, data);
 		}
 	}
 
@@ -520,7 +527,7 @@ public final class ReplayPlayback implements ReplayStream.Sink {
 	private void applyPending() {
 		byte[] payload = this.pendingPayload;
 
-		if (payload == null || payload.length == 0) {
+		if (payload == null || this.pendingLength <= 0) {
 			return;
 		}
 
@@ -530,13 +537,14 @@ public final class ReplayPlayback implements ReplayStream.Sink {
 		if (direction == ReplayFormat.DIRECTION_C2S) {
 			// 自分の操作は「カメラの位置」だけ使う。あとは流さない（サーバーがいないので）
 			if (name != null && isPlayerMove(name)) {
-				this.applyCameraPacket(name, payload);
+				this.applyCameraPacket(name, payload, this.pendingOffset, this.pendingLength);
 			}
 
 			return;
 		}
 
-		ByteBuf buf = Unpooled.wrappedBuffer(payload);
+		// 中身を複写せず、その場で読む（wrappedBuffer は見るだけで所有しない）
+		ByteBuf buf = Unpooled.wrappedBuffer(payload, this.pendingOffset, this.pendingLength);
 
 		try {
 			Packet<? super ClientPlayPacketListener> packet = this.serverToClient.codec().decode(buf);
@@ -548,8 +556,8 @@ public final class ReplayPlayback implements ReplayStream.Sink {
 		}
 	}
 
-	private void applyCameraPacket(String name, byte[] payload) {
-		ByteBuf buf = Unpooled.wrappedBuffer(payload);
+	private void applyCameraPacket(String name, byte[] payload, int offset, int length) {
+		ByteBuf buf = Unpooled.wrappedBuffer(payload, offset, length);
 
 		try {
 			Packet<? super ServerPlayPacketListener> packet = this.clientToServer.codec().decode(buf);

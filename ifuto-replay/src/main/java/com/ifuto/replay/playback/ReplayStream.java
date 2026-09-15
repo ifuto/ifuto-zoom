@@ -48,8 +48,14 @@ public final class ReplayStream implements Closeable {
 		/** パケット種類の定義が出てきた */
 		void packetType(int index, int direction, String name);
 
-		/** パケット本体が出てきた */
-		void packet(long timeMs, int typeIndex, byte[] payload, int length);
+		/**
+		 * パケット本体が出てきた。
+		 *
+		 * <p>{@code payload} の {@code offset} から {@code length} バイトが中身。
+		 * かたまりの中身を直接指していることがあるので、保持せずその場で使うこと
+		 * （次に読み進めると中身が変わる）。
+		 */
+		void packet(long timeMs, int typeIndex, byte[] payload, int offset, int length);
 
 		/** しおりが出てきた */
 		void marker(long timeMs, String name);
@@ -145,9 +151,13 @@ public final class ReplayStream implements Closeable {
 						int rawLength = stream.readVarInt();
 						int method = stream.in.readByte();
 						int stored = method == ReplayFormat.METHOD_DEFLATE ? stream.readVarInt() : rawLength;
-
-						// かたまりは1個で完結しているので、時刻を知りたいだけなら展開しなくてよい
-						stream.skipExactly(stored);
+						byte[] packed = new byte[stored];
+						stream.in.readFully(packed);
+						byte[] raw = method == ReplayFormat.METHOD_DEFLATE
+								? stream.inflate(packed, rawLength)
+								: packed;
+						// 中身の時刻を足さないと、このあとのしおりの時刻がずれる
+						stream.advanceThroughBlock(raw);
 					}
 					case ReplayFormat.TAG_INDEX -> durationMs = stream.readIndex();
 					case ReplayFormat.TAG_REGISTRIES -> {
@@ -267,7 +277,7 @@ public final class ReplayStream implements Closeable {
 						this.in.readFully(payload);
 					}
 
-					sink.packet(this.timeMs, typeIndex, payload, payload.length);
+					sink.packet(this.timeMs, typeIndex, payload, 0, payload.length);
 					return true;
 				}
 				case ReplayFormat.TAG_INPUT -> {
@@ -353,11 +363,53 @@ public final class ReplayStream implements Closeable {
 			throw new IOException("かたまりが途中で終わっています");
 		}
 
-		byte[] payload = new byte[length];
-		System.arraycopy(this.blockBytes, this.blockPos, payload, 0, length);
+		// かたまりの中身をそのまま指す（1個ずつ複写しない。次に読み進めるまでは変わらない）
+		sink.packet(this.timeMs, typeIndex, this.blockBytes, this.blockPos, length);
 		this.blockPos += length;
-		sink.packet(this.timeMs, typeIndex, payload, length);
 		return true;
+	}
+
+	/** かたまりの中身の時刻だけ進める（再生前の下見で、しおりの時刻を合わせるため） */
+	private void advanceThroughBlock(byte[] raw) throws IOException {
+		int pos = 0;
+
+		while (pos < raw.length) {
+			int[] delta = readVarIntAt(raw, pos);
+			this.timeMs += delta[0];
+			pos = delta[1];
+
+			// 種類の番号を読み飛ばす
+			pos = readVarIntAt(raw, pos)[1];
+
+			int[] length = readVarIntAt(raw, pos);
+			pos = length[1];
+
+			if (length[0] < 0 || length[0] > raw.length - pos) {
+				throw new IOException("かたまりが途中で終わっています");
+			}
+
+			pos += length[0];
+		}
+	}
+
+	/** 配列の中から可変長intを1個読む（[値, 次の位置] を返す） */
+	private static int[] readVarIntAt(byte[] raw, int pos) throws IOException {
+		int result = 0;
+
+		for (int shift = 0; shift < 35; shift += 7) {
+			if (pos >= raw.length) {
+				throw new IOException("かたまりが途中で終わっています");
+			}
+
+			int b = raw[pos++] & 0xFF;
+			result |= (b & 0x7F) << shift;
+
+			if ((b & 0x80) == 0) {
+				return new int[]{result, pos};
+			}
+		}
+
+		throw new IOException("可変長intが壊れています");
 	}
 
 	/** かたまりの中から可変長intを読む */

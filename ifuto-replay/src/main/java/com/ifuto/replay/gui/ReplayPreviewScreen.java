@@ -214,7 +214,9 @@ public class ReplayPreviewScreen extends Screen {
 			return Text.translatable("ifuto-replay.preview.finished").formatted(Formatting.GRAY);
 		}
 
-		if (!this.playback.header().hasC2S()) {
+		// v5 からは設定に関わらず移動パケットを残すので、カメラは必ず動く。
+		// 古いファイル（C2Sなし）だけ注意を出す。
+		if (!this.playback.header().hasC2S() && this.playback.header().version() < 5) {
 			return Text.translatable("ifuto-replay.preview.no_input").formatted(Formatting.GRAY);
 		}
 

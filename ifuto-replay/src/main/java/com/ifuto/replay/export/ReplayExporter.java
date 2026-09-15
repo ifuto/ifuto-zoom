@@ -34,6 +34,8 @@ import java.util.Locale;
 public final class ReplayExporter {
 	public enum State {
 		RUNNING,
+		/** 絵は出し切った。ffmpeg がまとめ終わるのを別スレッドで待っている */
+		FINISHING,
 		DONE,
 		CANCELLED,
 		FAILED
@@ -58,8 +60,9 @@ public final class ReplayExporter {
 
 	/** 「いまの時刻の絵」を取り込むのを待っている（取り込むまでは時刻を進めない） */
 	private boolean awaitingCapture;
-	private State state = State.RUNNING;
-	private String failureMessage = "";
+	// 終了待ちは別スレッドから変えるので volatile
+	private volatile State state = State.RUNNING;
+	private volatile String failureMessage = "";
 	private long startedAtMs;
 	private volatile long lastProgressMs;
 
@@ -417,7 +420,7 @@ public final class ReplayExporter {
 		this.ffmpegInput.write(bytes);
 	}
 
-	/** 正常に終わらせる */
+	/** 正常に終わらせる（ffmpeg の終了待ちは別スレッドで。描画を止めないため） */
 	public void finish() {
 		if (this.state != State.RUNNING) {
 			return;
@@ -432,18 +435,22 @@ public final class ReplayExporter {
 			IfutoReplayClient.LOGGER.warn("[ifuto-replay] ffmpeg への書き込みを閉じられませんでした", e);
 		}
 
-		this.waitForFfmpeg();
 		this.restore();
-		this.state = State.DONE;
+		this.state = State.FINISHING;
 		active = null;
+
+		Thread waiter = new Thread(this::waitForFfmpeg, "ifuto-replay-export-finish");
+		waiter.setDaemon(true);
+		waiter.start();
 	}
 
-	/** 中断する */
+	/** 中断する（仕上げ待ちのあいだも止められる） */
 	public void cancel() {
-		if (this.state != State.RUNNING) {
+		if (this.state != State.RUNNING && this.state != State.FINISHING) {
 			return;
 		}
 
+		boolean running = this.state == State.RUNNING;
 		this.state = State.CANCELLED;
 		active = null;
 
@@ -459,7 +466,9 @@ public final class ReplayExporter {
 			this.process.destroy();
 		}
 
-		this.restore();
+		if (running) {
+			this.restore();
+		}
 	}
 
 	private void failWith(String message) {
@@ -488,21 +497,56 @@ public final class ReplayExporter {
 		this.restore();
 	}
 
+	/**
+	 * ffmpeg が書き終わるのを待って、終わり方を見て DONE / FAILED を決める（別スレッド）。
+	 *
+	 * <p>ここでは描画に触れない（解像度は {@link #finish()} ですでに戻してある）。
+	 * 中断されていたら何もしない（画面はすでに閉じている）。
+	 */
 	private void waitForFfmpeg() {
-		if (this.process == null) {
+		Process process = this.process;
+
+		if (this.state != State.FINISHING) {
+			return;
+		}
+
+		if (process == null) {
+			this.state = State.DONE;
 			return;
 		}
 
 		try {
-			boolean ended = this.process.waitFor(30, java.util.concurrent.TimeUnit.SECONDS);
+			boolean ended = process.waitFor(30, java.util.concurrent.TimeUnit.SECONDS);
+
+			if (this.state != State.FINISHING) {
+				return;
+			}
 
 			if (!ended) {
 				IfutoReplayClient.LOGGER.warn("[ifuto-replay] ffmpeg が終わらないので強制終了します");
-				this.process.destroy();
+				process.destroy();
+				this.failureMessage = Text.translatable("ifuto-replay.export.error_stalled").getString();
+				this.state = State.FAILED;
+				return;
+			}
+
+			int exit = process.exitValue();
+
+			if (exit != 0) {
+				// 終了コードを見ないと、壊れた動画を「できた」と言ってしまう
+				IfutoReplayClient.LOGGER.error("[ifuto-replay] ffmpeg が異常終了しました (exit {})", exit);
+				this.failureMessage = Text.translatable("ifuto-replay.export.error_ffmpeg", exit).getString();
+				this.state = State.FAILED;
+				return;
 			}
 		} catch (InterruptedException e) {
 			Thread.currentThread().interrupt();
+			this.failureMessage = Text.translatable("ifuto-replay.export.error_unknown").getString();
+			this.state = State.FAILED;
+			return;
 		}
+
+		this.state = State.DONE;
 	}
 
 	/** 解像度を元に戻す */

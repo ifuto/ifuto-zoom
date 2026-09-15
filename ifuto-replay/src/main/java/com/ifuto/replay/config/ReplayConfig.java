@@ -366,7 +366,7 @@ public class ReplayConfig {
 		}
 
 		this.audioBitrateKbps = clampStrict(this.audioBitrateKbps, 32, 512, 96);
-		this.clipSeconds = clampStrict(this.clipSeconds, 5, 600, 30);
+		this.clipSeconds = clampStrict(this.clipSeconds, 5, 14400, 7200);
 		this.clipKeepHours = clampStrict(this.clipKeepHours, 0, 720, 24);
 		this.clipBufferMb = clampStrict(this.clipBufferMb, 0, 65536, 0);
 

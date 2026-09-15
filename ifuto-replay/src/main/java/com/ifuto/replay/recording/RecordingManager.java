@@ -493,12 +493,18 @@ public final class RecordingManager {
 
 		RecordingSession current = this.session;
 
-		if (current == null) {
+		if (current == null || !current.allowsLocal()) {
+			// 上限を超えているときは変換する前に帰る（バイト列化はそれなりに重い）
 			return;
 		}
 
-		current.recordLocal(LocalEvents.TYPE_PARTICLE,
-				LocalEvents.encodeParticle(effect, x, y, z, velocityX, velocityY, velocityZ));
+		byte[] data = LocalEvents.encodeParticle(effect, x, y, z, velocityX, velocityY, velocityZ);
+
+		if (data == null || data.length == 0) {
+			return;
+		}
+
+		current.recordLocal(LocalEvents.TYPE_PARTICLE, data);
 	}
 
 	/** しおりを付ける（あとで再生・書き出しの起点にする） */
@@ -529,7 +535,10 @@ public final class RecordingManager {
 
 		this.inputTracker.tick(client, current);
 
-		// クリップ方式: 区間の長さを過ぎたら次へ移る（古い区間は捨てる）
+		// ためているパーティクルをまとめて書く（ティック1回ぶんの遅れは見えない）
+		current.flushLocalBatch();
+
+		// クリップ方式: 区間の長さを過ぎていたら次へ移る（古い区間は捨てる）
 		current.tickClip(client);
 
 		// Minecraft の音はゲーム側のスレッドで取り出す（溜まっている分だけ）

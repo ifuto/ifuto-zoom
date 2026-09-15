@@ -11,7 +11,7 @@ public final class ReplayFormat {
 	public static final byte[] MAGIC = {'I', 'F', 'R', 'P'};
 
 	/** フォーマットバージョン */
-	public static final int VERSION = 4;
+	public static final int VERSION = 5;
 
 	/** 保存ファイルの拡張子 */
 	public static final String FILE_EXTENSION = ".ifreplay";

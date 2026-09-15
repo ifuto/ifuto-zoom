@@ -314,6 +314,13 @@ final class ReplayFileWriter implements Runnable {
 		} finally {
 			// 最後にファイルへ移したあとに書いた量（周期フラッシュの判定に使う）
 			this.bytesSinceFlush += 1L + task.size();
+
+			// パケットの中身は Netty のプールから借りた物なので、書き終わったら必ず返す。
+			// 返さないとダイレクトメモリが録画中ずっと増え続ける（ここで返すのが唯一の場所）。
+			// 例外で抜けたときも finally で返す（大きさの計算よりあとに置くこと）。
+			if (task.kind == PacketTask.KIND_PACKET && task.payload != null) {
+				task.payload.release();
+			}
 		}
 	}
 
@@ -590,6 +597,9 @@ final class ReplayFileWriter implements Runnable {
 		this.out.writeVarInt(task.typeIndex);
 		this.out.writeVarInt(data.length);
 		this.out.writeBytes(data);
+		// 録画側で数えたぶんを返す（返さないと溜まっているように見え続け、
+		// 長い録画のどこかでパケットを捨て始めてしまう）
+		this.queuedBytes.addAndGet(-data.length);
 	}
 
 	/** 入力（マウス・キー・画面）の差分。中身は InputTracker が組み立てた物 */
@@ -602,8 +612,12 @@ final class ReplayFileWriter implements Runnable {
 
 		this.out.writeByte(ReplayFormat.TAG_INPUT);
 		this.out.writeVarInt(this.takeDelta(task.timeMs));
+		// 種類を先に1バイト（読み手はここを見る。中身の先頭にも同じ物が入っている）
+		this.out.writeByte(data[0] & 0xFF);
 		this.out.writeVarInt(data.length);
 		this.out.writeBytes(data);
+		// 録画側で数えたぶんを返す（writeLocal と同じ理由）
+		this.queuedBytes.addAndGet(-data.length);
 	}
 
 	/**

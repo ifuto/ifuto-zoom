@@ -224,5 +224,7 @@
 	"ifuto-replay.export.speed": "書き出しの速さ",
 	"ifuto-replay.export.speed.tooltip": "100%: 本番と同じ速さで1枚ずつ描きます。モーションブラーの蓄積など「実時間」を見る演出が本番どおりになります（1時間の録画に約1時間）。200/400%: その倍の速さで進みます（速いですが、それらの演出の効き方が変わります）。最速: GPU が描き終わりしだい次へ進むので一番速く終わります",
 	"ifuto-replay.export.speed.value": "%1$s%%",
-	"ifuto-replay.export.speed.fastest": "最速"
+	"ifuto-replay.export.speed.fastest": "最速",
+	"ifuto-replay.export.finishing": "仕上げ中（ffmpeg が動画をまとめています）…",
+	"ifuto-replay.export.error_ffmpeg": "ffmpeg が異常終了しました（終了コード %s）"
 }

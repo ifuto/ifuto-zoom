@@ -9,6 +9,7 @@ import net.minecraft.client.network.ClientPlayNetworkHandler;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.network.packet.Packet;
 import net.minecraft.network.packet.PacketType;
+import net.minecraft.network.packet.c2s.play.PlayerMoveC2SPacket;
 import net.minecraft.util.Identifier;
 
 import java.io.IOException;
@@ -50,8 +51,21 @@ public final class RecordingSession {
 	/** クライアント内で起きた出来事の上限（1秒あたり） */
 	private static final int MAX_LOCAL_PER_SECOND = 160;
 
+	/** まとめて1枠で書くパーティクルの上限（件数と大きさ。超えたらすぐ書く） */
+	private static final int LOCAL_BATCH_MAX_ENTRIES = 32;
+	private static final int LOCAL_BATCH_MAX_BYTES = 16 * 1024;
+
 	private long localWindowStartMs;
 	private int localWindowCount;
+
+	/** ためているパーティクル（まとめて1枠で書く。クライアントスレッドからだけ触る） */
+	private final List<byte[]> localBatch = new ArrayList<>();
+
+	/** ため始めた時刻（まとめた枠の時刻にする） */
+	private long localBatchFirstMs;
+
+	/** ためている中身の合計バイト数 */
+	private int localBatchBytes;
 	private final AtomicLong errorCount = new AtomicLong();
 	private final AtomicLong queuedBytes = new AtomicLong();
 	private final AtomicInteger markerCount = new AtomicInteger();
@@ -189,7 +203,10 @@ public final class RecordingSession {
 			return;
 		}
 
-		if (outbound && !this.config.recordClientPackets) {
+		// 自分の移動だけは設定に関わらず残す。再生時のカメラ（POV）はここからしか
+		// 復元できないので、捨てると視点がまったく動かなくなる。他の C2S は再生で
+		// 使わないので、設定どおり捨てて容量を節約する。
+		if (outbound && !this.config.recordClientPackets && !(packet instanceof PlayerMoveC2SPacket)) {
 			return;
 		}
 
@@ -313,11 +330,35 @@ public final class RecordingSession {
 	}
 
 	/**
+	 * パーティクルを記録できる状態か（重い変換の前に見る安いゲート）。
+	 *
+	 * <p>パーティクルのバイト列化はそれなりに重いので、上限を超えているときは
+	 * 変換する前に帰る。ここも {@link #recordLocal} もクライアントスレッドからだけ呼ばれる。
+	 */
+	public boolean allowsLocal() {
+		if (this.stopping) {
+			return false;
+		}
+
+		long now = System.currentTimeMillis();
+
+		if (now - this.localWindowStartMs >= 1000L) {
+			this.localWindowStartMs = now;
+			this.localWindowCount = 0;
+		}
+
+		return this.localWindowCount < MAX_LOCAL_PER_SECOND;
+	}
+
+	/**
 	 * クライアントの内側でだけ起きた出来事を記録する（パーティクルなど）。
 	 *
 	 * <p>パーティクルは Minecraft が一番よく出す物なので、**1秒あたりの上限** を決めて
 	 * いる（崩しているブロックの破片などで膨らまないように）。超えた分は捨てるだけで、
 	 * 録画そのものには影響しない。
+	 *
+	 * <p>パーティクルは少しだけためて **まとめて1枠** で書く。1件ずつ書くとそのたびに
+	 * パケットのかたまりが切れて、圧縮が効かなくなる＋書き込みが詰まるため。
 	 */
 	public void recordLocal(int subtype, byte[] data) {
 		if (this.stopping || data == null || data.length == 0) {
@@ -339,14 +380,61 @@ public final class RecordingSession {
 			return;
 		}
 
-		long timeMs = System.currentTimeMillis() - this.startedAt;
+		this.localWindowCount++;
+
+		if (subtype == LocalEvents.TYPE_PARTICLE) {
+			if (this.localBatch.isEmpty()) {
+				this.localBatchFirstMs = now - this.startedAt;
+			}
+
+			this.localBatch.add(data);
+			this.localBatchBytes += data.length;
+
+			if (this.localBatch.size() >= LOCAL_BATCH_MAX_ENTRIES
+					|| this.localBatchBytes >= LOCAL_BATCH_MAX_BYTES) {
+				this.flushLocalBatch();
+			}
+
+			return;
+		}
+
+		long timeMs = now - this.startedAt;
 
 		if (!this.offer(PacketTask.local(timeMs, subtype, data))) {
 			return;
 		}
 
-		this.localWindowCount++;
 		this.queuedBytes.addAndGet(data.length);
+	}
+
+	/**
+	 * ためているパーティクルをまとめて1枠で書く（クライアントスレッドから呼ぶ）。
+	 *
+	 * <p>ためているあいだに後続のパケットが先に書かれることがあるが、ずれは高々
+	 * ティック1回ぶん（数十ミリ秒）で、パーティクルは飾りなので見えない。
+	 * 時刻の差分も 0 に丸められて自然に追いつく（壊れはしない）。
+	 */
+	public void flushLocalBatch() {
+		if (this.localBatch.isEmpty()) {
+			return;
+		}
+
+		List<byte[]> entries = new ArrayList<>(this.localBatch);
+		this.localBatch.clear();
+		this.localBatchBytes = 0;
+
+		byte[] batched = LocalEvents.encodeBatch(entries);
+
+		if (batched == null || batched.length == 0) {
+			return;
+		}
+
+		if (!this.offer(PacketTask.local(this.localBatchFirstMs, LocalEvents.TYPE_PARTICLE_BATCH, batched))) {
+			this.droppedCount.addAndGet(entries.size());
+			return;
+		}
+
+		this.queuedBytes.addAndGet(batched.length);
 	}
 
 	/** しおりを付ける */
@@ -368,6 +456,8 @@ public final class RecordingSession {
 	/** 録画を終えてファイルを閉じる（スレッドの終了を待つので、書き込みスレッドからは呼ばない） */
 	public Stats finish() {
 		this.stopping = true;
+		// ためているパーティクルを先に書き切る（残すと最後の数十ミリ秒ぶんが消える）
+		this.flushLocalBatch();
 		long durationMs = System.currentTimeMillis() - this.startedAt;
 
 		if (this.clip != null) {

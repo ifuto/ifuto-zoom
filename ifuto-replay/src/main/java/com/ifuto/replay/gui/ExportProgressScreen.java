@@ -94,6 +94,7 @@ public class ExportProgressScreen extends Screen {
 
 		switch (this.exporter.state()) {
 			case RUNNING -> this.updateProgress();
+			case FINISHING -> this.updateFinishing();
 			case DONE -> this.finish();
 			case FAILED -> this.fail();
 			case CANCELLED -> this.handled = true;
@@ -116,6 +117,20 @@ public class ExportProgressScreen extends Screen {
 			this.detailText.setMessage(Text.translatable("ifuto-replay.export.progress_detail",
 					Text.literal(formatElapsed(this.exporter.elapsedMs())),
 					Text.literal(formatElapsed(estimatedRemaining(frames, total))),
+					Text.literal(this.exporter.output().toString())));
+		}
+	}
+
+	/** 絵は出し切った。ffmpeg がまとめ終わるのを待っているあいだの表示 */
+	private void updateFinishing() {
+		if (this.statusText != null) {
+			this.statusText.setMessage(Text.translatable("ifuto-replay.export.finishing"));
+		}
+
+		if (this.detailText != null) {
+			this.detailText.setMessage(Text.translatable("ifuto-replay.export.progress_detail",
+					Text.literal(formatElapsed(this.exporter.elapsedMs())),
+					Text.literal(formatElapsed(0L)),
 					Text.literal(this.exporter.output().toString())));
 		}
 	}
