@@ -158,6 +158,13 @@ public class ReplayConfig {
 	public int exportBitrateKbps = 20000;
 
 	/**
+	 * 書き出しに GPU エンコーダーを使う（速い。使えなければ CPU に切り替わる）。
+	 *
+	 * <p>NVIDIA / Intel / AMD / Apple の順に探す。切ると libx264 の medium で出す。
+	 */
+	public boolean exportHardwareAccel = true;
+
+	/**
 	 * 途中から録り始めたとき、一緒に保存する地形の半径（チャンク）。
 	 * 0 にすると保存しない（その場合、途中からの録画は再生できなくなる）
 	 */
@@ -316,6 +323,7 @@ public class ReplayConfig {
 		this.exportWidth = defaults.exportWidth;
 		this.exportHeight = defaults.exportHeight;
 		this.exportBitrateKbps = defaults.exportBitrateKbps;
+		this.exportHardwareAccel = defaults.exportHardwareAccel;
 		this.ffmpegPath = defaults.ffmpegPath;
 		this.snapshotRadius = defaults.snapshotRadius;
 		this.audioMode = defaults.audioMode;

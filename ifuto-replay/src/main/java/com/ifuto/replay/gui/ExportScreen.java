@@ -68,6 +68,7 @@ public class ExportScreen extends Screen {
 	private TextWidget summaryText;
 	private boolean includeAudio;
 	private boolean includeVoiceChat = true;
+	private boolean useHardware;
 	private int speedPercent;
 	private int startSec;
 	private int endSec;
@@ -86,6 +87,7 @@ public class ExportScreen extends Screen {
 		this.endSec = this.durationSec;
 		this.fps = config.exportFps;
 		this.includeAudio = AudioTracks.hasAny(info.file());
+		this.useHardware = config.exportHardwareAccel;
 		this.speedPercent = config.exportSpeedPercent;
 	}
 
@@ -198,7 +200,15 @@ public class ExportScreen extends Screen {
 						: Text.translatable("ifuto-replay.export.speed.value", value),
 				value -> this.speedPercent = value);
 		speedCycling.setTooltip(Tooltip.of(Text.translatable("ifuto-replay.export.speed.tooltip")));
-		content.add(row(speedCycling, null));
+
+		ModernToggle hardwareToggle = new ModernToggle(0, 0, WIDGET_WIDTH, WIDGET_HEIGHT,
+				Text.translatable("ifuto-replay.export.hwaccel"), this.useHardware,
+				value -> {
+					this.useHardware = value;
+					this.updateSummary();
+				});
+		hardwareToggle.setTooltip(Tooltip.of(Text.translatable("ifuto-replay.export.hwaccel.tooltip")));
+		content.add(row(speedCycling, hardwareToggle));
 
 		this.summaryText = new TextWidget(Text.empty(), this.textRenderer);
 		this.summaryText.setMaxWidth(WIDGET_WIDTH * 2 + COLUMN_GAP);
@@ -353,6 +363,7 @@ public class ExportScreen extends Screen {
 		config.ffmpegPath = this.ffmpegField.getText().trim().isEmpty()
 				? "ffmpeg" : this.ffmpegField.getText().trim();
 		config.exportSpeedPercent = this.speedPercent;
+		config.exportHardwareAccel = this.useHardware;
 		config.save();
 
 		long startMs = this.startSec * 1000L;
@@ -368,7 +379,8 @@ public class ExportScreen extends Screen {
 		// 音声は「録画の隣に置いてある別ファイル」。VC を外したいときは Minecraft だけの音を選ぶ
 		List<Path> audio = this.includeAudio ? AudioTracks.select(this.info.file(), this.includeVoiceChat) : null;
 		ExportOptions options = new ExportOptions(config.exportFps, config.exportWidth, config.exportHeight,
-				config.exportBitrateKbps, config.ffmpegPath, startMs, endMs, output, audio, this.speedPercent);
+				config.exportBitrateKbps, config.ffmpegPath, startMs, endMs, output, audio, this.speedPercent,
+				config.exportHardwareAccel);
 
 		startExport(this.client, this.info.file(), options, this.parent);
 	}

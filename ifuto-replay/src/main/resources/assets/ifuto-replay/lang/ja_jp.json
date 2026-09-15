@@ -259,5 +259,7 @@
 	"ifuto-replay.editor.output_mp4": "🎬 mp4で出力",
 	"ifuto-replay.editor.done_audio_failed": "%s を保存しました（音声を付けられませんでした。ffmpeg を確認してください）",
 	"ifuto-replay.editor.nospace_title": "空き容量が足りません",
-	"ifuto-replay.editor.nospace_message": "切り出すには元ファイルぶんの空きが必要です"
+	"ifuto-replay.editor.nospace_message": "切り出すには元ファイルぶんの空きが必要です",
+	"ifuto-replay.export.hwaccel": "GPUエンコード",
+	"ifuto-replay.export.hwaccel.tooltip": "GPUでmp4を作る（速い。使えなければCPUに切り替わる）"
 }

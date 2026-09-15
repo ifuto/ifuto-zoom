@@ -185,6 +185,9 @@ public final class ReplayExporter {
 		List<String> command = new ArrayList<>();
 		command.add(this.options.ffmpegPath());
 		command.add("-y");
+		// パイプ入力の受け口を広げる（4K60 などで詰まらせない。入力ごとに付ける物）
+		command.add("-thread_queue_size");
+		command.add("512");
 		command.add("-f");
 		command.add("rawvideo");
 		command.add("-pix_fmt");
@@ -211,10 +214,30 @@ public final class ReplayExporter {
 			command.add(track.toAbsolutePath().toString());
 		}
 
+		// GPU が使えれば GPU で（x264 medium とほぼ同じ画質で数倍速い）。無ければ CPU
+		String encoder = "libx264";
+		boolean hardware = false;
+
+		if (this.options.hardwareAccel()) {
+			String found = EncoderProbe.select(this.options.ffmpegPath());
+
+			if (found != null) {
+				encoder = found;
+				hardware = true;
+			}
+		}
+
+		IfutoReplayClient.LOGGER.info("[ifuto-replay] 書き出しのエンコーダー: {}（{}）",
+				encoder, hardware ? "GPU" : "CPU");
+
 		command.add("-c:v");
-		command.add("libx264");
-		command.add("-preset");
-		command.add("medium");
+		command.add(encoder);
+
+		if (!hardware) {
+			command.add("-preset");
+			command.add("medium");
+		}
+
 		command.add("-pix_fmt");
 		command.add("yuv420p");
 		command.add("-b:v");
@@ -249,6 +272,10 @@ public final class ReplayExporter {
 			// 絵が先に終わったらそこで切る（音だけ長く残さない）
 			command.add("-shortest");
 		}
+
+		// 目次を先頭に置く（ブラウザ等ですぐ再生・シークできる。画質・速度は変わらない）
+		command.add("-movflags");
+		command.add("+faststart");
 
 		command.add(this.options.output().toString());
 

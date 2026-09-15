@@ -42,8 +42,14 @@ final class ReplayFileWriter implements Runnable {
 	private static final int BUFFER_SIZE = 1 << 16;
 	private static final int POLL_TIMEOUT_MS = 200;
 
-	/** かたまりを圧縮しはじめる大きさ（ためすぎても縮まないのでこれくらい） */
-	private static final int BLOCK_TARGET_BYTES = 16 * 1024;
+	/**
+	 * かたまりを圧縮しはじめる大きさ。
+	 *
+	 * <p>deflate は最大で 32KB 前まで遡って重なりを探せる（RFC 1951）ので、
+	 * 小さく切りすぎると窓を使い切れず縮まない。64KB あれば窓いっぱいに探せるし、
+	 * かたまりごとの木のぶんも薄まる。読み手は大きさを選ばないので互換性は保たれる。
+	 */
+	private static final int BLOCK_TARGET_BYTES = 64 * 1024;
 
 	/** かたまりに入れるパケットの上限（小さい物ばかりのときの保険） */
 	private static final int BLOCK_MAX_PACKETS = 2048;
@@ -51,7 +57,7 @@ final class ReplayFileWriter implements Runnable {
 	/** かたまりを抱えたままにする時間の上限（落ちたときの被害をこれだけにする） */
 	private static final long BLOCK_MAX_HOLD_MS = 1000L;
 
-	/** 同時に圧縮しっぱなしにしてよい数（メモリの上限。16KB × この数） */
+	/** 同時に圧縮しっぱなしにしてよい数（メモリの上限。64KB × この数で 512KB まで） */
 	private static final int MAX_IN_FLIGHT_BLOCKS = 8;
 
 	/**
@@ -75,8 +81,8 @@ final class ReplayFileWriter implements Runnable {
 	/** スレッドごとの deflate 器（複数人で使うので1人1個） */
 	private static final ThreadLocal<Deflater> DEFLATERS = ThreadLocal.withInitial(Deflater::new);
 
-	/** スレッドごとの作業用の入れ物 */
-	private static final ThreadLocal<byte[]> SCRATCHES = ThreadLocal.withInitial(() -> new byte[8192]);
+	/** スレッドごとの作業用の入れ物（かたまりが大きくなったので広げる。JNI を叩く回数が減る） */
+	private static final ThreadLocal<byte[]> SCRATCHES = ThreadLocal.withInitial(() -> new byte[32768]);
 
 	private final BlockingQueue<PacketTask> queue;
 	private final ReplayDataOutput out;

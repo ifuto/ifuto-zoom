@@ -259,5 +259,7 @@
 	"ifuto-replay.editor.output_mp4": "🎬 Export mp4",
 	"ifuto-replay.editor.done_audio_failed": "Saved %s (but the audio could not be attached; check ffmpeg)",
 	"ifuto-replay.editor.nospace_title": "Not enough free space",
-	"ifuto-replay.editor.nospace_message": "Cutting needs as much free space as the source file"
+	"ifuto-replay.editor.nospace_message": "Cutting needs as much free space as the source file",
+	"ifuto-replay.export.hwaccel": "Hardware encoding",
+	"ifuto-replay.export.hwaccel.tooltip": "Encode with the GPU (fast; falls back to CPU if unavailable)"
 }
