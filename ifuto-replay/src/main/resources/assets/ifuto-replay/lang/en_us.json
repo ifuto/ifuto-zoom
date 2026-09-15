@@ -255,5 +255,6 @@
 	"ifuto-replay.editor.done_message": "Saved %s",
 	"ifuto-replay.editor.done_truncated": "Saved %s (the source tail was broken, so it ends early)",
 	"ifuto-replay.editor.error_title": "Could not cut",
-	"ifuto-replay.editor.error_message": "The file may be broken"
+	"ifuto-replay.editor.error_message": "The file may be broken",
+	"ifuto-replay.editor.output_mp4": "🎬 Export mp4"
 }

@@ -255,5 +255,6 @@
 	"ifuto-replay.editor.done_message": "%s を保存しました",
 	"ifuto-replay.editor.done_truncated": "%s を保存しました（末尾が壊れていたので途中まで）",
 	"ifuto-replay.editor.error_title": "切り出せませんでした",
-	"ifuto-replay.editor.error_message": "ファイルが壊れている可能性があります"
+	"ifuto-replay.editor.error_message": "ファイルが壊れている可能性があります",
+	"ifuto-replay.editor.output_mp4": "🎬 mp4で出力"
 }

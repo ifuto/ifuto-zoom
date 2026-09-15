@@ -163,6 +163,9 @@ public class ClipEditorScreen extends Screen {
 		footer.add(Text.translatable("ifuto-replay.editor.output"), 200, button -> this.startOutput(),
 				ModernButton.Style.PRIMARY);
 
+		footer.add(Text.translatable("ifuto-replay.editor.output_mp4"), 160, button -> this.startMp4Output(),
+				ModernButton.Style.NORMAL);
+
 		footer.add(Text.literal("✕"), 26, button -> this.close(), ModernButton.Style.DANGER)
 				.setTooltip(Tooltip.of(Text.translatable("ifuto-replay.preview.close")));
 	}
@@ -294,6 +297,14 @@ public class ClipEditorScreen extends Screen {
 	}
 
 	private void startOutput() {
+		this.beginOutput(false);
+	}
+
+	private void startMp4Output() {
+		this.beginOutput(true);
+	}
+
+	private void beginOutput(boolean thenExport) {
 		if (this.keep.isEmpty()) {
 			this.client.setScreen(new NoticeScreen(this,
 					Text.translatable("ifuto-replay.editor.empty_title"),
@@ -303,7 +314,7 @@ public class ClipEditorScreen extends Screen {
 
 		// 出しているあいだは止める（裏で動かし続けても意味がないので）
 		this.playback.setPaused(true);
-		this.client.setScreen(new EditProgressScreen(this, this.uniqueOutput(), this.keep));
+		this.client.setScreen(new EditProgressScreen(this, this.uniqueOutput(), this.keep, thenExport));
 	}
 
 	private Path uniqueOutput() {

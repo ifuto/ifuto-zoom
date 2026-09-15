@@ -1,9 +1,11 @@
 package com.ifuto.replay.gui;
 
 import com.ifuto.replay.IfutoReplayClient;
+import com.ifuto.replay.config.ReplayConfig;
 import com.ifuto.replay.gui.theme.ReplayTheme;
 import com.ifuto.replay.gui.widget.ModernButton;
 import com.ifuto.replay.recording.ClipRemux;
+import com.ifuto.replay.recording.ReplayFileReader;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.screen.TitleScreen;
@@ -26,9 +28,17 @@ public class EditProgressScreen extends Screen {
 	private final ClipEditorScreen editor;
 	private final Job job;
 
+	/** 終わったら書き出し画面へ進むか（mp4で出力） */
+	private final boolean thenExport;
+
 	public EditProgressScreen(ClipEditorScreen editor, Path output, List<ClipRemux.Range> ranges) {
+		this(editor, output, ranges, false);
+	}
+
+	public EditProgressScreen(ClipEditorScreen editor, Path output, List<ClipRemux.Range> ranges, boolean thenExport) {
 		super(Text.translatable("ifuto-replay.editor.progress_title"));
 		this.editor = editor;
+		this.thenExport = thenExport;
 		this.job = new Job(editor.sourceFile(), output, List.copyOf(ranges));
 		this.job.start();
 	}
@@ -90,6 +100,24 @@ public class EditProgressScreen extends Screen {
 		}
 
 		ClipRemux.Result result = this.job.result;
+
+		if (this.thenExport) {
+			// mp4で出力：切った物をそのまま書き出し画面へ（開始位置は自動で合っている）
+			ReplayFileReader.Info info = ReplayFileReader.read(result.output());
+
+			if (info == null) {
+				this.client.setScreen(new NoticeScreen(this.editor,
+						Text.translatable("ifuto-replay.editor.error_title"),
+						Text.translatable("ifuto-replay.editor.error_message")));
+				return;
+			}
+
+			this.editor.playback().stop(new RecordingListScreen(new TitleScreen()));
+			this.client.setScreen(new ExportScreen(new RecordingListScreen(new TitleScreen()), info,
+					ReplayConfig.get()));
+			return;
+		}
+
 		this.editor.playback().stop(new RecordingListScreen(new TitleScreen()));
 
 		Text message = result.truncated()
