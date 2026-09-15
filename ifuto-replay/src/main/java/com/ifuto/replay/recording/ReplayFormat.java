@@ -11,7 +11,7 @@ public final class ReplayFormat {
 	public static final byte[] MAGIC = {'I', 'F', 'R', 'P'};
 
 	/** フォーマットバージョン */
-	public static final int VERSION = 2;
+	public static final int VERSION = 3;
 
 	/** 保存ファイルの拡張子 */
 	public static final String FILE_EXTENSION = ".ifreplay";
@@ -54,6 +54,15 @@ public final class ReplayFormat {
 
 	/** パケットにならない操作（マウス・キー・画面）の差分 */
 	public static final int TAG_INPUT = 6;
+
+	/**
+	 * **クライアントの内側でだけ** 起きた出来事（パーティクルなど）。
+	 *
+	 * <p>サーバーから届く物はパケットとして残るが、クライアントが自分で湧かせる物は
+	 * パケットにならない（ブロックを崩しているときの破片、足あと、Mod の演出など）。
+	 * 形式: 経過時間差 / 種類 / 長さ / 中身。
+	 */
+	public static final int TAG_LOCAL = 7;
 
 	// --- TAG_INPUT の種類 ---
 

@@ -110,6 +110,13 @@ public class ReplayConfigScreen extends Screen {
 						value -> this.config.clipKeepHours = value),
 				null));
 
+		// 1.2行目: クライアントの内側で起きたこと（パケットにならない物）
+		content.add(row(
+				toggle("ifuto-replay.config.record_particles", this.config.recordParticles,
+						"ifuto-replay.config.record_particles.tooltip",
+						value -> this.config.recordParticles = value),
+				null));
+
 		// 2行目: 軽さの調整
 		content.add(row(
 				cycle("ifuto-replay.config.compression", List.of(CompressionMode.values()),

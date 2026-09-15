@@ -92,6 +92,14 @@ public class ReplayConfig {
 	public int indexIntervalMs = 5000;
 
 	/**
+	 * **クライアントの内側でだけ** 起きたパーティクルも記録する。
+	 *
+	 * <p>ブロックを崩しているときの破片・足あと・Mod の演出などはパケットにならないので、
+	 * これを記録しておかないと再生したときに出てこない。
+	 */
+	public boolean recordParticles = true;
+
+	/**
 	 * 書き出しを等倍速で描く（**時間に依存する演出を正しくするため**）。
 	 *
 	 * <p>オフにすると GPU の速さしだいで一気に進むので速いが、モーションブラーの
@@ -290,6 +298,7 @@ public class ReplayConfig {
 		this.lowDiskSpaceMb = defaults.lowDiskSpaceMb;
 		this.criticalDiskSpaceMb = defaults.criticalDiskSpaceMb;
 		this.indexIntervalMs = defaults.indexIntervalMs;
+		this.recordParticles = defaults.recordParticles;
 		this.exportRealtime = defaults.exportRealtime;
 		this.maxFileSizeMb = defaults.maxFileSizeMb;
 		this.maxDurationMinutes = defaults.maxDurationMinutes;

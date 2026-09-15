@@ -5,6 +5,7 @@ import com.ifuto.replay.gui.BlankScreen;
 import com.ifuto.replay.mixin.MinecraftClientAccessor;
 import com.ifuto.replay.mixin.MouseAccessor;
 import com.ifuto.replay.recording.RegistrySnapshot;
+import com.ifuto.replay.recording.LocalEvents;
 import com.ifuto.replay.recording.ReplayFormat;
 import com.mojang.authlib.GameProfile;
 import io.netty.buffer.ByteBuf;
@@ -487,6 +488,18 @@ public final class ReplayPlayback implements ReplayStream.Sink {
 		} catch (IOException e) {
 			this.errors++;
 		}
+	/**
+	 * クライアントの内側でだけ起きた出来事（パーティクルなど）。
+	 *
+	 * <p>パケットとして残らないので、ここで同じ物をもう一度起こす。
+	 */
+	@Override
+	public void local(long timeMs, int subtype, byte[] data, int length) {
+		if (subtype == LocalEvents.TYPE_PARTICLE) {
+			LocalEvents.playParticle(this.client, data);
+		}
+	}
+
 	}
 
 	/** いま開いていた画面（空欄 = 開いていない） */

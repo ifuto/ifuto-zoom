@@ -46,6 +46,12 @@ public final class RecordingSession {
 	private final AtomicInteger nextTypeIndex = new AtomicInteger();
 	private final AtomicLong packetCount = new AtomicLong();
 	private final AtomicLong droppedCount = new AtomicLong();
+
+	/** クライアント内で起きた出来事の上限（1秒あたり） */
+	private static final int MAX_LOCAL_PER_SECOND = 160;
+
+	private long localWindowStartMs;
+	private int localWindowCount;
 	private final AtomicLong errorCount = new AtomicLong();
 	private final AtomicLong queuedBytes = new AtomicLong();
 	private final AtomicInteger markerCount = new AtomicInteger();
@@ -303,6 +309,43 @@ public final class RecordingSession {
 			return;
 		}
 
+		this.queuedBytes.addAndGet(data.length);
+	}
+
+	/**
+	 * クライアントの内側でだけ起きた出来事を記録する（パーティクルなど）。
+	 *
+	 * <p>パーティクルは Minecraft が一番よく出す物なので、**1秒あたりの上限** を決めて
+	 * いる（崩しているブロックの破片などで膨らまないように）。超えた分は捨てるだけで、
+	 * 録画そのものには影響しない。
+	 */
+	public void recordLocal(int subtype, byte[] data) {
+		if (this.stopping || data == null || data.length == 0) {
+			return;
+		}
+
+		long now = System.currentTimeMillis();
+
+		if (now - this.localWindowStartMs >= 1000L) {
+			this.localWindowStartMs = now;
+			this.localWindowCount = 0;
+		}
+
+		if (this.localWindowCount >= MAX_LOCAL_PER_SECOND) {
+			return;
+		}
+
+		if (this.queuedBytes.get() > this.maxQueuedBytes) {
+			return;
+		}
+
+		long timeMs = System.currentTimeMillis() - this.startedAt;
+
+		if (!this.offer(PacketTask.local(timeMs, subtype, data))) {
+			return;
+		}
+
+		this.localWindowCount++;
 		this.queuedBytes.addAndGet(data.length);
 	}
 

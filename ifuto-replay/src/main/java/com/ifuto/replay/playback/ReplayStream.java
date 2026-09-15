@@ -56,6 +56,11 @@ public final class ReplayStream implements Closeable {
 
 		/** パケットにならない操作（マウス・キー・画面）が出てきた */
 		void input(long timeMs, int subtype, byte[] data, int length);
+
+		/** クライアントの内側でだけ起きた出来事（パーティクルなど）が出てきた */
+		default void local(long timeMs, int subtype, byte[] data, int length) {
+			// 古い再生側はそのまま読み飛ばす
+		}
 	}
 
 	private final InputStream source;
@@ -117,6 +122,11 @@ public final class ReplayStream implements Closeable {
 					case ReplayFormat.TAG_INPUT -> {
 						stream.timeMs += stream.readVarInt();
 						stream.in.readByte();
+						stream.skipExactly(stream.readVarInt());
+					}
+					case ReplayFormat.TAG_LOCAL -> {
+						stream.timeMs += stream.readVarInt();
+						stream.readVarInt();
 						stream.skipExactly(stream.readVarInt());
 					}
 					case ReplayFormat.TAG_INDEX -> durationMs = stream.readIndex();
@@ -241,6 +251,14 @@ public final class ReplayStream implements Closeable {
 					byte[] data = new byte[length];
 					this.in.readFully(data);
 					sink.input(this.timeMs, subtype, data, length);
+				}
+				case ReplayFormat.TAG_LOCAL -> {
+					this.timeMs += this.readVarInt();
+					int subtype = this.readVarInt();
+					int length = this.readVarInt();
+					byte[] data = new byte[length];
+					this.in.readFully(data);
+					sink.local(this.timeMs, subtype, data, length);
 				}
 				case ReplayFormat.TAG_INDEX -> this.readIndex();
 				case ReplayFormat.TAG_REGISTRIES -> {

@@ -3,11 +3,13 @@ package com.ifuto.replay.recording;
 import com.ifuto.replay.IfutoReplayClient;
 import com.ifuto.replay.audio.AudioMode;
 import com.ifuto.replay.audio.AudioRecorder;
+import com.ifuto.replay.recording.LocalEvents;
 import com.ifuto.replay.audio.MinecraftAudioCapture;
 import com.ifuto.replay.audio.AudioTracks;
 import com.ifuto.replay.audio.VoiceChatBridge;
 import com.ifuto.replay.config.ReplayConfig;
 import net.fabricmc.loader.api.FabricLoader;
+import net.minecraft.particle.ParticleEffect;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayNetworkHandler;
 import net.minecraft.client.network.ServerInfo;
@@ -471,6 +473,32 @@ public final class RecordingManager {
 				Text.literal(saved.getFileName().toString()),
 				Text.literal(formatSize(bytes)));
 		IfutoReplayClient.LOGGER.info("[ifuto-replay] クリップを保存しました: {}", saved.getFileName());
+	}
+
+	/**
+	 * クライアントが自分で湧かせたパーティクルを記録する（Mixin から呼ばれる）。
+	 *
+	 * <p>パケットとして届いた物は記録しない（すでにパケット側に残っているため）。
+	 * 設定でオフにできる。
+	 */
+	public void recordParticle(ParticleEffect effect, double x, double y, double z,
+							   double velocityX, double velocityY, double velocityZ) {
+		if (!this.isRecording() || LocalEvents.isFromPacket()) {
+			return;
+		}
+
+		if (!ReplayConfig.get().recordParticles) {
+			return;
+		}
+
+		RecordingSession current = this.session;
+
+		if (current == null) {
+			return;
+		}
+
+		current.recordLocal(LocalEvents.TYPE_PARTICLE,
+				LocalEvents.encodeParticle(effect, x, y, z, velocityX, velocityY, velocityZ));
 	}
 
 	/** しおりを付ける（あとで再生・書き出しの起点にする） */

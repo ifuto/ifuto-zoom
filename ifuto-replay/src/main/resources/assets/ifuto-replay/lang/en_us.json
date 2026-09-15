@@ -219,5 +219,7 @@
 	"ifuto-replay.menu.clip.saving": "✂ Saving…",
 	"ifuto-replay.export.realtime": "Render at real speed",
 	"ifuto-replay.export.realtime.tooltip": "On: every frame is drawn at the same pace as the original, so effects that look at real time (motion blur accumulation, temporal shaders, effects that fade with time) behave exactly as they did live. It takes as long as the recording. Off: frames are drawn as fast as the GPU allows (much faster, but those effects change)",
-	"ifuto-replay.config.compression.max": "Max"
+	"ifuto-replay.config.compression.max": "Max",
+	"ifuto-replay.config.record_particles": "Client-side particles",
+	"ifuto-replay.config.record_particles.tooltip": "Records the particles the client spawns itself: block breaking debris, footsteps, mod effects. Ones sent by the server are already in the packet stream, so they are not recorded twice"
 }

@@ -25,6 +25,9 @@ final class PacketTask {
 	/** パケットにならない操作（マウス・キー・画面） */
 	static final int KIND_INPUT = 4;
 
+	/** クライアントの内側でだけ起きた出来事（パーティクルなど） */
+	static final int KIND_LOCAL = 5;
+
 	final int kind;
 
 	/** 録画開始からの経過ミリ秒 */
@@ -78,6 +81,10 @@ final class PacketTask {
 
 	static PacketTask input(long timeMs, byte[] data) {
 		return new PacketTask(KIND_INPUT, timeMs, 0, 0, null, null, null, data);
+	}
+
+	static PacketTask local(long timeMs, int subtype, byte[] data) {
+		return new PacketTask(KIND_LOCAL, timeMs, subtype, 0, null, null, null, data);
 	}
 
 	int size() {

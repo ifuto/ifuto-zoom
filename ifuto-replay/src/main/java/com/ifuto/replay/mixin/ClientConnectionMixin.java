@@ -1,6 +1,7 @@
 package com.ifuto.replay.mixin;
 
 import com.ifuto.replay.IfutoReplayClient;
+import com.ifuto.replay.recording.LocalEvents;
 import com.ifuto.replay.recording.RecordingManager;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
@@ -31,6 +32,9 @@ public class ClientConnectionMixin {
 	@Inject(method = "channelRead0(Lio/netty/channel/ChannelHandlerContext;Lnet/minecraft/network/packet/Packet;)V",
 			at = @At("HEAD"))
 	private void ifutoReplay$onInboundPacket(ChannelHandlerContext context, Packet<?> packet, CallbackInfo ci) {
+		// このあいだにクライアントが湧かせた物は「パケットとして残る物」なので記録しない
+		LocalEvents.setFromPacket(true);
+
 		if (!RecordingManager.INSTANCE.isRecording()) {
 			return;
 		}
@@ -40,6 +44,19 @@ public class ClientConnectionMixin {
 		} catch (Throwable t) {
 			warn(t);
 		}
+	}
+
+	/**
+	 * パケットを処理しているあいだの印。
+	 *
+	 * <p>このあいだにクライアントが湧かせた物（パーティクルなど）は「サーバーから届いた物」
+	 * なので、パケット側に残っている。二重に記録しないように印を付けておく。
+	 * パケットの適用はこのメソッドの中で同じスレッドで行われる。
+	 */
+	@Inject(method = "channelRead0(Lio/netty/channel/ChannelHandlerContext;Lnet/minecraft/network/packet/Packet;)V",
+			at = @At("RETURN"))
+	private void ifutoReplay$afterInboundPacket(ChannelHandlerContext context, Packet<?> packet, CallbackInfo ci) {
+		LocalEvents.setFromPacket(false);
 	}
 
 	@Inject(method = "send(Lnet/minecraft/network/packet/Packet;Lio/netty/channel/ChannelFutureListener;Z)V",

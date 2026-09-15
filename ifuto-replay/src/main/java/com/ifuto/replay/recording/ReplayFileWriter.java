@@ -261,6 +261,7 @@ final class ReplayFileWriter implements Runnable {
 				this.out.writeString(task.text);
 			}
 			case PacketTask.KIND_PACKET -> this.writePacket(task);
+			case PacketTask.KIND_LOCAL -> this.writeLocal(task);
 			case PacketTask.KIND_REGISTRIES -> this.writeRegistries(task.nbt);
 			case PacketTask.KIND_MARKER -> {
 				this.out.writeByte(ReplayFormat.TAG_MARKER);
@@ -318,6 +319,26 @@ final class ReplayFileWriter implements Runnable {
 	 *
 	 * <p>NBT のまま保存する。展開は再生時にしかしないので、録画中は直列化と圧縮だけ。
 	 */
+	/**
+	 * クライアントの内側でだけ起きた出来事（パーティクルなど）。
+	 *
+	 * <p>中身は {@link LocalEvents} が組み立てた物。**パケットとして残らない物** なので、
+	 * これを入れておかないと再生したときに何も起きない。
+	 */
+	private void writeLocal(PacketTask task) throws IOException {
+		byte[] data = task.data;
+
+		if (data == null || data.length == 0) {
+			return;
+		}
+
+		this.out.writeByte(ReplayFormat.TAG_LOCAL);
+		this.out.writeVarInt(this.takeDelta(task.timeMs));
+		this.out.writeVarInt(task.typeIndex);
+		this.out.writeVarInt(data.length);
+		this.out.writeBytes(data);
+	}
+
 	/** 入力（マウス・キー・画面）の差分。中身は InputTracker が組み立てた物 */
 	private void writeInput(PacketTask task) throws IOException {
 		byte[] data = task.data;
