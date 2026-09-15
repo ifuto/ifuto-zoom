@@ -217,10 +217,12 @@
 	"ifuto-replay.message.clip_no_space": "クリップを保存する空きがありません（%s 必要）",
 	"ifuto-replay.hud.clip_saving": "✂ クリップを保存中…",
 	"ifuto-replay.menu.clip.saving": "✂ 保存中…",
-	"ifuto-replay.export.realtime": "等倍速で描く",
-	"ifuto-replay.export.realtime.tooltip": "オン: 本番と同じ速さで1枚ずつ描くので、モーションブラーの蓄積など「実時間」を見る演出が本番どおりになります（そのぶん時間がかかります）。オフ: GPU の速さしだいで一気に進みます（速いですが、それらの演出の効き方が変わります）",
 	"ifuto-replay.config.compression.max": "最強",
 	"ifuto-replay.config.record_particles": "クライアントのパーティクル",
 	"ifuto-replay.config.record_particles.tooltip": "ブロックを崩しているときの破片・足あと・Mod の演出など、クライアントが自分で湧かせたパーティクルも記録します（サーバーから届いた物はパケットに残っているので記録しません）",
-	"ifuto-replay.config.compression.strong": "強"
+	"ifuto-replay.config.compression.strong": "強",
+	"ifuto-replay.export.speed": "書き出しの速さ",
+	"ifuto-replay.export.speed.tooltip": "100%: 本番と同じ速さで1枚ずつ描きます。モーションブラーの蓄積など「実時間」を見る演出が本番どおりになります（1時間の録画に約1時間）。200/400%: その倍の速さで進みます（速いですが、それらの演出の効き方が変わります）。最速: GPU が描き終わりしだい次へ進むので一番速く終わります",
+	"ifuto-replay.export.speed.value": "%1$s%%",
+	"ifuto-replay.export.speed.fastest": "最速"
 }

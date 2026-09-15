@@ -48,6 +48,9 @@ public class ExportScreen extends Screen {
 	private static final String RESOLUTION_SCREEN = "screen";
 	private static final Integer[] FPS_VALUES = {24, 30, 50, 60, 120, 144, 240};
 
+	/** 書き出しの速さ（100 = 等倍速、0 = 最速） */
+	private static final Integer[] SPEED_VALUES = {100, 200, 400, 0};
+
 	private final Screen parent;
 	private final ReplayFileReader.Info info;
 	private final long durationMs;
@@ -64,7 +67,7 @@ public class ExportScreen extends Screen {
 	private TextWidget summaryText;
 	private boolean includeAudio;
 	private boolean includeVoiceChat = true;
-	private boolean realtime;
+	private int speedPercent;
 	private int startSec;
 	private int endSec;
 	private int fps;
@@ -80,7 +83,7 @@ public class ExportScreen extends Screen {
 		this.endSec = this.durationSec;
 		this.fps = config.exportFps;
 		this.includeAudio = AudioTracks.hasAny(info.file());
-		this.realtime = config.exportRealtime;
+		this.speedPercent = config.exportSpeedPercent;
 	}
 
 	@Override
@@ -184,12 +187,15 @@ public class ExportScreen extends Screen {
 			content.add(row(audioToggle, voiceToggle));
 		}
 
-		// 7行目: 等倍速で描くか（時間に依存する演出のため）
-		ModernToggle realtimeToggle = new ModernToggle(0, 0, WIDGET_WIDTH, WIDGET_HEIGHT,
-				Text.translatable("ifuto-replay.export.realtime"), this.realtime,
-				value -> this.realtime = value);
-		realtimeToggle.setTooltip(Tooltip.of(Text.translatable("ifuto-replay.export.realtime.tooltip")));
-		content.add(row(realtimeToggle, null));
+		// 7行目: 書き出しの速さ（時間に依存する演出のため、等倍速も選べる）
+		ModernCycling<Integer> speedCycling = new ModernCycling<>(0, 0, WIDGET_WIDTH, WIDGET_HEIGHT,
+				Text.translatable("ifuto-replay.export.speed"), List.of(SPEED_VALUES), this.speedPercent,
+				value -> value <= 0
+						? Text.translatable("ifuto-replay.export.speed.fastest")
+						: Text.translatable("ifuto-replay.export.speed.value", value),
+				value -> this.speedPercent = value);
+		speedCycling.setTooltip(Tooltip.of(Text.translatable("ifuto-replay.export.speed.tooltip")));
+		content.add(row(speedCycling, null));
 
 		this.summaryText = new TextWidget(Text.empty(), this.textRenderer);
 		this.summaryText.setMaxWidth(WIDGET_WIDTH * 2 + COLUMN_GAP);
@@ -343,7 +349,7 @@ public class ExportScreen extends Screen {
 		config.exportBitrateKbps = Math.max(100, this.intValue(this.bitrateField, this.config.exportBitrateKbps));
 		config.ffmpegPath = this.ffmpegField.getText().trim().isEmpty()
 				? "ffmpeg" : this.ffmpegField.getText().trim();
-		config.exportRealtime = this.realtime;
+		config.exportSpeedPercent = this.speedPercent;
 		config.save();
 
 		long startMs = this.startSec * 1000L;
@@ -359,7 +365,7 @@ public class ExportScreen extends Screen {
 		// 音声は「録画の隣に置いてある別ファイル」。VC を外したいときは Minecraft だけの音を選ぶ
 		List<Path> audio = this.includeAudio ? AudioTracks.select(this.info.file(), this.includeVoiceChat) : null;
 		ExportOptions options = new ExportOptions(config.exportFps, config.exportWidth, config.exportHeight,
-				config.exportBitrateKbps, config.ffmpegPath, startMs, endMs, output, audio, this.realtime);
+				config.exportBitrateKbps, config.ffmpegPath, startMs, endMs, output, audio, this.speedPercent);
 
 		startExport(this.client, this.info.file(), options, this.parent);
 	}

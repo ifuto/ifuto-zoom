@@ -217,10 +217,12 @@
 	"ifuto-replay.message.clip_no_space": "Not enough free space to save the clip (%s needed)",
 	"ifuto-replay.hud.clip_saving": "✂ Saving clip…",
 	"ifuto-replay.menu.clip.saving": "✂ Saving…",
-	"ifuto-replay.export.realtime": "Render at real speed",
-	"ifuto-replay.export.realtime.tooltip": "On: every frame is drawn at the same pace as the original, so effects that look at real time (motion blur accumulation, temporal shaders, effects that fade with time) behave exactly as they did live. It takes as long as the recording. Off: frames are drawn as fast as the GPU allows (much faster, but those effects change)",
 	"ifuto-replay.config.compression.max": "Max",
 	"ifuto-replay.config.record_particles": "Client-side particles",
 	"ifuto-replay.config.record_particles.tooltip": "Records the particles the client spawns itself: block breaking debris, footsteps, mod effects. Ones sent by the server are already in the packet stream, so they are not recorded twice",
-	"ifuto-replay.config.compression.strong": "Strong"
+	"ifuto-replay.config.compression.strong": "Strong",
+	"ifuto-replay.export.speed": "Export speed",
+	"ifuto-replay.export.speed.tooltip": "100%: every frame is drawn at the same pace as the original, so effects that look at real time (motion blur accumulation, temporal shaders) behave exactly as they did live (an hour of footage takes about an hour). 200/400%: that many times faster (those effects change). Fastest: frames are drawn as fast as the GPU allows",
+	"ifuto-replay.export.speed.value": "%1$s%%",
+	"ifuto-replay.export.speed.fastest": "Fastest"
 }

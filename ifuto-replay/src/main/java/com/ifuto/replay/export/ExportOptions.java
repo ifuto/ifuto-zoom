@@ -25,7 +25,7 @@ public record ExportOptions(
 		long endMs,
 		Path output,
 		@Nullable List<Path> audio,
-		boolean realtime
+		int speedPercent
 ) {
 	/** 録画1本ぶんの既定の設定を作る */
 	public static ExportOptions defaultFor(ReplayConfig config, Path recording, long durationMs) {
@@ -47,7 +47,7 @@ public record ExportOptions(
 				Math.max(0L, durationMs),
 				output,
 				AudioTracks.select(recording, true),
-				config.exportRealtime
+				config.exportSpeedPercent
 		);
 	}
 

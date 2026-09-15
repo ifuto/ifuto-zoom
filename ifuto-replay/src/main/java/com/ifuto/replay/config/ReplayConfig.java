@@ -100,12 +100,16 @@ public class ReplayConfig {
 	public boolean recordParticles = true;
 
 	/**
-	 * 書き出しを等倍速で描く（**時間に依存する演出を正しくするため**）。
+	 * 書き出しの速さ（100 = 等倍速、200 = 2倍、400 = 4倍、0 = 最速）。
 	 *
-	 * <p>オフにすると GPU の速さしだいで一気に進むので速いが、モーションブラーの
-	 * 蓄積やテンポラル系のシェーダーなど「実時間」を見る Mod の効き方が変わる。
+	 * <p>等倍速だと、絵と絵のあいだを本番と同じ時間だけ空ける。モーションブラーの
+	 * 蓄積やテンポラル系のシェーダーなど「実時間」を見る Mod の効き方が本番と同じになる
+	 * （そのぶん時間がかかる。1時間の録画なら1時間）。
+	 *
+	 * <p>倍率を上げるとそのぶん速く終わるが、それらの演出の効き方が変わる。
+	 * 0（最速）は GPU が描き終わりしだい次へ進むので一番速い。
 	 */
-	public boolean exportRealtime = true;
+	public int exportSpeedPercent = 100;
 
 	// --- 自動停止 ---
 
@@ -299,7 +303,7 @@ public class ReplayConfig {
 		this.criticalDiskSpaceMb = defaults.criticalDiskSpaceMb;
 		this.indexIntervalMs = defaults.indexIntervalMs;
 		this.recordParticles = defaults.recordParticles;
-		this.exportRealtime = defaults.exportRealtime;
+		this.exportSpeedPercent = defaults.exportSpeedPercent;
 		this.maxFileSizeMb = defaults.maxFileSizeMb;
 		this.maxDurationMinutes = defaults.maxDurationMinutes;
 		this.showIndicator = defaults.showIndicator;
@@ -346,6 +350,7 @@ public class ReplayConfig {
 		this.exportWidth = clampStrict(this.exportWidth, 16, 16384, 1920);
 		this.exportHeight = clampStrict(this.exportHeight, 16, 16384, 1080);
 		this.exportBitrateKbps = clampStrict(this.exportBitrateKbps, 100, 2_000_000, 20000);
+		this.exportSpeedPercent = clamp(this.exportSpeedPercent, 0, 4000, 100);
 		this.snapshotRadius = clampStrict(this.snapshotRadius, 0, 32, 6);
 
 		if (this.saveFolder == null || this.saveFolder.isBlank()) {

@@ -279,9 +279,7 @@ public final class ReplayExporter {
 		}
 
 		// 「時間に依存する演出」を正しくするために、待つことがある（下の説明を見てください）
-		if (this.options.realtime()) {
-			this.pace();
-		}
+		this.pace();
 
 		long target = this.startMs + this.frameIndex * this.frameStepMs;
 		this.playback.jumpTo(target);
@@ -290,7 +288,8 @@ public final class ReplayExporter {
 	}
 
 	/**
-	 * 書き出しを **等倍速** に保つ（必要なぶんだけ待つ）。
+	 * 書き出しの速さを **設定どおり** に保つ（必要なぶんだけ待つ）。100% なら等倍速、
+	 * 200% なら2倍の速さ、0（最速）なら何も待たない。
 	 *
 	 * <p>ふつうの書き出しは「GPU が描き終わりしだい次の時刻へ」進むので、絵と絵のあいだの
 	 * **実時間** がバラバラになる。すると「直前の絵との差」や「実時間の経過」を見る類の
@@ -302,7 +301,14 @@ public final class ReplayExporter {
 	 * そのときは「速い書き出し」と同じになる。
 	 */
 	private void pace() {
-		long ideal = this.startedAtMs + this.frameIndex * this.frameStepMs;
+		int speed = this.options.speedPercent();
+
+		if (speed <= 0) {
+			// 最速: 待たない（GPU が描き終わりしだい次へ進む）
+			return;
+		}
+
+		long ideal = this.startedAtMs + this.frameIndex * this.frameStepMs * 100L / speed;
 		long wait = ideal - System.currentTimeMillis();
 
 		if (wait <= 0L) {
