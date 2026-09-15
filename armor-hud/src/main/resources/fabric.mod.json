@@ -1,0 +1,41 @@
+{
+	"schemaVersion": 1,
+	"id": "ifuto-armor-hud",
+	"version": "${version}",
+	"name": "Ifuto Armor HUD",
+	"description": "Shows your equipped armor and durability right next to the hotbar — drawn pixel-perfect with vanilla textures, from the seamless hotbar frame to the offhand-style rounded one. Vanilla overlays, blink warnings, resource-pack friendly, Mod Menu config.",
+	"authors": [
+		"ifuto"
+	],
+	"contact": {
+		"homepage": "https://github.com/ifuto/ifuto-zoom",
+		"sources": "https://github.com/ifuto/ifuto-zoom",
+		"issues": "https://github.com/ifuto/ifuto-zoom/issues"
+	},
+	"license": "MIT",
+	"icon": "assets/ifuto-armor-hud/icon.png",
+	"environment": "client",
+	"entrypoints": {
+		"client": [
+			"com.ifuto.armorhud.IfutoArmorHudClient"
+		],
+		"modmenu": [
+			"com.ifuto.armorhud.compat.ModMenuIntegration"
+		]
+	},
+	"mixins": [
+		{
+			"config": "ifuto-armor-hud.mixins.json",
+			"environment": "client"
+		}
+	],
+	"depends": {
+		"fabricloader": ">=0.16.0",
+		"minecraft": "~1.21.11",
+		"java": ">=21",
+		"fabric-api": "*"
+	},
+	"suggests": {
+		"modmenu": "*"
+	}
+}

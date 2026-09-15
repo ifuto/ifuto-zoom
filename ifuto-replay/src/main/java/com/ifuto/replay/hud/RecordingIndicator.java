@@ -1,0 +1,111 @@
+package com.ifuto.replay.hud;
+
+import com.ifuto.replay.config.IndicatorPosition;
+import com.ifuto.replay.config.ReplayConfig;
+import com.ifuto.replay.recording.RecordingManager;
+import com.ifuto.replay.recording.RecordingSession;
+import net.fabricmc.api.EnvType;
+import net.fabricmc.api.Environment;
+import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElement;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.font.TextRenderer;
+import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.render.RenderTickCounter;
+import net.minecraft.text.Text;
+
+import com.ifuto.replay.gui.theme.ReplayTheme;
+
+/**
+ * 録画中だけ画面の隅に出る小さなインジケータ。
+ *
+ * <p>録画していないときは「設定を読む」だけですぐ抜けるので、ふだんの負荷はほぼゼロ。
+ */
+@Environment(EnvType.CLIENT)
+public class RecordingIndicator implements HudElement {
+	private static final int MARGIN = 5;
+	private static final int PADDING_X = 8;
+	private static final int DOT_SIZE = 6;
+	private static final int DOT_GAP = 6;
+
+	@Override
+	public void render(DrawContext context, RenderTickCounter tickCounter) {
+		ReplayConfig config = ReplayConfig.get();
+
+		if (!config.showIndicator) {
+			return;
+		}
+
+		RecordingSession session = RecordingManager.INSTANCE.getSession();
+
+		if (session == null) {
+			return;
+		}
+
+		MinecraftClient client = MinecraftClient.getInstance();
+
+		if (client.options.hudHidden) {
+			return;
+		}
+
+		// 点滅（1秒ごと。録っていることがひと目でわかるように）
+		boolean blink = System.currentTimeMillis() % 1000L < 600L;
+		String text;
+
+		// クリップ方式で「設定した長さ」まで溜まっているか（色を変えて合図にする）
+		boolean clipReady = false;
+
+		if (session.isClipMode()) {
+			if (session.isSavingClip()) {
+				// まとめている最中（長いクリップだと数分かかるので、動いていることを出す）
+				clipReady = true;
+				text = Text.translatable("ifuto-replay.hud.clip_saving").getString();
+			} else {
+				// クリップ方式: 「いま何秒ぶん残っているか」を出す（押したら残せる目安）
+				long wanted = (long) config.clipSeconds * 1000L;
+				long buffered = session.clipBufferedMillis();
+				clipReady = buffered >= wanted;
+				text = Text.translatable("ifuto-replay.hud.clip",
+						RecordingManager.formatDuration(Math.min(buffered, wanted)),
+						RecordingManager.formatDuration(wanted)).getString();
+			}
+		} else {
+			text = RecordingManager.formatDuration(session.elapsedMillis())
+					+ "  " + RecordingManager.formatSize(session.bytesWritten());
+		}
+
+		TextRenderer renderer = client.textRenderer;
+		int textWidth = renderer.getWidth(text);
+		int boxWidth = PADDING_X + DOT_SIZE + DOT_GAP + textWidth + PADDING_X;
+		int boxHeight = renderer.fontHeight + 8;
+		IndicatorPosition position = config.indicatorPosition;
+
+		int x = switch (position) {
+			case TOP_LEFT, BOTTOM_LEFT -> MARGIN;
+			case TOP_RIGHT, BOTTOM_RIGHT -> context.getScaledWindowWidth() - boxWidth - MARGIN;
+		};
+
+		int y = switch (position) {
+			case TOP_LEFT, TOP_RIGHT -> MARGIN;
+			case BOTTOM_LEFT, BOTTOM_RIGHT -> context.getScaledWindowHeight() - boxHeight - MARGIN;
+		};
+
+		// クリップが「長さぶん溜まった」ら水色にする（押しごろがひと目でわかる）
+		int accent = clipReady ? ReplayTheme.ACCENT : ReplayTheme.RECORD;
+
+		// 角丸の「札」（影つき）
+		ReplayTheme.fillRound(context, x + 1, y + 2, boxWidth, boxHeight, boxHeight / 2, ReplayTheme.SHADOW);
+		ReplayTheme.fillRound(context, x, y, boxWidth, boxHeight, boxHeight / 2, ReplayTheme.SURFACE);
+		ReplayTheme.strokeRound(context, x, y, boxWidth, boxHeight, boxHeight / 2,
+				ReplayTheme.withAlpha(accent, clipReady ? 0x88 : (blink ? 0x66 : 0x33)));
+
+		// 丸（点滅。溜まったら点滅をやめて「押せる」ことを示す）
+		int dotX = x + PADDING_X;
+		int dotY = y + (boxHeight - DOT_SIZE) / 2;
+		ReplayTheme.fillRound(context, dotX, dotY, DOT_SIZE, DOT_SIZE, DOT_SIZE / 2,
+				clipReady ? accent : (blink ? ReplayTheme.RECORD : ReplayTheme.withAlpha(ReplayTheme.RECORD, 0x55)));
+
+		int textX = dotX + DOT_SIZE + DOT_GAP;
+		int textY = y + (boxHeight - renderer.fontHeight) / 2;
+		context.drawText(renderer, text, textX, textY, ReplayTheme.TEXT, true);
+	}
+}

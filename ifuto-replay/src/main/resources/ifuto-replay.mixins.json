@@ -1,0 +1,20 @@
+{
+	"required": true,
+	"minVersion": "0.8",
+	"package": "com.ifuto.replay.mixin",
+	"compatibilityLevel": "JAVA_21",
+	"client": [
+		"ChatScreenAccessor",
+		"ClientConnectionMixin",
+		"ClientPlayNetworkHandlerMixin",
+		"GameRendererMixin",
+		"MinecraftClientAccessor",
+		"MouseAccessor",
+		"ParticleManagerMixin",
+		"RenderTickCounterMixin",
+		"SoundEngineMixin"
+	],
+	"injectors": {
+		"defaultRequire": 1
+	}
+}
