@@ -19,7 +19,7 @@ public enum CompressionMode {
 	STRONG("strong", 8, 16),
 
 	/** 最強（deflate 9）。縮み方は一番だが、レベル8の約2倍CPUを使う */
-	MAX("max", 9, 16),
+	MAX("max", 9, 16);
 
 	private final String id;
 	private final int deflateLevel;
