@@ -109,18 +109,20 @@ public final class LocalEvents {
 			float velocityX = in.readFloat();
 			float velocityY = in.readFloat();
 			float velocityZ = in.readFloat();
-			Identifier id = Identifier.tryParse(nbt.getString("id"));
+			String idText = nbt.getString("id").orElse(null);
+			Identifier id = idText == null ? null : Identifier.tryParse(idText);
 			NbtElement parameters = nbt.get("p");
 
 			if (id == null || parameters == null) {
 				return;
 			}
 
-			ParticleType<?> type = Registries.PARTICLE_TYPE.getOrEmpty(id).orElse(null);
+			ParticleType<?> type = Registries.PARTICLE_TYPE.getOptionalValue(id).orElse(null);
 			ParticleEffect effect = type == null ? null : decodeParameters(type, parameters);
 
 			if (effect != null) {
-				world.addParticle(effect, x, y, z, velocityX, velocityY, velocityZ);
+				// 記録したのと同じ入口（ParticleManager）から出す
+				client.particleManager.addParticle(effect, x, y, z, velocityX, velocityY, velocityZ);
 			}
 		} catch (IOException e) {
 			// 1件読めなくても再生は続ける（パーティクルは飾りなので）
