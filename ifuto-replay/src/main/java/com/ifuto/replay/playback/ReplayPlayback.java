@@ -488,6 +488,8 @@ public final class ReplayPlayback implements ReplayStream.Sink {
 		} catch (IOException e) {
 			this.errors++;
 		}
+	}
+
 	/**
 	 * クライアントの内側でだけ起きた出来事（パーティクルなど）。
 	 *
@@ -498,8 +500,6 @@ public final class ReplayPlayback implements ReplayStream.Sink {
 		if (subtype == LocalEvents.TYPE_PARTICLE) {
 			LocalEvents.playParticle(this.client, data);
 		}
-	}
-
 	}
 
 	/** いま開いていた画面（空欄 = 開いていない） */
