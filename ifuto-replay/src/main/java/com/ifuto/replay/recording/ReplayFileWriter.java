@@ -588,21 +588,17 @@ final class ReplayFileWriter implements Runnable {
 			return this.deflateBlock(input);
 		}
 
+		// かたまり方式でないとき（= 圧縮しない設定）は、1個で完結した deflate にする
 		Deflater deflater = this.deflater;
 
 		if (deflater == null) {
 			deflater = new Deflater(this.compression.deflateLevel());
 			this.deflater = deflater;
-		} else if (!this.sharedWindow) {
+		} else {
 			deflater.reset();
 		}
 
 		deflater.setInput(input);
-
-		if (this.sharedWindow) {
-			return this.deflateShared(deflater);
-		}
-
 		deflater.finish();
 
 		ByteArrayOutputStream packed = new ByteArrayOutputStream(Math.max(64, input.length / 2));
@@ -618,30 +614,6 @@ final class ReplayFileWriter implements Runnable {
 
 		// 次のためにリセット（中身はもう取り出してある）
 		deflater.reset();
-		return packed.toByteArray();
-	}
-
-	/**
-	 * パケットをまたいで **辞書を共有** して圧縮する（いちばん効く部分）。
-	 *
-	 * <p>パケット1個はだいたい数十バイトなので、1個ずつ圧縮してもほとんど縮まない
-	 * （むしろ膨らむこともある）。そこで reset() せずに直前のパケットを辞書として
-	 * 使いまわし、**SYNC_FLUSH で区切り** を入れながら書く。
-	 */
-	private byte[] deflateShared(Deflater deflater) throws IOException {
-		ByteArrayOutputStream packed = new ByteArrayOutputStream(64);
-		byte[] scratch = this.deflateScratch;
-
-		while (true) {
-			int written = deflater.deflate(scratch, 0, scratch.length, Deflater.SYNC_FLUSH);
-
-			if (written <= 0) {
-				break;
-			}
-
-			packed.write(scratch, 0, written);
-		}
-
 		return packed.toByteArray();
 	}
 
