@@ -16,6 +16,7 @@ import net.minecraft.client.gui.screen.TitleScreen;
 import net.minecraft.client.gui.tooltip.Tooltip;
 import net.minecraft.text.Text;
 
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -148,8 +149,14 @@ public class ClipEditorScreen extends Screen {
 			this.clearAndInit();
 		}, ModernButton.Style.NORMAL);
 
-		// 範囲の一覧（消すボタンだけ置き、文字は下で描く）
-		for (int i = 0; i < Math.min(this.keep.size(), MAX_RANGE_ROWS); i++) {
+		// 範囲の一覧（消すボタンだけ置き、文字は下で描く。溢れたら最終行は「他 N 件」）
+		int rows = Math.min(this.keep.size(), MAX_RANGE_ROWS);
+
+		if (this.keep.size() > MAX_RANGE_ROWS) {
+			rows = MAX_RANGE_ROWS - 1;
+		}
+
+		for (int i = 0; i < rows; i++) {
 			int index = i;
 			int rowY = rangesY + i * (ROW_HEIGHT + GAP);
 			ModernButton delete = new ModernButton(left + barWidth - 30, rowY, 30, ROW_HEIGHT,
@@ -247,6 +254,11 @@ public class ClipEditorScreen extends Screen {
 		}
 
 		int shown = Math.min(this.keep.size(), MAX_RANGE_ROWS);
+		boolean overflow = this.keep.size() > MAX_RANGE_ROWS;
+
+		if (overflow) {
+			shown = MAX_RANGE_ROWS - 1;
+		}
 
 		for (int i = 0; i < shown; i++) {
 			ClipRemux.Range range = this.keep.get(i);
@@ -254,11 +266,11 @@ public class ClipEditorScreen extends Screen {
 			context.drawText(this.textRenderer, row, left, rangesY + i * (ROW_HEIGHT + GAP) + 6, 0xE6EDF3, true);
 		}
 
-		if (this.keep.size() > MAX_RANGE_ROWS) {
+		if (overflow) {
 			String more = Text.translatable("ifuto-replay.editor.more_ranges",
-					this.keep.size() - MAX_RANGE_ROWS).getString();
+					this.keep.size() - shown).getString();
 			context.drawText(this.textRenderer, more, left,
-					rangesY + MAX_RANGE_ROWS * (ROW_HEIGHT + GAP) - 6, 0x8B98A5, true);
+					rangesY + shown * (ROW_HEIGHT + GAP) + 6, 0x8B98A5, true);
 		}
 	}
 
@@ -310,6 +322,21 @@ public class ClipEditorScreen extends Screen {
 					Text.translatable("ifuto-replay.editor.empty_title"),
 					Text.translatable("ifuto-replay.editor.empty_message")));
 			return;
+		}
+
+		// 空きが無ければ先に諦める（出力は元と同程度の大きさになる）
+		try {
+			long usable = Files.getFileStore(this.playback.file()).getUsableSpace();
+			long need = Files.size(this.playback.file()) + (256L << 20);
+
+			if (usable < need) {
+				this.client.setScreen(new NoticeScreen(this,
+						Text.translatable("ifuto-replay.editor.nospace_title"),
+						Text.translatable("ifuto-replay.editor.nospace_message")));
+				return;
+			}
+		} catch (IOException ignored) {
+			// 取れなくても続ける（書きながら気付く）
 		}
 
 		// 出しているあいだは止める（裏で動かし続けても意味がないので）

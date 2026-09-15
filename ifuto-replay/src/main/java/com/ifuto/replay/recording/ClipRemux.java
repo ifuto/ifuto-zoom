@@ -17,6 +17,7 @@ import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -53,7 +54,8 @@ public final class ClipRemux {
 	}
 
 	/** 結果 */
-	public record Result(Path output, long durationMs, long bytes, boolean audioOk, boolean truncated) {
+	public record Result(Path output, long durationMs, long bytes, boolean audioOk, boolean truncated,
+			boolean audioFailed) {
 	}
 
 	/** 進捗の通知（別スレッドから叩く。pass: 0=下見、1=複写、2=音声） */
@@ -136,6 +138,10 @@ public final class ClipRemux {
 	 * @throws IOException 壊れていた・中断したなど（途中の出力は消す）
 	 */
 	public static Result remux(Path source, Path output, List<Range> ranges, Progress progress) throws IOException {
+		if (source.toAbsolutePath().normalize().equals(output.toAbsolutePath().normalize())) {
+			throw new IOException("入力と出力が同じです");
+		}
+
 		Scan scan = scan(source, progress);
 
 		if (progress.isCancelled()) {
@@ -170,9 +176,12 @@ public final class ClipRemux {
 			throw new IOException("中断しました");
 		}
 
+		// 元に音声があったのに付けられなかったときだけ知らせる（元から無ければ正常）
+		boolean audioFailed = AudioTracks.hasAny(source) && !audioOk;
+
 		IfutoReplayClient.LOGGER.info("[ifuto-replay] 切り出しました: {} ({} ms, {} バイト, 音声 {})",
 				output.getFileName(), copy.durationMs, copy.bytes, audioOk ? "あり" : "なし");
-		return new Result(output, copy.durationMs, copy.bytes, audioOk, copy.truncated);
+		return new Result(output, copy.durationMs, copy.bytes, audioOk, copy.truncated, audioFailed);
 	}
 
 	/**
@@ -219,7 +228,8 @@ public final class ClipRemux {
 					return -1L;
 				}
 			}
-		} catch (IOException e) {
+		} catch (IOException | RuntimeException e) {
+			// 画面を開くときに呼ぶので、絶対に落とさない
 			return -1L;
 		}
 	}
@@ -387,7 +397,9 @@ public final class ClipRemux {
 		Inflater shared = scan.shared ? new Inflater() : null;
 
 		try (Cursor cursor = new Cursor(source, Long.MAX_VALUE, progress, PASS_COPY);
-				OutputStream fileOut = new BufferedOutputStream(Files.newOutputStream(output), 1 << 16)) {
+				// 新規のみ（ある物を壊さない。名前の重なりは呼び手が避ける）
+				OutputStream fileOut = new BufferedOutputStream(
+						Files.newOutputStream(output, StandardOpenOption.CREATE_NEW), 1 << 16)) {
 			ReplayDataOutput out = new ReplayDataOutput(fileOut);
 			boolean recordsC2S = (scan.flags & ReplayFormat.FLAG_HAS_C2S) != 0;
 
@@ -490,14 +502,21 @@ public final class ClipRemux {
 	private static void copyBlock(Cursor cursor, Emitter emitter, Plan plan) throws IOException {
 		long beforeT = cursor.timeMs;
 		BlockFrame block = cursor.readBlockFrame();
-		List<BlockEntry> entries = parseInner(block.inner);
+		List<Long> times;
 
-		if (entries.isEmpty()) {
+		try {
+			// まずは時刻だけ見る（中身の複写は作り直すときだけ。速い）
+			times = walkInner(block.inner);
+		} catch (IOException e) {
+			throw new TruncatedException();
+		}
+
+		if (times.isEmpty()) {
 			return;
 		}
 
-		long firstT = beforeT + entries.get(0).relativeMs;
-		long lastT = beforeT + entries.get(entries.size() - 1).relativeMs;
+		long firstT = beforeT + times.get(0);
+		long lastT = beforeT + times.get(times.size() - 1);
 		cursor.timeMs = lastT;
 
 		boolean allKept = true;
@@ -505,8 +524,8 @@ public final class ClipRemux {
 		long firstOut = -1L;
 		long lastOut = -1L;
 
-		for (BlockEntry entry : entries) {
-			long outT = plan.map(beforeT + entry.relativeMs);
+		for (long relativeMs : times) {
+			long outT = plan.map(beforeT + relativeMs);
 
 			if (outT < 0L) {
 				allKept = false;
@@ -528,10 +547,19 @@ public final class ClipRemux {
 		if (allKept && emitter.isContiguous(beforeT, firstT, firstOut)) {
 			// 全部残って時刻もつながっている → バイト列ごと写す（速い）
 			emitter.emitBlockVerbatim(block, firstT, firstOut, lastT, lastOut);
-		} else {
-			// 境界にかかった → 残す物だけ集めて作り直す
-			emitter.emitBlockRebuilt(entries, beforeT, plan);
+			return;
 		}
+
+		// 境界にかかった → 残す物だけ集めて作り直す
+		List<BlockEntry> entries;
+
+		try {
+			entries = parseInner(block.inner);
+		} catch (IOException e) {
+			throw new TruncatedException();
+		}
+
+		emitter.emitBlockRebuilt(entries, beforeT, plan);
 	}
 
 	private static void copyInput(Cursor cursor, Emitter emitter, Plan plan, int version) throws IOException {
@@ -956,7 +984,7 @@ public final class ClipRemux {
 
 			progress.onProgress(PASS_AUDIO, done, jobs.size());
 
-			if (!cutTrack(job[0], job[1], spans, config)) {
+			if (!cutTrack(job[0], job[1], spans, config, progress)) {
 				ok = false;
 			}
 
@@ -967,7 +995,8 @@ public final class ClipRemux {
 		return ok;
 	}
 
-	private static boolean cutTrack(Path input, Path output, List<Range> spans, ReplayConfig config) {
+	private static boolean cutTrack(Path input, Path output, List<Range> spans, ReplayConfig config,
+			Progress progress) {
 		List<String> args = new ArrayList<>();
 		args.add("-y");
 		args.add("-hide_banner");
@@ -1011,17 +1040,26 @@ public final class ClipRemux {
 			Process process = builder.start();
 			drain(process);
 
-			if (!process.waitFor(AUDIO_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
-				process.destroyForcibly();
-				return false;
+			// 少しずつ待つ（やめる・時間切れに気付くため）
+			long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(AUDIO_TIMEOUT_SECONDS);
+
+			while (process.isAlive()) {
+				if (progress.isCancelled() || System.nanoTime() >= deadline) {
+					process.destroyForcibly();
+					return false;
+				}
+
+				try {
+					Thread.sleep(200L);
+				} catch (InterruptedException e) {
+					Thread.currentThread().interrupt();
+					process.destroyForcibly();
+					return false;
+				}
 			}
 
 			return process.exitValue() == 0 && Files.isRegularFile(output);
-		} catch (IOException | InterruptedException e) {
-			if (e instanceof InterruptedException) {
-				Thread.currentThread().interrupt();
-			}
-
+		} catch (IOException e) {
 			IfutoReplayClient.LOGGER.warn("[ifuto-replay] 音声を切れませんでした", e);
 			return false;
 		}
@@ -1100,6 +1138,32 @@ public final class ClipRemux {
 		byte[] payload = new byte[0];
 	}
 
+	/** かたまりの中の時刻だけ見る（複写なし。そのまま写せるかの判定用） */
+	private static List<Long> walkInner(byte[] inner) throws IOException {
+		List<Long> times = new ArrayList<>();
+		int pos = 0;
+		long time = 0L;
+
+		while (pos < inner.length) {
+			int[] delta = readVarIntAt(inner, pos);
+			time += delta[0];
+			pos = delta[1];
+			pos = readVarIntAt(inner, pos)[1];
+
+			int[] length = readVarIntAt(inner, pos);
+			pos = length[1];
+
+			if (length[0] < 0 || length[0] > inner.length - pos) {
+				throw new IOException("かたまりが途中で終わっています");
+			}
+
+			pos += length[0];
+			times.add(time);
+		}
+
+		return times;
+	}
+
 	private static List<BlockEntry> parseInner(byte[] inner) throws IOException {
 		List<BlockEntry> entries = new ArrayList<>();
 		int pos = 0;
@@ -1161,6 +1225,7 @@ public final class ClipRemux {
 		private final int pass;
 		private final Inflater inflater = new Inflater();
 		private long readBytes;
+		private long lastReportBytes;
 		private long timeMs;
 		private int version = ReplayFormat.VERSION;
 		private int flags;
@@ -1228,7 +1293,9 @@ public final class ClipRemux {
 			this.readBytes++;
 			this.checkBudget();
 
-			if (this.progress != null) {
+			// 進捗は64KBごとに間引く（毎フレーム呼ぶとそれだけで遅くなる）
+			if (this.progress != null && this.readBytes - this.lastReportBytes >= 65536L) {
+				this.lastReportBytes = this.readBytes;
 				this.progress.onProgress(this.pass, this.readBytes, this.totalBytes);
 			}
 
@@ -1319,23 +1386,27 @@ public final class ClipRemux {
 				inner = this.readBytes(rawLength);
 			}
 
-			// 時刻だけ進める（中身は要らない）
-			int pos = 0;
+			// 時刻だけ進める（中身は要らない）。壊れていたら「ここまで」にする
+			try {
+				int pos = 0;
 
-			while (pos < inner.length) {
-				int[] delta = readVarIntAt(inner, pos);
-				this.timeMs += delta[0];
-				pos = delta[1];
-				pos = readVarIntAt(inner, pos)[1];
+				while (pos < inner.length) {
+					int[] delta = readVarIntAt(inner, pos);
+					this.timeMs += delta[0];
+					pos = delta[1];
+					pos = readVarIntAt(inner, pos)[1];
 
-				int[] length = readVarIntAt(inner, pos);
-				pos = length[1];
+					int[] length = readVarIntAt(inner, pos);
+					pos = length[1];
 
-				if (length[0] < 0 || length[0] > inner.length - pos) {
-					throw new EOFException();
+					if (length[0] < 0 || length[0] > inner.length - pos) {
+						throw new TruncatedException();
+					}
+
+					pos += length[0];
 				}
-
-				pos += length[0];
+			} catch (IOException e) {
+				throw new TruncatedException();
 			}
 		}
 

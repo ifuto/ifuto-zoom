@@ -120,9 +120,12 @@ public class EditProgressScreen extends Screen {
 
 		this.editor.playback().stop(new RecordingListScreen(new TitleScreen()));
 
+		String fileName = result.output().getFileName().toString();
 		Text message = result.truncated()
-				? Text.translatable("ifuto-replay.editor.done_truncated", result.output().getFileName().toString())
-				: Text.translatable("ifuto-replay.editor.done_message", result.output().getFileName().toString());
+				? Text.translatable("ifuto-replay.editor.done_truncated", fileName)
+				: result.audioFailed()
+						? Text.translatable("ifuto-replay.editor.done_audio_failed", fileName)
+						: Text.translatable("ifuto-replay.editor.done_message", fileName);
 
 		this.client.setScreen(new NoticeScreen(new RecordingListScreen(new TitleScreen()),
 				Text.translatable("ifuto-replay.editor.done_title"), message));
@@ -178,7 +181,14 @@ public class EditProgressScreen extends Screen {
 			}, "ifuto-replay-remux");
 
 			thread.setDaemon(true);
-			thread.start();
+
+			try {
+				thread.start();
+			} catch (Throwable t) {
+				// 起き上がらなくても待ちぼうけにしない
+				this.failure = t;
+				this.finished = true;
+			}
 		}
 
 		@Override
