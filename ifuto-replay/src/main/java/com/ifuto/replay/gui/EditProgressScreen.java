@@ -8,6 +8,7 @@ import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.screen.TitleScreen;
 import net.minecraft.text.Text;
+import org.jspecify.annotations.Nullable;
 
 import java.nio.file.Path;
 import java.util.List;
@@ -127,8 +128,8 @@ public class EditProgressScreen extends Screen {
 		private volatile long total = 1L;
 		private volatile boolean cancelRequested;
 		private volatile boolean finished;
-		private volatile @org.jspecify.annotations.Nullable Throwable failure;
-		private volatile @org.jspecify.annotations.Nullable ClipRemux.Result result;
+		private volatile @Nullable Throwable failure;
+		private volatile ClipRemux.@Nullable Result result;
 		private long lastReportMs;
 
 		Job(Path source, Path output, List<ClipRemux.Range> ranges) {

@@ -287,7 +287,7 @@ public final class RecordingSession {
 	 *
 	 * @return 写し。作れなかったら null
 	 */
-	public @Nullable WorldSnapshot.Snapshot buildSnapshot(MinecraftClient client) {
+	public WorldSnapshot.@Nullable Snapshot buildSnapshot(MinecraftClient client) {
 		if (this.stopping || client == null || this.config.snapshotRadius <= 0) {
 			return null;
 		}
