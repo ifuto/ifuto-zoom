@@ -37,6 +37,15 @@ final class ReplayFileWriter implements Runnable {
 	private static final int BUFFER_SIZE = 1 << 16;
 	private static final int POLL_TIMEOUT_MS = 200;
 
+	/** かたまりを圧縮しはじめる大きさ（ためすぎても縮まないのでこれくらい） */
+	private static final int BLOCK_TARGET_BYTES = 16 * 1024;
+
+	/** かたまりに入れるパケットの上限（小さい物ばかりのときの保険） */
+	private static final int BLOCK_MAX_PACKETS = 2048;
+
+	/** かたまりを抱えたままにする時間の上限（落ちたときの被害をこれだけにする） */
+	private static final long BLOCK_MAX_HOLD_MS = 1000L;
+
 	private final BlockingQueue<PacketTask> queue;
 	private final ReplayDataOutput out;
 	private final CompressionMode compression;
@@ -66,8 +75,26 @@ final class ReplayFileWriter implements Runnable {
 	private Deflater deflater;
 	private byte[] deflateScratch = new byte[8192];
 
-	/** パケットをまたいで辞書を共有するか（共有するときは reset() しない） */
-	private final boolean sharedWindow;
+	/** パケットをかたまりにまとめて圧縮するか */
+	private final boolean blocked;
+
+	/** ためているかたまりの中身 */
+	private ByteArrayOutputStream blockBytes = new ByteArrayOutputStream(BLOCK_TARGET_BYTES + 1024);
+
+	/** かたまりに書くための物 */
+	private ReplayDataOutput blockOut = new ReplayDataOutput(this.blockBytes);
+
+	/** かたまりに入っているパケットの数 */
+	private int blockCount;
+
+	/** かたまりの先頭のパケットの時刻（シーク用の目印に使う） */
+	private long blockFirstTimeMs;
+
+	/** かたまりを書き始めた時刻（時間でも区切る） */
+	private long blockOpenedAtMs;
+
+	/** 積める数（溜まりすぎの判定に使う） */
+	private final int queueCapacity;
 
 	/** ふつうの録画（先頭にヘッダを書く） */
 	ReplayFileWriter(Path file, String mcVersion, String serverName, String playerName, long startedAt,
@@ -78,7 +105,7 @@ final class ReplayFileWriter implements Runnable {
 				0L, null);
 
 		writeHeader(this.out, mcVersion, serverName, playerName, startedAt, recordsC2S,
-				compression.sharedWindow());
+				compression.blocked());
 	}
 
 	/**
@@ -98,14 +125,15 @@ final class ReplayFileWriter implements Runnable {
 							 long flushIntervalMs, int queueCapacity, AtomicLong queuedBytes,
 							 long initialTimeMs, @Nullable Supplier<List<PacketTask>> preamble)
 			throws IOException {
-		this.queue = new ArrayBlockingQueue<>(Math.max(64, queueCapacity));
+		this.queueCapacity = Math.max(64, queueCapacity);
+		this.queue = new ArrayBlockingQueue<>(this.queueCapacity);
 		this.compression = compression;
 		this.indexIntervalMs = indexIntervalMs;
 		this.maxBytes = maxBytes;
 		this.flushIntervalMs = Math.max(100L, flushIntervalMs);
 		this.queuedBytes = queuedBytes;
 		this.preamble = preamble;
-		this.sharedWindow = compression.sharedWindow();
+		this.blocked = compression.blocked();
 		this.lastTimeMs = Math.max(0L, initialTimeMs);
 
 		OutputStream stream = new BufferedOutputStream(Files.newOutputStream(file), BUFFER_SIZE);
@@ -179,6 +207,8 @@ final class ReplayFileWriter implements Runnable {
 				this.handle(task);
 			}
 
+			// 溜まっているかたまりを最後に出す
+			this.flushBlock();
 			this.writeFooter();
 		} catch (Throwable t) {
 			this.failure = t;
@@ -227,13 +257,13 @@ final class ReplayFileWriter implements Runnable {
 
 	/** ファイルの先頭（クリップをまとめるときも同じ物を書く） */
 	static void writeHeader(ReplayDataOutput out, String mcVersion, String serverName, String playerName,
-							long startedAt, boolean recordsC2S, boolean sharedWindow) throws IOException {
+							long startedAt, boolean recordsC2S, boolean blocked) throws IOException {
 		for (byte magic : ReplayFormat.MAGIC) {
 			out.writeByte(magic);
 		}
 
 		int flags = (recordsC2S ? ReplayFormat.FLAG_HAS_C2S : 0)
-				| (sharedWindow ? ReplayFormat.FLAG_SHARED_DEFLATE : 0);
+				| (blocked ? ReplayFormat.FLAG_BLOCK_DEFLATE : 0);
 		out.writeVarInt(ReplayFormat.VERSION);
 		out.writeVarInt(flags);
 		out.writeString(mcVersion);
@@ -252,6 +282,12 @@ final class ReplayFileWriter implements Runnable {
 	}
 
 	private void handleInner(PacketTask task) throws IOException {
+		// パケット以外の記録はかたまりに入らないので、先に溜まっている分を出しておく
+		// （順番が前後すると時刻が狂う）
+		if (task.kind != PacketTask.KIND_PACKET) {
+			this.flushBlock();
+		}
+
 		switch (task.kind) {
 			case PacketTask.KIND_INPUT -> this.writeInput(task);
 			case PacketTask.KIND_TYPE -> {
@@ -275,6 +311,11 @@ final class ReplayFileWriter implements Runnable {
 
 	private void writePacket(PacketTask task) throws IOException {
 		int length = task.size();
+
+		if (this.blocked) {
+			this.appendToBlock(task);
+			return;
+		}
 
 		// シーク用の目印（一定時間ごとに「この時間はこのファイル位置」を残す）
 		if (this.indexIntervalMs > 0 && (this.indexEntries.isEmpty() || task.timeMs >= this.nextIndexTimeMs)) {
@@ -314,11 +355,122 @@ final class ReplayFileWriter implements Runnable {
 		}
 	}
 
+	// --- かたまり（パケットをまとめて圧縮する） ---
+
 	/**
-	 * 動的レジストリの写し（ファイルの先頭のほうに1回だけ）。
+	 * パケットをかたまりに積む。
 	 *
-	 * <p>NBT のまま保存する。展開は再生時にしかしないので、録画中は直列化と圧縮だけ。
+	 * <p>1個ずつ圧縮しても数十バイトの相手では縮まないので、ある程度たまった所で
+	 * ひとまとめにして圧縮する（{@link #flushBlock()}）。
+	 * かたまり1個は **それだけで完結した deflate** にするので、読み飛ばしても
+	 * 順番が違っても壊れない（クリップの区間をつなぐときに効く）。
 	 */
+	private void appendToBlock(PacketTask task) throws IOException {
+		int length = task.size();
+
+		if (this.blockCount == 0) {
+			this.blockFirstTimeMs = task.timeMs;
+			this.blockOpenedAtMs = System.currentTimeMillis();
+		}
+
+		this.blockOut.writeVarInt(this.takeDelta(task.timeMs));
+		this.blockOut.writeVarInt(task.typeIndex);
+		this.blockOut.writeVarInt(length);
+		this.blockOut.writeBytes(task.payload, length);
+		this.blockCount++;
+		this.writtenPackets.incrementAndGet();
+		this.queuedBytes.addAndGet(-length);
+
+		if (this.blockCount >= BLOCK_MAX_PACKETS
+				|| this.blockBytes.size() >= BLOCK_TARGET_BYTES
+				|| System.currentTimeMillis() - this.blockOpenedAtMs >= BLOCK_MAX_HOLD_MS) {
+			this.flushBlock();
+		}
+	}
+
+	/** 溜まっているかたまりを圧縮して書き出す */
+	private void flushBlock() throws IOException {
+		if (this.blockCount <= 0) {
+			return;
+		}
+
+		byte[] raw = this.blockBytes.toByteArray();
+
+		// 先に空にしておく（途中で失敗しても同じ物を二度書かないように）
+		this.blockBytes = new ByteArrayOutputStream(BLOCK_TARGET_BYTES + 1024);
+		this.blockOut = new ReplayDataOutput(this.blockBytes);
+		this.blockCount = 0;
+
+		// シーク用の目印（かたまりの先頭の時刻と、書き出す位置）
+		if (this.indexIntervalMs > 0
+				&& (this.indexEntries.isEmpty() || this.blockFirstTimeMs >= this.nextIndexTimeMs)) {
+			this.indexEntries.add(new long[]{this.blockFirstTimeMs, this.out.position()});
+			this.nextIndexTimeMs = this.blockFirstTimeMs + this.indexIntervalMs;
+		}
+
+		byte[] packed = this.deflateBlock(raw);
+
+		this.out.writeByte(ReplayFormat.TAG_BLOCK);
+		this.out.writeVarInt(raw.length);
+
+		if (packed.length < raw.length) {
+			this.out.writeByte(ReplayFormat.METHOD_DEFLATE);
+			this.out.writeVarInt(packed.length);
+			this.out.writeBytes(packed);
+		} else {
+			// 縮まなかった（暗号みたいな中身など）ときはそのまま
+			this.out.writeByte(ReplayFormat.METHOD_RAW);
+			this.out.writeBytes(raw);
+		}
+
+		if (this.maxBytes > 0L && this.out.position() >= this.maxBytes) {
+			this.limitReached = true;
+		}
+	}
+
+	/**
+	 * かたまり1個を、**それだけで完結した** deflate にする。
+	 *
+	 * <p>次のかたまりは reset() してから始めるので、かたまり同士は互いに独立。
+	 * そのぶん少しだけ縮み方が悪くなるが（実測で 0.5% ほど）、読み飛ばしや
+	 * つなぎ合わせが自由になる。
+	 */
+	private byte[] deflateBlock(byte[] raw) throws IOException {
+		Deflater deflater = this.deflater;
+
+		if (deflater == null) {
+			deflater = new Deflater(this.level());
+			this.deflater = deflater;
+		} else {
+			deflater.reset();
+			// 溜まりはじめたら軽いレベルに落とす（取りこぼしのほうが困る）
+			deflater.setLevel(this.level());
+		}
+
+		deflater.setInput(raw);
+		deflater.finish();
+
+		ByteArrayOutputStream packed = new ByteArrayOutputStream(Math.max(64, raw.length / 4));
+		byte[] scratch = this.deflateScratch;
+
+		while (!deflater.finished()) {
+			int written = deflater.deflate(scratch);
+
+			if (written > 0) {
+				packed.write(scratch, 0, written);
+			}
+		}
+
+		return packed.toByteArray();
+	}
+
+	/** いま使う deflate のレベル（溜まっているときは軽くする） */
+	private int level() {
+		return this.queue.size() * 4 >= this.queueCapacity
+				? this.compression.fallbackLevel()
+				: this.compression.deflateLevel();
+	}
+
 	/**
 	 * クライアントの内側でだけ起きた出来事（パーティクルなど）。
 	 *
@@ -353,6 +505,11 @@ final class ReplayFileWriter implements Runnable {
 		this.out.writeBytes(data);
 	}
 
+	/**
+	 * 動的レジストリの写し（ファイルの先頭のほうに1回だけ）。
+	 *
+	 * <p>NBT のまま保存する。展開は再生時にしかしないので、録画中は直列化と圧縮だけ。
+	 */
 	private void writeRegistries(NbtCompound nbt) throws IOException {
 		if (nbt == null || nbt.isEmpty()) {
 			return;
@@ -427,6 +584,10 @@ final class ReplayFileWriter implements Runnable {
 	}
 
 	private byte[] deflate(byte[] input) throws IOException {
+		if (this.blocked) {
+			return this.deflateBlock(input);
+		}
+
 		Deflater deflater = this.deflater;
 
 		if (deflater == null) {

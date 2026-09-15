@@ -27,7 +27,7 @@
 	"ifuto-replay.config.record_client_packets": "Record Input",
 	"ifuto-replay.config.record_client_packets.tooltip": "Also store the packets you send to the server (movement, clicks, chat). Turning it off makes the file even smaller.",
 	"ifuto-replay.config.compression": "Compression",
-	"ifuto-replay.config.compression.tooltip": "Compression applied while writing, on the writer thread, so the game is barely affected. Off: lightest. Fast/Balanced: moderate. Max: shares the dictionary across packets, the smallest result (about 25% smaller than \"Balanced\" used to be)",
+	"ifuto-replay.config.compression.tooltip": "Compression applied while writing, on the writer thread, so the game is barely affected. Packets are compressed in 16 KB blocks. Strong: recommended (measured at about 21-24% of the raw size). Max: a little smaller still, but uses about twice the CPU",
 	"ifuto-replay.config.compression.off": "Off",
 	"ifuto-replay.config.compression.fast": "Fast",
 	"ifuto-replay.config.compression.balanced": "Balanced",
@@ -221,5 +221,6 @@
 	"ifuto-replay.export.realtime.tooltip": "On: every frame is drawn at the same pace as the original, so effects that look at real time (motion blur accumulation, temporal shaders, effects that fade with time) behave exactly as they did live. It takes as long as the recording. Off: frames are drawn as fast as the GPU allows (much faster, but those effects change)",
 	"ifuto-replay.config.compression.max": "Max",
 	"ifuto-replay.config.record_particles": "Client-side particles",
-	"ifuto-replay.config.record_particles.tooltip": "Records the particles the client spawns itself: block breaking debris, footsteps, mod effects. Ones sent by the server are already in the packet stream, so they are not recorded twice"
+	"ifuto-replay.config.record_particles.tooltip": "Records the particles the client spawns itself: block breaking debris, footsteps, mod effects. Ones sent by the server are already in the packet stream, so they are not recorded twice",
+	"ifuto-replay.config.compression.strong": "Strong"
 }

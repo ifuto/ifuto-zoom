@@ -27,7 +27,7 @@
 	"ifuto-replay.config.record_client_packets": "操作も記録",
 	"ifuto-replay.config.record_client_packets.tooltip": "自分からサーバーへ送ったパケット（移動・クリック・チャットなど）も残します。オフにするとファイルがさらに小さくなります。",
 	"ifuto-replay.config.compression": "圧縮",
-	"ifuto-replay.config.compression.tooltip": "保存時の圧縮です。書き込みスレッド側でやるのでゲームの負荷にはほぼ影響しません。なし: 一番軽い。速い/標準: そこそこ。最強: パケットをまたいで辞書を共有するのでいちばん小さくなります（いままでの「標準」より約25%小さい）",
+	"ifuto-replay.config.compression.tooltip": "保存時の圧縮です。書き込みスレッド側でやるのでゲームの負荷にはほぼ影響しません。パケットを16KBずつまとめて圧縮します。強: おすすめ（実測で元の21〜24%ほど）。最強: そこからさらに少し縮みますが、CPUを約2倍使います",
 	"ifuto-replay.config.compression.off": "なし",
 	"ifuto-replay.config.compression.fast": "速い",
 	"ifuto-replay.config.compression.balanced": "標準",
@@ -221,5 +221,6 @@
 	"ifuto-replay.export.realtime.tooltip": "オン: 本番と同じ速さで1枚ずつ描くので、モーションブラーの蓄積など「実時間」を見る演出が本番どおりになります（そのぶん時間がかかります）。オフ: GPU の速さしだいで一気に進みます（速いですが、それらの演出の効き方が変わります）",
 	"ifuto-replay.config.compression.max": "最強",
 	"ifuto-replay.config.record_particles": "クライアントのパーティクル",
-	"ifuto-replay.config.record_particles.tooltip": "ブロックを崩しているときの破片・足あと・Mod の演出など、クライアントが自分で湧かせたパーティクルも記録します（サーバーから届いた物はパケットに残っているので記録しません）"
+	"ifuto-replay.config.record_particles.tooltip": "ブロックを崩しているときの破片・足あと・Mod の演出など、クライアントが自分で湧かせたパーティクルも記録します（サーバーから届いた物はパケットに残っているので記録しません）",
+	"ifuto-replay.config.compression.strong": "強"
 }

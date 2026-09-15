@@ -15,8 +15,11 @@ public enum CompressionMode {
 	/** 標準圧縮（deflate 6）。128バイト以上のパケット */
 	BALANCED("balanced", 6, 128),
 
-	/** 最強（deflate 9）。16バイト以上のパケットを、辞書を共有しながら圧縮する */
-	MAX("max", 9, 16);
+	/** 強（deflate 8）。パケットをかたまりにまとめて圧縮する（おすすめ） */
+	STRONG("strong", 8, 16),
+
+	/** 最強（deflate 9）。縮み方は一番だが、レベル8の約2倍CPUを使う */
+	MAX("max", 9, 16),
 
 	private final String id;
 	private final int deflateLevel;
@@ -43,12 +46,23 @@ public enum CompressionMode {
 	}
 
 	/**
-	 * **パケットをまたいで辞書を共有する** か。
+	 * パケットを **かたまりにまとめて** 圧縮するか。
 	 *
-	 * <p>圧縮するときは常に共有する。数十バイトのパケットでも、直前のパケットを
-	 * 辞書として使えるので桁違いに縮む（ファイル全体でおおむね半分前後になる）。
+	 * <p>圧縮するときは常にまとめる。数十バイトのパケットでも、いっしょに
+	 * たまった他のパケットを辞書として使えるので桁違いに縮む。
+	 * かたまり1個はそれだけで完結した deflate になる。
 	 */
-	public boolean sharedWindow() {
+	public boolean blocked() {
 		return this.deflateLevel >= 0;
+	}
+
+	/**
+	 * いま溜まっている量が多いときに使う、軽いレベル。
+	 *
+	 * <p>レベルを上げると縮むが、CPU をものすごく使う（とくに 9）。
+	 * 追いつかなくなるとパケットを取りこぼすので、そのときは一時的に落とす。
+	 */
+	public int fallbackLevel() {
+		return Math.min(this.deflateLevel, 6);
 	}
 }

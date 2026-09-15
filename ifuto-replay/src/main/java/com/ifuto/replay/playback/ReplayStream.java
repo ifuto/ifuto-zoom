@@ -69,11 +69,23 @@ public final class ReplayStream implements Closeable {
 	private final Header header;
 	private final NbtCompound registries;
 
-	/** 圧縮がパケットをまたいで辞書を共有しているか（このときは順番に展開する必要がある） */
+	/** 圧縮がパケットをまたいで辞書を共有しているか（古い形式。このときは順番に展開する必要がある） */
 	private final boolean sharedWindow;
+
+	/** パケットがかたまり（{@link ReplayFormat#TAG_BLOCK}）にまとまっているか（新しい形式） */
+	private final boolean blocked;
 
 	/** 共有窓のときの展開器（ファイルの先頭から1本つながっている） */
 	private Inflater inflater;
+
+	/** いま読んでいるかたまりの、展開済みの中身 */
+	private byte[] blockBytes;
+
+	/** かたまりの、次に読む場所 */
+	private int blockPos;
+
+	/** かたまりの終わり */
+	private int blockLimit;
 
 	private final byte[] scratch = new byte[512];
 
@@ -129,6 +141,14 @@ public final class ReplayStream implements Closeable {
 						stream.readVarInt();
 						stream.skipExactly(stream.readVarInt());
 					}
+					case ReplayFormat.TAG_BLOCK -> {
+						int rawLength = stream.readVarInt();
+						int method = stream.in.readByte();
+						int stored = method == ReplayFormat.METHOD_DEFLATE ? stream.readVarInt() : rawLength;
+
+						// かたまりは1個で完結しているので、時刻を知りたいだけなら展開しなくてよい
+						stream.skipExactly(stored);
+					}
 					case ReplayFormat.TAG_INDEX -> durationMs = stream.readIndex();
 					case ReplayFormat.TAG_REGISTRIES -> {
 						int packed = stream.readVarInt();
@@ -160,9 +180,10 @@ public final class ReplayStream implements Closeable {
 
 		int version = this.readVarInt();
 		int flags = this.readVarInt();
-		this.sharedWindow = (flags & ReplayFormat.FLAG_SHARED_DEFLATE) != 0;
+		this.blocked = (flags & ReplayFormat.FLAG_BLOCK_DEFLATE) != 0;
+		this.sharedWindow = !this.blocked && (flags & ReplayFormat.FLAG_SHARED_DEFLATE) != 0;
 
-		if (this.sharedWindow) {
+		if (this.blocked || this.sharedWindow) {
 			this.inflater = new Inflater();
 		}
 
@@ -211,6 +232,11 @@ public final class ReplayStream implements Closeable {
 	 */
 	public boolean readNext(Sink sink) throws IOException {
 		while (!this.ended) {
+			// かたまりの中身が残っていたら、まずそれを出す（ファイルを読まない）
+			if (this.blockPos < this.blockLimit) {
+				return this.readFromBlock(sink);
+			}
+
 			int tag = this.in.read();
 
 			if (tag < 0 || tag == ReplayFormat.TAG_END) {
@@ -260,7 +286,8 @@ public final class ReplayStream implements Closeable {
 					this.in.readFully(data);
 					sink.local(this.timeMs, subtype, data, length);
 				}
-				case ReplayFormat.TAG_INDEX -> this.readIndex();
+					case ReplayFormat.TAG_BLOCK -> this.readBlock();
+					case ReplayFormat.TAG_INDEX -> this.readIndex();
 				case ReplayFormat.TAG_REGISTRIES -> {
 					int packed = this.readVarInt();
 					this.consumeDeflated(packed, this.readVarInt());
@@ -289,6 +316,69 @@ public final class ReplayStream implements Closeable {
 	}
 
 	// --- 中身 ---
+
+	/**
+	 * かたまり（{@link ReplayFormat#TAG_BLOCK}）を読んで、中身を記憶する。
+	 *
+	 * <p>ここで展開した中身は {@link #readFromBlock(Sink)} が1個ずつ読む。
+	 * かたまりは1個で完結しているので、読み飛ばしてもあとに影響しない。
+	 */
+	private void readBlock() throws IOException {
+		int rawLength = this.readVarInt();
+		int method = this.in.readByte();
+		byte[] raw;
+
+		if (method == ReplayFormat.METHOD_DEFLATE) {
+			int packedLength = this.readVarInt();
+			byte[] packed = new byte[packedLength];
+			this.in.readFully(packed);
+			raw = this.inflate(packed, rawLength);
+		} else {
+			raw = new byte[rawLength];
+			this.in.readFully(raw);
+		}
+
+		this.blockBytes = raw;
+		this.blockPos = 0;
+		this.blockLimit = rawLength;
+	}
+
+	/** かたまりの中身からパケットを1個読む */
+	private boolean readFromBlock(Sink sink) throws IOException {
+		this.timeMs += this.readBlockVarInt();
+		int typeIndex = this.readBlockVarInt();
+		int length = this.readBlockVarInt();
+
+		if (length < 0 || length > this.blockLimit - this.blockPos) {
+			throw new IOException("かたまりが途中で終わっています");
+		}
+
+		byte[] payload = new byte[length];
+		System.arraycopy(this.blockBytes, this.blockPos, payload, 0, length);
+		this.blockPos += length;
+		sink.packet(this.timeMs, typeIndex, payload, length);
+		return true;
+	}
+
+	/** かたまりの中から可変長intを読む */
+	private int readBlockVarInt() throws IOException {
+		int result = 0;
+
+		for (int shift = 0; shift < 35; shift += 7) {
+			if (this.blockPos >= this.blockLimit) {
+				throw new IOException("かたまりが途中で終わっています");
+			}
+
+			int b = this.blockBytes[this.blockPos++];
+			result |= (b & 0x7F) << shift;
+
+			if ((b & 0x80) == 0) {
+				return result;
+			}
+		}
+
+		throw new IOException("可変長intが壊れています");
+	}
 
 	/** シーク用の目印（総時間が欲しいので読む） */
 	private long readIndex() throws IOException {
@@ -365,13 +455,25 @@ public final class ReplayStream implements Closeable {
 	}
 
 	private byte[] inflate(byte[] packed, int rawLength) throws IOException {
+		if (this.blocked) {
+			// かたまりは1個で完結した deflate なので、使う前に必ずまっさらにする
+			Inflater inflater = this.inflater;
+			inflater.reset();
+			inflater.setInput(packed);
+			return this.inflateInto(inflater, rawLength);
+		}
+
 		if (!this.sharedWindow) {
 			return inflateStandalone(packed, rawLength);
 		}
 
+		Inflater shared = this.inflater;
+		shared.setInput(packed);
+		return this.inflateInto(shared, rawLength);
+	}
+
+	private byte[] inflateInto(Inflater inflater, int rawLength) throws IOException {
 		byte[] raw = new byte[rawLength];
-		Inflater inflater = this.inflater;
-		inflater.setInput(packed);
 		int read = 0;
 
 		while (read < rawLength) {

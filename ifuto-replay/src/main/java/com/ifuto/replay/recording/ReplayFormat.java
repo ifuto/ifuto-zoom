@@ -11,7 +11,7 @@ public final class ReplayFormat {
 	public static final byte[] MAGIC = {'I', 'F', 'R', 'P'};
 
 	/** フォーマットバージョン */
-	public static final int VERSION = 3;
+	public static final int VERSION = 4;
 
 	/** 保存ファイルの拡張子 */
 	public static final String FILE_EXTENSION = ".ifreplay";
@@ -44,6 +44,15 @@ public final class ReplayFormat {
 	public static final int FLAG_SHARED_DEFLATE = 1 << 1;
 
 	/**
+	 * パケットを **かたまり（{@link #TAG_BLOCK}）にまとめて** 圧縮してある。
+	 *
+	 * <p>この印があるファイルは、圧縮されている所がすべて「かたまり1個 = deflate 1本」
+	 * になっている。したがって読み飛ばしても・順番が違っても壊れない
+	 * （古い {@link #FLAG_SHARED_DEFLATE} はファイル全体で1本つながっていた）。
+	 */
+	public static final int FLAG_BLOCK_DEFLATE = 1 << 2;
+
+	/**
 	 * 動的レジストリの写し: 圧縮後の長さ / 展開後の長さ / deflate した NBT。
 	 *
 	 * <p>ヘッダのすぐ後ろに 1 回だけ書く。パケットを復元するにはサーバーから届いた
@@ -54,6 +63,20 @@ public final class ReplayFormat {
 
 	/** パケットにならない操作（マウス・キー・画面）の差分 */
 	public static final int TAG_INPUT = 6;
+
+	/**
+	 * **パケットをまとめて圧縮したかたまり**。
+	 *
+	 * <p>形式: 展開後の長さ / 格納方法 / 長さ / 中身。展開した中身には
+	 * 「経過時間差 / 種類index / 長さ / パケットの中身」が入っている数だけ並ぶ。
+	 *
+	 * <p>パケットを1個ずつ圧縮すると、数十バイトの相手を相手にすることになるので
+	 * ほとんど縮まない（区切りを入れる分だけ損をすることさえある）。そこで
+	 * ある程度たまった所でひとまとめにして圧縮する。かたまり1個は
+	 * **それだけで完結した deflate** なので、順番を気にせず扱える
+	 * （= クリップの区間をつないでも壊れない）。
+	 */
+	public static final int TAG_BLOCK = 8;
 
 	/**
 	 * **クライアントの内側でだけ** 起きた出来事（パーティクルなど）。
