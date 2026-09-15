@@ -101,6 +101,32 @@ public final class ReplayExporter {
 		return active;
 	}
 
+	/**
+	 * 書き出し中に、**ゲームの時計を1フレームぶん進ませたい長さ**（ミリ秒）。
+	 * 書き出しをしていないとき / 等倍速のときは 0（= 何もしない）。
+	 *
+	 * <p>書き出しを速くすると、実時間で進む量が「録画の時間」より少なくなる。
+	 * するとモーションブラーの蓄積や・時間で減衰する演出・シェーダーの時刻など
+	 * 「前のフレームからどれだけ経ったか」を見る物が、本番よりゆっくり進んでしまう。
+	 * そこで書き出し中だけ、ゲームに渡す経過時間を **録画のフレーム間隔** に
+	 * 固定する（= 蓄積の速度を上げる）。こうすると何倍速で出しても、
+	 * 「録画の1秒ぶん」に進む量が本番と同じになる。
+	 */
+	public static long desiredFrameMillis() {
+		ReplayExporter exporter = active;
+
+		if (exporter == null || exporter.state != State.RUNNING) {
+			return 0L;
+		}
+
+		// 等倍速のときは実時間と同じなので、わざわざ差し替えない
+		if (exporter.options.speedPercent() == 100) {
+			return 0L;
+		}
+
+		return exporter.frameStepMs;
+	}
+
 	public State state() {
 		return this.state;
 	}

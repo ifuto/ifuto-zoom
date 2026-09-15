@@ -17,6 +17,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Supplier;
@@ -46,6 +51,33 @@ final class ReplayFileWriter implements Runnable {
 	/** かたまりを抱えたままにする時間の上限（落ちたときの被害をこれだけにする） */
 	private static final long BLOCK_MAX_HOLD_MS = 1000L;
 
+	/** 同時に圧縮しっぱなしにしてよい数（メモリの上限。16KB × この数） */
+	private static final int MAX_IN_FLIGHT_BLOCKS = 8;
+
+	/**
+	 * 圧縮だけをやる係の数。
+	 *
+	 * <p>deflate 9 は1スレッドだと 1MB/s 前後しか出ないので、激しい戦闘の
+	 * ほうが追いつかれてしまう。そこで数人で分担する（かたまりは互いに独立
+	 * なので、バラバラに圧縮しても結果は同じ）。
+	 */
+	private static final int COMPRESSOR_THREADS =
+			Math.max(1, Math.min(4, Runtime.getRuntime().availableProcessors() - 1));
+
+	/** 圧縮だけをやる係（書き込みスレッドとは別。ゲーム側は絶対に待たせない） */
+	private static final ExecutorService COMPRESSORS = Executors.newFixedThreadPool(COMPRESSOR_THREADS,
+			(ThreadFactory) runnable -> {
+				Thread thread = new Thread(runnable, "ifuto-replay-compress");
+				thread.setDaemon(true);
+				return thread;
+			});
+
+	/** スレッドごとの deflate 器（複数人で使うので1人1個） */
+	private static final ThreadLocal<Deflater> DEFLATERS = ThreadLocal.withInitial(Deflater::new);
+
+	/** スレッドごとの作業用の入れ物 */
+	private static final ThreadLocal<byte[]> SCRATCHES = ThreadLocal.withInitial(() -> new byte[8192]);
+
 	private final BlockingQueue<PacketTask> queue;
 	private final ReplayDataOutput out;
 	private final CompressionMode compression;
@@ -72,8 +104,20 @@ final class ReplayFileWriter implements Runnable {
 	private long bytesSinceFlush;
 	private long requestedDurationMs;
 
-	private Deflater deflater;
-	private byte[] deflateScratch = new byte[8192];
+	/** 順番を守って書き出すための鍵 */
+	private final Object blockLock = new Object();
+
+	/** 圧縮が終わって書き出しを待っているかたまり（番号 → 中身） */
+	private final Map<Long, Block> readyBlocks = new HashMap<>();
+
+	/** 次に書き出すかたまりの番号 */
+	private long nextWriteSeq;
+
+	/** 次に振るかたまりの番号 */
+	private long nextSubmitSeq;
+
+	/** いま圧縮している数 */
+	private int inFlight;
 
 	/** パケットをかたまりにまとめて圧縮するか */
 	private final boolean blocked;
@@ -92,9 +136,6 @@ final class ReplayFileWriter implements Runnable {
 
 	/** かたまりを書き始めた時刻（時間でも区切る） */
 	private long blockOpenedAtMs;
-
-	/** 積める数（溜まりすぎの判定に使う） */
-	private final int queueCapacity;
 
 	/** ふつうの録画（先頭にヘッダを書く） */
 	ReplayFileWriter(Path file, String mcVersion, String serverName, String playerName, long startedAt,
@@ -125,8 +166,7 @@ final class ReplayFileWriter implements Runnable {
 							 long flushIntervalMs, int queueCapacity, AtomicLong queuedBytes,
 							 long initialTimeMs, @Nullable Supplier<List<PacketTask>> preamble)
 			throws IOException {
-		this.queueCapacity = Math.max(64, queueCapacity);
-		this.queue = new ArrayBlockingQueue<>(this.queueCapacity);
+		this.queue = new ArrayBlockingQueue<>(Math.max(64, queueCapacity));
 		this.compression = compression;
 		this.indexIntervalMs = indexIntervalMs;
 		this.maxBytes = maxBytes;
@@ -207,8 +247,9 @@ final class ReplayFileWriter implements Runnable {
 				this.handle(task);
 			}
 
-			// 溜まっているかたまりを最後に出す
+			// 溜まっているかたまりを、ぜんぶ圧縮し終えてから書き切る
 			this.flushBlock();
+			this.drainBlocks(true);
 			this.writeFooter();
 		} catch (Throwable t) {
 			this.failure = t;
@@ -218,11 +259,6 @@ final class ReplayFileWriter implements Runnable {
 				this.out.close();
 			} catch (IOException e) {
 				IfutoReplayClient.LOGGER.warn("[ifuto-replay] ファイルを閉じるときにエラー", e);
-			}
-
-			if (this.deflater != null) {
-				this.deflater.end();
-				this.deflater = null;
 			}
 		}
 	}
@@ -282,10 +318,11 @@ final class ReplayFileWriter implements Runnable {
 	}
 
 	private void handleInner(PacketTask task) throws IOException {
-		// パケット以外の記録はかたまりに入らないので、先に溜まっている分を出しておく
-		// （順番が前後すると時刻が狂う）
+		// パケット以外の記録はかたまりに入らないので、先に溜まっている分を
+		// **書き切り** しておく（順番が前後すると時刻が狂う）
 		if (task.kind != PacketTask.KIND_PACKET) {
 			this.flushBlock();
+			this.drainBlocks(true);
 		}
 
 		switch (task.kind) {
@@ -388,7 +425,12 @@ final class ReplayFileWriter implements Runnable {
 		}
 	}
 
-	/** 溜まっているかたまりを圧縮して書き出す */
+	/**
+	 * 溜まっているかたまりを **圧縮係に渡す**。
+	 *
+	 * <p>ここでは圧縮を待たない（待つとパケットを取りこぼす）。書き出すのは
+	 * 圧縮が終わった物から順番に {@link #drainBlocks(boolean)} がやる。
+	 */
 	private void flushBlock() throws IOException {
 		if (this.blockCount <= 0) {
 			return;
@@ -401,19 +443,99 @@ final class ReplayFileWriter implements Runnable {
 		this.blockOut = new ReplayDataOutput(this.blockBytes);
 		this.blockCount = 0;
 
-		// シーク用の目印（かたまりの先頭の時刻と、書き出す位置）
-		if (this.indexIntervalMs > 0
-				&& (this.indexEntries.isEmpty() || this.blockFirstTimeMs >= this.nextIndexTimeMs)) {
-			this.indexEntries.add(new long[]{this.blockFirstTimeMs, this.out.position()});
-			this.nextIndexTimeMs = this.blockFirstTimeMs + this.indexIntervalMs;
+		Block block;
+
+		synchronized (this.blockLock) {
+			block = new Block(this.nextSubmitSeq++, this.blockFirstTimeMs, raw);
+			this.inFlight++;
 		}
 
-		byte[] packed = this.deflateBlock(raw);
+		if (this.inFlight > MAX_IN_FLIGHT_BLOCKS) {
+			// 追いついていないので自分でやる（溜めすぎない・取りこぼさない）
+			this.compressBlock(block);
+		} else {
+			try {
+				COMPRESSORS.execute(() -> this.compressBlock(block));
+			} catch (Throwable t) {
+				this.compressBlock(block);
+			}
+		}
+
+		this.drainBlocks(false);
+	}
+
+	/**
+	 * かたまり1個を、**それだけで完結した deflate** にする（圧縮係が呼ぶ）。
+	 *
+	 * <p>次のかたまりは reset() してから始めるので、かたまり同士は互いに独立。
+	 * そのぶん少しだけ縮み方が悪くなるが（実測で 0.5% ほど）、読み飛ばしや
+	 * つなぎ合わせが自由になる。
+	 */
+	private void compressBlock(Block block) {
+		byte[] packed;
+
+		try {
+			packed = deflateWith(block.raw, this.compression.deflateLevel());
+		} catch (Throwable t) {
+			// ここで落とすと録画が全部だめになるので、縮まなくても書き切る
+			IfutoReplayClient.LOGGER.warn("[ifuto-replay] かたまりを圧縮できなかったのでそのまま書きます", t);
+			packed = null;
+		}
+
+		block.packed = packed;
+
+		synchronized (this.blockLock) {
+			this.readyBlocks.put(block.seq, block);
+			this.inFlight--;
+			this.blockLock.notifyAll();
+		}
+	}
+
+	/** 圧縮が終わったかたまりを、**順番どおりに** 書き出す */
+	private void drainBlocks(boolean waitAll) throws IOException {
+		while (true) {
+			Block block;
+
+			synchronized (this.blockLock) {
+				block = this.readyBlocks.remove(this.nextWriteSeq);
+
+				if (block == null) {
+					if (!waitAll || this.inFlight <= 0) {
+						return;
+					}
+
+					try {
+						this.blockLock.wait(50L);
+					} catch (InterruptedException e) {
+						Thread.currentThread().interrupt();
+						return;
+					}
+
+					continue;
+				}
+			}
+
+			this.writeBlock(block);
+			this.nextWriteSeq++;
+		}
+	}
+
+	/** かたまり1個をファイルに書く */
+	private void writeBlock(Block block) throws IOException {
+		byte[] raw = block.raw;
+		byte[] packed = block.packed;
+
+		// シーク用の目印（かたまりの先頭の時刻と、書き出す位置）
+		if (this.indexIntervalMs > 0
+				&& (this.indexEntries.isEmpty() || block.firstTimeMs >= this.nextIndexTimeMs)) {
+			this.indexEntries.add(new long[]{block.firstTimeMs, this.out.position()});
+			this.nextIndexTimeMs = block.firstTimeMs + this.indexIntervalMs;
+		}
 
 		this.out.writeByte(ReplayFormat.TAG_BLOCK);
 		this.out.writeVarInt(raw.length);
 
-		if (packed.length < raw.length) {
+		if (packed != null && packed.length < raw.length) {
 			this.out.writeByte(ReplayFormat.METHOD_DEFLATE);
 			this.out.writeVarInt(packed.length);
 			this.out.writeBytes(packed);
@@ -428,30 +550,16 @@ final class ReplayFileWriter implements Runnable {
 		}
 	}
 
-	/**
-	 * かたまり1個を、**それだけで完結した** deflate にする。
-	 *
-	 * <p>次のかたまりは reset() してから始めるので、かたまり同士は互いに独立。
-	 * そのぶん少しだけ縮み方が悪くなるが（実測で 0.5% ほど）、読み飛ばしや
-	 * つなぎ合わせが自由になる。
-	 */
-	private byte[] deflateBlock(byte[] raw) throws IOException {
-		Deflater deflater = this.deflater;
-
-		if (deflater == null) {
-			deflater = new Deflater(this.level());
-			this.deflater = deflater;
-		} else {
-			deflater.reset();
-			// 溜まりはじめたら軽いレベルに落とす（取りこぼしのほうが困る）
-			deflater.setLevel(this.level());
-		}
-
+	/** かたまり1個を deflate する（スレッドごとの器を使う） */
+	private static byte[] deflateWith(byte[] raw, int level) throws IOException {
+		Deflater deflater = DEFLATERS.get();
+		deflater.reset();
+		deflater.setLevel(level);
 		deflater.setInput(raw);
 		deflater.finish();
 
 		ByteArrayOutputStream packed = new ByteArrayOutputStream(Math.max(64, raw.length / 4));
-		byte[] scratch = this.deflateScratch;
+		byte[] scratch = SCRATCHES.get();
 
 		while (!deflater.finished()) {
 			int written = deflater.deflate(scratch);
@@ -462,13 +570,6 @@ final class ReplayFileWriter implements Runnable {
 		}
 
 		return packed.toByteArray();
-	}
-
-	/** いま使う deflate のレベル（溜まっているときは軽くする） */
-	private int level() {
-		return this.queue.size() * 4 >= this.queueCapacity
-				? this.compression.fallbackLevel()
-				: this.compression.deflateLevel();
 	}
 
 	/**
@@ -584,37 +685,21 @@ final class ReplayFileWriter implements Runnable {
 	}
 
 	private byte[] deflate(byte[] input) throws IOException {
-		if (this.blocked) {
-			return this.deflateBlock(input);
+		return deflateWith(input, this.compression.deflateLevel());
+	}
+
+	/** 圧縮まわし中のかたまり（番号・先頭の時刻・中身・圧縮後） */
+	private static final class Block {
+		private final long seq;
+		private final long firstTimeMs;
+		private final byte[] raw;
+		private volatile byte[] packed;
+
+		Block(long seq, long firstTimeMs, byte[] raw) {
+			this.seq = seq;
+			this.firstTimeMs = firstTimeMs;
+			this.raw = raw;
 		}
-
-		// かたまり方式でないとき（= 圧縮しない設定）は、1個で完結した deflate にする
-		Deflater deflater = this.deflater;
-
-		if (deflater == null) {
-			deflater = new Deflater(this.compression.deflateLevel());
-			this.deflater = deflater;
-		} else {
-			deflater.reset();
-		}
-
-		deflater.setInput(input);
-		deflater.finish();
-
-		ByteArrayOutputStream packed = new ByteArrayOutputStream(Math.max(64, input.length / 2));
-		byte[] scratch = this.deflateScratch;
-
-		while (!deflater.finished()) {
-			int written = deflater.deflate(scratch);
-
-			if (written > 0) {
-				packed.write(scratch, 0, written);
-			}
-		}
-
-		// 次のためにリセット（中身はもう取り出してある）
-		deflater.reset();
-		return packed.toByteArray();
 	}
 
 	// --- 外から見える状態 ---

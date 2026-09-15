@@ -15,10 +15,10 @@ public enum CompressionMode {
 	/** 標準圧縮（deflate 6）。128バイト以上のパケット */
 	BALANCED("balanced", 6, 128),
 
-	/** 強（deflate 8）。パケットをかたまりにまとめて圧縮する（おすすめ） */
+	/** 強（deflate 8）。パケットをかたまりにまとめて圧縮する */
 	STRONG("strong", 8, 16),
 
-	/** 最強（deflate 9）。縮み方は一番だが、レベル8の約2倍CPUを使う */
+	/** 最強（deflate 9）。縮み方は一番。重いが複数人で分担するので取りこぼさない */
 	MAX("max", 9, 16);
 
 	private final String id;
@@ -54,15 +54,5 @@ public enum CompressionMode {
 	 */
 	public boolean blocked() {
 		return this.deflateLevel >= 0;
-	}
-
-	/**
-	 * いま溜まっている量が多いときに使う、軽いレベル。
-	 *
-	 * <p>レベルを上げると縮むが、CPU をものすごく使う（とくに 9）。
-	 * 追いつかなくなるとパケットを取りこぼすので、そのときは一時的に落とす。
-	 */
-	public int fallbackLevel() {
-		return Math.min(this.deflateLevel, 6);
 	}
 }

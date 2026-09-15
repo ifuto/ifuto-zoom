@@ -11,6 +11,7 @@
 		"MinecraftClientAccessor",
 		"MouseAccessor",
 		"ParticleManagerMixin",
+		"RenderTickCounterMixin",
 		"SoundEngineMixin"
 	],
 	"injectors": {
