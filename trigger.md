@@ -15,4 +15,4 @@ java: 21
 workdir: ifuto-replay
 artifact_path: ifuto-replay/build/libs/*.jar
 
-note: Clip Editor標準スコープ+区間改善2件
+note: Nullable位置修正
