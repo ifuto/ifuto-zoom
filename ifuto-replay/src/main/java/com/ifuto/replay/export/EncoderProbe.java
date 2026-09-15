@@ -63,8 +63,14 @@ public final class EncoderProbe {
 	}
 
 	private static boolean available(String ffmpegPath, String encoder) {
+		// 「含まれている」だけでは足りない（GPU が無い機種でも名前はある）。
+		// 短いテスト絵を実際に符号化して、動く物だけ使う
 		try {
-			ProcessBuilder builder = new ProcessBuilder(ffmpegPath, "-hide_banner", "-h", "encoder=" + encoder);
+			ProcessBuilder builder = new ProcessBuilder(ffmpegPath,
+					"-hide_banner", "-loglevel", "error",
+					"-f", "lavfi", "-i", "testsrc=duration=0.5:size=320x240:rate=10",
+					"-c:v", encoder, "-pix_fmt", "yuv420p",
+					"-f", "null", "-");
 			builder.redirectErrorStream(true);
 			Process process = builder.start();
 			drain(process);

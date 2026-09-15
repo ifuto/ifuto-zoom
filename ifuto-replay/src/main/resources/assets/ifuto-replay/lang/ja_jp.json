@@ -261,5 +261,6 @@
 	"ifuto-replay.editor.nospace_title": "空き容量が足りません",
 	"ifuto-replay.editor.nospace_message": "切り出すには元ファイルぶんの空きが必要です",
 	"ifuto-replay.export.hwaccel": "GPUエンコード",
-	"ifuto-replay.export.hwaccel.tooltip": "GPUでmp4を作る（速い。使えなければCPUに切り替わる）"
+	"ifuto-replay.export.hwaccel.tooltip": "GPUでmp4を作る（速い。使えなければCPUに切り替わる）",
+	"ifuto-replay.export.error_encoder": "（エンコーダー: %s）"
 }

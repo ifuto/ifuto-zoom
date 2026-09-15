@@ -54,6 +54,7 @@ public final class ReplayExporter {
 
 	private Process process;
 	private OutputStream ffmpegInput;
+	private String encoderName = "libx264";
 	private byte[] frameBytes;
 	private int frameIndex;
 	private boolean captureRequested;
@@ -226,6 +227,8 @@ public final class ReplayExporter {
 				hardware = true;
 			}
 		}
+
+		this.encoderName = encoder;
 
 		IfutoReplayClient.LOGGER.info("[ifuto-replay] 書き出しのエンコーダー: {}（{}）",
 				encoder, hardware ? "GPU" : "CPU");
@@ -561,8 +564,10 @@ public final class ReplayExporter {
 
 			if (exit != 0) {
 				// 終了コードを見ないと、壊れた動画を「できた」と言ってしまう
-				IfutoReplayClient.LOGGER.error("[ifuto-replay] ffmpeg が異常終了しました (exit {})", exit);
-				this.failureMessage = Text.translatable("ifuto-replay.export.error_ffmpeg", exit).getString();
+				IfutoReplayClient.LOGGER.error("[ifuto-replay] ffmpeg が異常終了しました (exit {}, encoder {})",
+						exit, this.encoderName);
+				this.failureMessage = Text.translatable("ifuto-replay.export.error_ffmpeg", exit).getString()
+						+ Text.translatable("ifuto-replay.export.error_encoder", this.encoderName).getString();
 				this.state = State.FAILED;
 				return;
 			}

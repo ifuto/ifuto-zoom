@@ -261,5 +261,6 @@
 	"ifuto-replay.editor.nospace_title": "Not enough free space",
 	"ifuto-replay.editor.nospace_message": "Cutting needs as much free space as the source file",
 	"ifuto-replay.export.hwaccel": "Hardware encoding",
-	"ifuto-replay.export.hwaccel.tooltip": "Encode with the GPU (fast; falls back to CPU if unavailable)"
+	"ifuto-replay.export.hwaccel.tooltip": "Encode with the GPU (fast; falls back to CPU if unavailable)",
+	"ifuto-replay.export.error_encoder": " (encoder: %s)"
 }
