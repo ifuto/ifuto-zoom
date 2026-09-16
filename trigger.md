@@ -15,4 +15,4 @@ java: 21
 workdir: ifuto-replay
 artifact_path: ifuto-replay/build/libs/*.jar
 
-note: 再生不能根絶
+note: return漏れ修正
