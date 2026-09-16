@@ -1,6 +1,7 @@
 package com.ifuto.replay.recording;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufAllocator;
 import net.minecraft.nbt.NbtCompound;
 
 /**
@@ -28,6 +29,9 @@ final class PacketTask {
 	/** クライアントの内側でだけ起きた出来事（パーティクルなど） */
 	static final int KIND_LOCAL = 5;
 
+	/** 世界の写し（直列化が重いので書き込みスレッドでほどく。順番はキューが守る） */
+	static final int KIND_SNAPSHOT = 6;
+
 	final int kind;
 
 	/** 録画開始からの経過ミリ秒 */
@@ -51,8 +55,21 @@ final class PacketTask {
 	/** 入力イベントの中身（KIND_INPUT のときだけ） */
 	final byte[] data;
 
+	/** 世界の写し（KIND_SNAPSHOT のときだけ） */
+	final WorldSnapshot.Snapshot snapshot;
+
+	/** 写しをほどく変換器（KIND_SNAPSHOT のときだけ） */
+	final PacketEncoder encoder;
+
+	/** 写しの各パケットの種類番号（登録に失敗した物は -1。KIND_SNAPSHOT のときだけ） */
+	final int[] typeIndices;
+
+	/** 種類ごとの「前回の大きさ」（入れ物の目安。KIND_SNAPSHOT のときだけ） */
+	final int[] sizeHints;
+
 	private PacketTask(int kind, long timeMs, int typeIndex, int direction, ByteBuf payload, String text,
-					   NbtCompound nbt, byte[] data) {
+					   NbtCompound nbt, byte[] data, WorldSnapshot.Snapshot snapshot, PacketEncoder encoder,
+					   int[] typeIndices, int[] sizeHints) {
 		this.kind = kind;
 		this.timeMs = timeMs;
 		this.typeIndex = typeIndex;
@@ -61,30 +78,46 @@ final class PacketTask {
 		this.text = text;
 		this.nbt = nbt;
 		this.data = data;
+		this.snapshot = snapshot;
+		this.encoder = encoder;
+		this.typeIndices = typeIndices;
+		this.sizeHints = sizeHints;
 	}
 
 	static PacketTask type(int index, int direction, String identifier) {
-		return new PacketTask(KIND_TYPE, 0L, index, direction, null, identifier, null, null);
+		return new PacketTask(KIND_TYPE, 0L, index, direction, null, identifier, null, null,
+				null, null, null, null);
 	}
 
 	static PacketTask packet(long timeMs, int typeIndex, int direction, ByteBuf payload) {
-		return new PacketTask(KIND_PACKET, timeMs, typeIndex, direction, payload, null, null, null);
+		return new PacketTask(KIND_PACKET, timeMs, typeIndex, direction, payload, null, null, null,
+				null, null, null, null);
 	}
 
 	static PacketTask registries(NbtCompound nbt) {
-		return new PacketTask(KIND_REGISTRIES, 0L, 0, 0, null, null, nbt, null);
+		return new PacketTask(KIND_REGISTRIES, 0L, 0, 0, null, null, nbt, null,
+				null, null, null, null);
 	}
 
 	static PacketTask marker(long timeMs, String name) {
-		return new PacketTask(KIND_MARKER, timeMs, 0, 0, null, name, null, null);
+		return new PacketTask(KIND_MARKER, timeMs, 0, 0, null, name, null, null,
+				null, null, null, null);
 	}
 
 	static PacketTask input(long timeMs, byte[] data) {
-		return new PacketTask(KIND_INPUT, timeMs, 0, 0, null, null, null, data);
+		return new PacketTask(KIND_INPUT, timeMs, 0, 0, null, null, null, data,
+				null, null, null, null);
 	}
 
 	static PacketTask local(long timeMs, int subtype, byte[] data) {
-		return new PacketTask(KIND_LOCAL, timeMs, subtype, 0, null, null, null, data);
+		return new PacketTask(KIND_LOCAL, timeMs, subtype, 0, null, null, null, data,
+				null, null, null, null);
+	}
+
+	static PacketTask snapshot(long timeMs, WorldSnapshot.Snapshot snapshot, PacketEncoder encoder,
+			int[] typeIndices, int[] sizeHints) {
+		return new PacketTask(KIND_SNAPSHOT, timeMs, 0, 0, null, null, null, null,
+				snapshot, encoder, typeIndices, sizeHints);
 	}
 
 	int size() {
@@ -93,5 +126,31 @@ final class PacketTask {
 		}
 
 		return this.data == null ? 0 : this.data.length;
+	}
+
+	/** 小さい入れ物の初期値（ふつうのパケットはこれで足りる） */
+	static final int INITIAL_BUFFER_SIZE = 256;
+
+	/** 目安どおりに取るときの上限（変な1発でプールを食いつぶさない） */
+	static final int MAX_INITIAL_BUFFER_SIZE = 256 * 1024;
+
+	/**
+	 * 「前回この種類がこの大きさだった」を目安に入れ物を取る。
+	 *
+	 * <p>小さい入れ物から育て直すと、チャンク等のたびに十数回の作り直し＋コピーが
+	 * 起きる（ネットワークスレッドで起きるので地味に効く）。目安が外れても
+	 * ただ育ち直すだけなので、古い配列を見ても壊れない。
+	 */
+	static ByteBuf sizedBuffer(int[] hints, int index) {
+		int hint = hints != null && index >= 0 && index < hints.length ? hints[index] : 0;
+		int initial = Math.min(Math.max(INITIAL_BUFFER_SIZE, hint), MAX_INITIAL_BUFFER_SIZE);
+		return ByteBufAllocator.DEFAULT.buffer(initial);
+	}
+
+	/** 今回の大きさを覚える（ただの目安なので、競合しても壊れない） */
+	static void noteSize(int[] hints, int index, int size) {
+		if (hints != null && index >= 0 && index < hints.length) {
+			hints[index] = size;
+		}
 	}
 }

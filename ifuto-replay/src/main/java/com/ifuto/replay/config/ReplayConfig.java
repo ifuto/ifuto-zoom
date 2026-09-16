@@ -69,8 +69,14 @@ public class ReplayConfig {
 
 	// --- 軽さの調整 ---
 
-	/** 保存時の圧縮 */
-	public CompressionMode compression = CompressionMode.MAX;
+	/**
+	 * 保存時にかける圧縮。既定は「強」（deflate 8）。
+	 *
+	 * <p>「最強」（9）は「強」より少し縮むかわりに倍近く重い。書き込みスレッド側の
+	 * 仕事ではあるが、コアの少ない PC ではゲーム側の分まで食うので既定は「強」にする。
+	 * ファイルの大きさは 1% も違わない。軽さ優先なら「標準」以下を選ぶ。
+	 */
+	public CompressionMode compression = CompressionMode.STRONG;
 
 	/** 書き込み待ちのキューに積めるパケット数（あふれた分は捨てて、ゲーム側は止めない） */
 	public int queuePackets = 4096;

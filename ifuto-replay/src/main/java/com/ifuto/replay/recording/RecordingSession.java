@@ -3,7 +3,6 @@ package com.ifuto.replay.recording;
 import com.ifuto.replay.IfutoReplayClient;
 import com.ifuto.replay.config.ReplayConfig;
 import io.netty.buffer.ByteBuf;
-import io.netty.buffer.ByteBufAllocator;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayNetworkHandler;
 import net.minecraft.nbt.NbtCompound;
@@ -30,7 +29,13 @@ import java.util.concurrent.atomic.AtomicLong;
  * その場でやる。パケットはあとから中身が変わる可能性があるので、後回しにできない。
  */
 public final class RecordingSession {
-	private static final int INITIAL_BUFFER_SIZE = 64;
+	/**
+	 * 種類番号ごとの「前回の大きさ」（入れ物の目安）。
+	 *
+	 * <p>伸ばすのは登録のときだけ（ロックの中）。読む・書くはただの目安なので
+	 * ロックしない（古い配列を見ても、入れ物が合わないだけで壊れない）。
+	 */
+	private volatile int[] sizeHints = new int[128];
 
 	private final Path file;
 	private final long startedAtEpoch;
@@ -235,7 +240,8 @@ public final class RecordingSession {
 			return;
 		}
 
-		ByteBuf buffer = ByteBufAllocator.DEFAULT.buffer(INITIAL_BUFFER_SIZE);
+		// 前回と同じくらいの入れ物を先に取る（育て直しのコピーをなくす）
+		ByteBuf buffer = PacketTask.sizedBuffer(this.sizeHints, info.index());
 
 		try {
 			enc.encode(buffer, packet, outbound);
@@ -246,6 +252,7 @@ public final class RecordingSession {
 		}
 
 		int size = buffer.readableBytes();
+		PacketTask.noteSize(this.sizeHints, info.index(), size);
 		int direction = outbound ? ReplayFormat.DIRECTION_C2S : ReplayFormat.DIRECTION_S2C;
 		PacketTask task = PacketTask.packet(timeMs, info.index(), direction, buffer);
 
@@ -311,25 +318,58 @@ public final class RecordingSession {
 			return;
 		}
 
+		// 写しの直列化は重い（チャンク169個で数百ms）ので、クライアントスレッドでは
+		// 「種類の登録」だけ済ませて、本体は書き込みスレッドに回す。種類の定義を
+		// 関門より先に積むので、書き込み側は番号だけ見れば書ける。順番はキューが守る。
+		PacketEncoder enc = this.encoder;
+		List<Packet<?>> packets = snapshot.packets();
+
+		if (enc == null) {
+			this.errorCount.addAndGet(packets.size());
+			return;
+		}
+
 		try {
 			long startedAt = System.nanoTime();
 			this.addMarker(ReplayFormat.SNAP_MARKER);
 
-			long droppedBefore = this.droppedCount.get();
+			int[] indices = new int[packets.size()];
+			int dropped = 0;
 
-			for (Packet<?> packet : snapshot.packets()) {
-				this.capture(packet, false, this.boundHandler);
+			for (int i = 0; i < packets.size(); i++) {
+				Packet<?> packet = packets.get(i);
+				TypeInfo info = packet == null ? null : this.types.get(packet.getPacketType());
+
+				if (info == null && packet != null) {
+					info = this.register(packet.getPacketType(), false);
+				}
+
+				if (info == null) {
+					indices[i] = -1;
+					dropped++;
+				} else {
+					indices[i] = info.index();
+				}
 			}
 
-			long dropped = this.droppedCount.get() - droppedBefore;
+			long timeMs = System.currentTimeMillis() - this.startedAt;
 
-			if (dropped > 0L) {
+			if (!this.offer(PacketTask.snapshot(timeMs, snapshot, enc, indices, this.sizeHints))) {
+				this.droppedCount.addAndGet(packets.size());
+				IfutoReplayClient.LOGGER.warn("[ifuto-replay] 世界の写しを書ききれませんでした"
+						+ "（書き出しが追いついていません。地形が一部欠けます）");
+				return;
+			}
+
+			if (dropped > 0) {
+				this.droppedCount.addAndGet(dropped);
 				IfutoReplayClient.LOGGER.warn("[ifuto-replay] 世界の写しのうち {} パケットを書ききれませんでした"
 						+ "（書き出しが追いついていません。地形が一部欠けます）", dropped);
 			}
 
+			this.packetCount.addAndGet(packets.size() - dropped);
 			IfutoReplayClient.LOGGER.info("[ifuto-replay] 世界の写しを保存しました (チャンク {}, エンティティ {}, {} パケット, {} ms)",
-					snapshot.chunks(), snapshot.entities(), snapshot.packets().size(),
+					snapshot.chunks(), snapshot.entities(), packets.size(),
 					(System.nanoTime() - startedAt) / 1_000_000L);
 		} catch (Throwable t) {
 			IfutoReplayClient.LOGGER.warn("[ifuto-replay] 世界の写しを書けませんでした", t);
@@ -604,6 +644,13 @@ public final class RecordingSession {
 			int index = this.nextTypeIndex.getAndIncrement();
 			int direction = outbound ? ReplayFormat.DIRECTION_C2S : ReplayFormat.DIRECTION_S2C;
 			this.types.put(type, new TypeInfo(index, isNoisy(identifier), direction, identifier));
+
+			// 目安の置き場も番号に追従させる（ここはロックの中なので安全）
+			if (index >= this.sizeHints.length) {
+				int[] grown = new int[Math.max(index + 1, this.sizeHints.length * 2)];
+				System.arraycopy(this.sizeHints, 0, grown, 0, this.sizeHints.length);
+				this.sizeHints = grown;
+			}
 
 			// 本体より先に定義が書かれるように、同じキューに順番で積む
 			if (!this.offer(PacketTask.type(index, direction, identifier))) {

@@ -2,8 +2,10 @@ package com.ifuto.replay.recording;
 
 import com.ifuto.replay.IfutoReplayClient;
 import com.ifuto.replay.config.CompressionMode;
+import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
 import net.minecraft.nbt.NbtCompound;
+import net.minecraft.network.packet.Packet;
 import net.minecraft.nbt.NbtIo;
 
 import java.io.BufferedOutputStream;
@@ -346,8 +348,9 @@ final class ReplayFileWriter implements Runnable {
 				this.out.writeByte(task.direction);
 				this.out.writeString(task.text);
 			}
-			case PacketTask.KIND_PACKET -> this.writePacket(task);
-			case PacketTask.KIND_LOCAL -> this.writeLocal(task);
+		case PacketTask.KIND_PACKET -> this.writePacket(task);
+		case PacketTask.KIND_SNAPSHOT -> this.writeSnapshot(task);
+		case PacketTask.KIND_LOCAL -> this.writeLocal(task);
 			case PacketTask.KIND_REGISTRIES -> this.writeRegistries(task.nbt);
 			case PacketTask.KIND_MARKER -> {
 				this.out.writeByte(ReplayFormat.TAG_MARKER);
@@ -583,6 +586,58 @@ final class ReplayFileWriter implements Runnable {
 		}
 
 		return packed.toByteArray();
+	}
+
+	/**
+	 * 世界の写し（関門）をほどいて書く。
+	 *
+	 * <p>クライアントスレッドでは重すぎる直列化をこっちでやる。種類の登録は
+	 * 積む前に済んでいるので、ここでは番号だけ見ればいい。写しの中身は
+	 * 録画側で作った物（誰も触っていない）なので、ここで読んで安全。
+	 */
+	private void writeSnapshot(PacketTask task) throws IOException {
+		WorldSnapshot.Snapshot snapshot = task.snapshot;
+		PacketEncoder encoder = task.encoder;
+		int[] indices = task.typeIndices;
+
+		if (snapshot == null || encoder == null || indices == null) {
+			return;
+		}
+
+		List<Packet<?>> packets = snapshot.packets();
+
+		for (int i = 0; i < packets.size() && i < indices.length; i++) {
+			int index = indices[i];
+			Packet<?> packet = packets.get(i);
+
+			if (index < 0 || packet == null) {
+				continue;
+			}
+
+			ByteBuf buffer = PacketTask.sizedBuffer(task.sizeHints, index);
+
+			try {
+				encoder.encode(buffer, packet, false);
+			} catch (Throwable t) {
+				// 1個の失敗で全体を止めない（今までと同じ）
+				buffer.release();
+				continue;
+			}
+
+			int size = buffer.readableBytes();
+			PacketTask.noteSize(task.sizeHints, index, size);
+			// 通し番号の管理（録画側で足すぶんをここで足して、書くときに返す。差し引きゼロ）
+			this.queuedBytes.addAndGet(size);
+
+			PacketTask inner = PacketTask.packet(task.timeMs, index, ReplayFormat.DIRECTION_S2C, buffer);
+
+			try {
+				this.writePacket(inner);
+			} finally {
+				this.bytesSinceFlush += 1L + size;
+				buffer.release();
+			}
+		}
 	}
 
 	/**
