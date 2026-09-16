@@ -1,5 +1,6 @@
 package com.ifuto.replay.playback;
 
+import com.ifuto.replay.IfutoReplayClient;
 import com.ifuto.replay.recording.ReplayFormat;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtIo;
@@ -98,6 +99,15 @@ public final class ReplayStream implements Closeable {
 	private long timeMs;
 	private boolean ended;
 
+	/** 何個目のパケット・かたまりか（壊れた場所の報告用） */
+	private int frameNumber;
+
+	/** 壊れていて飛ばした数 */
+	private int corruptFrames;
+
+	/** 最初に壊れていた場所（報告用） */
+	private String firstCorruptDetail;
+
 	/**
 	 * 本番の読み込みの前に、マーカーと総時間だけ拾う。
 	 *
@@ -128,7 +138,13 @@ public final class ReplayStream implements Closeable {
 						int method = stream.in.readByte();
 
 						if (method == ReplayFormat.METHOD_DEFLATE) {
-							stream.consumeDeflated(length, stream.readVarInt());
+							int rawLength = stream.readVarInt();
+
+							try {
+								stream.consumeDeflated(length, rawLength);
+							} catch (IOException e) {
+								stream.noteCorrupt("パケット (raw=" + rawLength + ", packed=" + length + ")");
+							}
 						} else {
 							stream.skipExactly(length);
 						}
@@ -154,16 +170,24 @@ public final class ReplayStream implements Closeable {
 						stream.skipExactly(stream.readVarInt());
 					}
 					case ReplayFormat.TAG_BLOCK -> {
+						int number = stream.frameNumber++;
 						int rawLength = stream.readVarInt();
 						int method = stream.in.readByte();
 						int stored = method == ReplayFormat.METHOD_DEFLATE ? stream.readVarInt() : rawLength;
 						byte[] packed = new byte[stored];
 						stream.in.readFully(packed);
-						byte[] raw = method == ReplayFormat.METHOD_DEFLATE
-								? stream.inflate(packed, rawLength)
-								: packed;
-						// 中身の時刻を足さないと、このあとのしおりの時刻がずれる
-						stream.advanceThroughBlock(raw);
+
+						try {
+							byte[] raw = method == ReplayFormat.METHOD_DEFLATE
+									? stream.inflate(packed, rawLength)
+									: packed;
+							// 中身の時刻を足さないと、このあとのしおりの時刻がずれる
+							stream.advanceThroughBlock(raw);
+						} catch (IOException e) {
+							// 壊れたかたまりは飛ばす（このあとのしおりの時刻が少しずれるが再生はできる）
+							stream.noteCorrupt("かたまり #" + number
+									+ " (raw=" + rawLength + ", packed=" + stored + ")");
+						}
 					}
 					case ReplayFormat.TAG_INDEX -> durationMs = stream.readIndex();
 					case ReplayFormat.TAG_REGISTRIES -> {
@@ -214,9 +238,10 @@ public final class ReplayStream implements Closeable {
 		int tag = this.in.read();
 
 		if (tag == ReplayFormat.TAG_REGISTRIES) {
-			byte[] packed = new byte[this.readVarInt()];
-			this.in.readFully(packed);
+			int packedLength = this.readVarInt();
 			int rawLength = this.readVarInt();
+			byte[] packed = new byte[packedLength];
+			this.in.readFully(packed);
 			byte[] raw = inflate(packed, rawLength);
 
 			try (DataInputStream nbtIn = new DataInputStream(new ByteArrayInputStream(raw))) {
@@ -250,7 +275,13 @@ public final class ReplayStream implements Closeable {
 		while (!this.ended) {
 			// かたまりの中身が残っていたら、まずそれを出す（ファイルを読まない）
 			if (this.blockPos < this.blockLimit) {
-				return this.readFromBlock(sink);
+				try {
+					return this.readFromBlock(sink);
+				} catch (IOException e) {
+					// 中身が壊れていたら残りを捨てて次のかたまりへ（1か所の破損で全部止めない）
+					this.noteCorrupt("かたまり #" + (this.frameNumber - 1) + " の中身");
+					this.blockPos = this.blockLimit;
+				}
 			}
 
 			int tag = this.in.read();
@@ -267,24 +298,37 @@ public final class ReplayStream implements Closeable {
 					sink.marker(this.timeMs, this.readString());
 				}
 				case ReplayFormat.TAG_PACKET -> {
-					this.timeMs += this.readVarInt();
-					int typeIndex = this.readVarInt();
-					int length = this.readVarInt();
-					int method = this.in.readByte();
-					byte[] payload;
+					int number = this.frameNumber++;
 
-					if (method == ReplayFormat.METHOD_DEFLATE) {
-						int rawLength = this.readVarInt();
-						byte[] packed = new byte[length];
-						this.in.readFully(packed);
-						payload = inflate(packed, rawLength);
-					} else {
-						payload = new byte[length];
-						this.in.readFully(payload);
+					try {
+						this.timeMs += this.readVarInt();
+						int typeIndex = this.readVarInt();
+						int length = this.readVarInt();
+						int method = this.in.readByte();
+						byte[] payload;
+
+						if (method == ReplayFormat.METHOD_DEFLATE) {
+							int rawLength = this.readVarInt();
+							byte[] packed = new byte[length];
+							this.in.readFully(packed);
+
+							try {
+								payload = inflate(packed, rawLength);
+							} catch (IOException e) {
+								throw new CorruptFrameException("パケット #" + number
+										+ " (raw=" + rawLength + ", packed=" + length + ")");
+							}
+						} else {
+							payload = new byte[length];
+							this.in.readFully(payload);
+						}
+
+						sink.packet(this.timeMs, typeIndex, payload, 0, payload.length);
+						return true;
+					} catch (CorruptFrameException e) {
+						// 壊れた1個は飛ばして次へ
+						this.noteCorrupt(e.getMessage());
 					}
-
-					sink.packet(this.timeMs, typeIndex, payload, 0, payload.length);
-					return true;
 				}
 				case ReplayFormat.TAG_INPUT -> {
 					this.timeMs += this.readVarInt();
@@ -311,7 +355,16 @@ public final class ReplayStream implements Closeable {
 					this.in.readFully(data);
 					sink.local(this.timeMs, subtype, data, length);
 				}
-					case ReplayFormat.TAG_BLOCK -> this.readBlock();
+					case ReplayFormat.TAG_BLOCK -> {
+						int number = this.frameNumber++;
+
+						try {
+							this.readBlock(number);
+						} catch (CorruptFrameException e) {
+							// 壊れたかたまりは飛ばして次へ（枠の区切りは長さでわかるのでずれない）
+							this.noteCorrupt(e.getMessage());
+						}
+					}
 					case ReplayFormat.TAG_INDEX -> this.readIndex();
 				case ReplayFormat.TAG_REGISTRIES -> {
 					int packed = this.readVarInt();
@@ -348,7 +401,7 @@ public final class ReplayStream implements Closeable {
 	 * <p>ここで展開した中身は {@link #readFromBlock(Sink)} が1個ずつ読む。
 	 * かたまりは1個で完結しているので、読み飛ばしてもあとに影響しない。
 	 */
-	private void readBlock() throws IOException {
+	private void readBlock(int number) throws IOException {
 		int rawLength = this.readVarInt();
 		int method = this.in.readByte();
 		byte[] raw;
@@ -357,7 +410,13 @@ public final class ReplayStream implements Closeable {
 			int packedLength = this.readVarInt();
 			byte[] packed = new byte[packedLength];
 			this.in.readFully(packed);
-			raw = this.inflate(packed, rawLength);
+
+			try {
+				raw = this.inflate(packed, rawLength);
+			} catch (IOException e) {
+				throw new CorruptFrameException("かたまり #" + number
+						+ " (raw=" + rawLength + ", packed=" + packedLength + ")");
+			}
 		} else {
 			raw = new byte[rawLength];
 			this.in.readFully(raw);
@@ -366,6 +425,36 @@ public final class ReplayStream implements Closeable {
 		this.blockBytes = raw;
 		this.blockPos = 0;
 		this.blockLimit = rawLength;
+	}
+
+	/** 壊れた1枠（飛ばして次へ進むための合図。外には出さない） */
+	private static final class CorruptFrameException extends IOException {
+		CorruptFrameException(String message) {
+			super(message);
+		}
+	}
+
+	/** 壊れた枠を数える（最初の5個だけログに出す。大量の破損で埋めない） */
+	private void noteCorrupt(String detail) {
+		this.corruptFrames++;
+
+		if (this.firstCorruptDetail == null) {
+			this.firstCorruptDetail = detail;
+		}
+
+		if (this.corruptFrames <= 5) {
+			IfutoReplayClient.LOGGER.warn("[ifuto-replay] 壊れた枠を飛ばしました（{}）", detail);
+		}
+	}
+
+	/** 壊れていて飛ばした枠の数 */
+	int corruptFrames() {
+		return this.corruptFrames;
+	}
+
+	/** 最初に壊れていた場所（無ければ null） */
+	String firstCorruptDetail() {
+		return this.firstCorruptDetail;
 	}
 
 	/** かたまりの中身からパケットを1個読む */

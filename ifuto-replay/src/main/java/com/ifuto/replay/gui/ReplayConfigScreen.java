@@ -7,7 +7,7 @@ import com.ifuto.replay.config.IndicatorPosition;
 import com.ifuto.replay.config.ReplayConfig;
 import com.ifuto.replay.gui.theme.ReplayTheme;
 import com.ifuto.replay.gui.widget.ModernButton;
-import com.ifuto.replay.gui.widget.ModernCycling;
+import com.ifuto.replay.gui.widget.ModernDropdown;
 import com.ifuto.replay.gui.widget.ModernSlider;
 import com.ifuto.replay.gui.widget.ModernTextField;
 import com.ifuto.replay.gui.widget.ModernToggle;
@@ -334,10 +334,10 @@ public class ReplayConfigScreen extends Screen {
 		return toggle;
 	}
 
-	private <T> ModernCycling<T> cycle(String labelKey, List<T> values, T initial,
+	private <T> ModernDropdown<T> cycle(String labelKey, List<T> values, T initial,
 											  Function<T, Text> formatter, String tooltipKey,
 											  Consumer<T> setter) {
-		ModernCycling<T> cycling = new ModernCycling<>(0, 0, this.widgetWidth, WIDGET_HEIGHT,
+		ModernDropdown<T> cycling = new ModernDropdown<>(this, 0, 0, this.widgetWidth, WIDGET_HEIGHT,
 				Text.translatable(labelKey), values, initial, formatter, setter);
 		cycling.setTooltip(Tooltip.of(Text.translatable(tooltipKey)));
 		return cycling;

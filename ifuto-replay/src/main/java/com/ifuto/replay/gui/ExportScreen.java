@@ -7,7 +7,7 @@ import com.ifuto.replay.export.ExportOptions;
 import com.ifuto.replay.export.ReplayExporter;
 import com.ifuto.replay.gui.theme.ReplayTheme;
 import com.ifuto.replay.gui.widget.ModernButton;
-import com.ifuto.replay.gui.widget.ModernCycling;
+import com.ifuto.replay.gui.widget.ModernDropdown;
 import com.ifuto.replay.gui.widget.ModernSlider;
 import com.ifuto.replay.gui.widget.ModernTextField;
 import com.ifuto.replay.gui.widget.ModernToggle;
@@ -109,7 +109,7 @@ public class ExportScreen extends Screen {
 		DirectionalLayoutWidget content = DirectionalLayoutWidget.vertical().spacing(ROW_SPACING);
 
 		// 1行目: FPS と解像度のプリセット
-		ModernCycling<Integer> fpsCycling = new ModernCycling<>(0, 0, this.widgetWidth, WIDGET_HEIGHT,
+		ModernDropdown<Integer> fpsCycling = new ModernDropdown<>(this, 0, 0, this.widgetWidth, WIDGET_HEIGHT,
 				Text.translatable("ifuto-replay.export.fps"), List.of(FPS_VALUES), this.fps,
 				value -> Text.translatable("ifuto-replay.export.fps.value", value),
 				value -> {
@@ -118,7 +118,7 @@ public class ExportScreen extends Screen {
 				});
 		fpsCycling.setTooltip(Tooltip.of(Text.translatable("ifuto-replay.export.fps.tooltip")));
 
-		ModernCycling<String> resolutionCycling = new ModernCycling<>(0, 0, this.widgetWidth, WIDGET_HEIGHT,
+		ModernDropdown<String> resolutionCycling = new ModernDropdown<>(this, 0, 0, this.widgetWidth, WIDGET_HEIGHT,
 				Text.translatable("ifuto-replay.export.resolution"), List.of(this.resolutionValues()),
 				this.initialResolution(), this::resolutionText, value -> this.applyResolution(value));
 		resolutionCycling.setTooltip(Tooltip.of(Text.translatable("ifuto-replay.export.resolution.tooltip")));
@@ -198,7 +198,7 @@ public class ExportScreen extends Screen {
 		}
 
 		// 7行目: 書き出しの速さ（時間に依存する演出のため、等倍速も選べる）
-		ModernCycling<Integer> speedCycling = new ModernCycling<>(0, 0, this.widgetWidth, WIDGET_HEIGHT,
+		ModernDropdown<Integer> speedCycling = new ModernDropdown<>(this, 0, 0, this.widgetWidth, WIDGET_HEIGHT,
 				Text.translatable("ifuto-replay.export.speed"), List.of(SPEED_VALUES), this.speedPercent,
 				value -> value <= 0
 						? Text.translatable("ifuto-replay.export.speed.fastest")

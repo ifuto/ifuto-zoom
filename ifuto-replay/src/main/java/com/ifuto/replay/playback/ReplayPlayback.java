@@ -687,6 +687,12 @@ public final class ReplayPlayback implements ReplayStream.Sink {
 		}
 
 		if (this.client.world == null || this.client.player == null) {
+			// 世界の入っているかたまり自体が壊れていた。場所を出して諦める
+			if (this.stream.corruptFrames() > 0) {
+				throw new IOException("圧縮が壊れています（" + this.stream.firstCorruptDetail()
+						+ " / 全" + this.stream.corruptFrames() + "か所）。録り直してください");
+			}
+
 			throw new NoWorldException("ワールドを開始できませんでした");
 		}
 
