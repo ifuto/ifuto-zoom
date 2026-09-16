@@ -4,6 +4,7 @@ import com.ifuto.replay.audio.AudioMode;
 import com.ifuto.replay.audio.SystemAudioCapture;
 import com.ifuto.replay.config.CompressionMode;
 import com.ifuto.replay.config.IndicatorPosition;
+import com.ifuto.replay.config.LowSpecMode;
 import com.ifuto.replay.config.ReplayConfig;
 import com.ifuto.replay.gui.theme.ReplayTheme;
 import com.ifuto.replay.gui.widget.ModernButton;
@@ -120,7 +121,9 @@ public class ReplayConfigScreen extends Screen {
 				toggle("ifuto-replay.config.record_particles", this.config.recordParticles,
 						"ifuto-replay.config.record_particles.tooltip",
 						value -> this.config.recordParticles = value),
-				null));
+				toggle("ifuto-replay.config.skip_keep_alive", this.config.skipKeepAlive,
+						"ifuto-replay.config.skip_keep_alive.tooltip",
+						value -> this.config.skipKeepAlive = value)));
 
 		// 2行目: 軽さの調整
 		content.add(row(
@@ -128,9 +131,10 @@ public class ReplayConfigScreen extends Screen {
 						this.config.compression, CompressionMode::getText,
 						"ifuto-replay.config.compression.tooltip",
 						value -> this.config.compression = value),
-				toggle("ifuto-replay.config.skip_keep_alive", this.config.skipKeepAlive,
-						"ifuto-replay.config.skip_keep_alive.tooltip",
-						value -> this.config.skipKeepAlive = value)));
+				cycle("ifuto-replay.config.low_spec", List.of(LowSpecMode.values()),
+						this.config.lowSpec, LowSpecMode::getText,
+						"ifuto-replay.config.low_spec.tooltip",
+						value -> this.config.lowSpec = value)));
 
 		// 3行目: 再生とプライバシー
 		content.add(row(
@@ -303,16 +307,21 @@ public class ReplayConfigScreen extends Screen {
 		body.add(this.scrollable);
 
 		DirectionalLayoutWidget footer = this.layout.addFooter(DirectionalLayoutWidget.horizontal().spacing(COLUMN_GAP));
-		footer.add(new ModernButton(0, 0, this.widgetWidth, WIDGET_HEIGHT,
+		// 3個並べるので本文と同じ幅だと入り切らない。入る幅まで縮める（最低でも押せる幅は残す）
+		int contentWidth = this.widgetWidth * 2 + COLUMN_GAP;
+		int footerWidth = Math.max(64, Math.min(this.widgetWidth, (contentWidth - COLUMN_GAP * 2) / 3));
+		// 画面自体が狭いときは画面に合わせる（中央寄せではみ出さないように）
+		footerWidth = Math.min(footerWidth, Math.max(48, (this.width - 32 - COLUMN_GAP * 2) / 3));
+		footer.add(new ModernButton(0, 0, footerWidth, WIDGET_HEIGHT,
 				Text.translatable("ifuto-replay.config.open_folder"), button -> openFolder(),
 				ModernButton.Style.NORMAL));
-		footer.add(new ModernButton(0, 0, this.widgetWidth, WIDGET_HEIGHT,
+		footer.add(new ModernButton(0, 0, footerWidth, WIDGET_HEIGHT,
 				Text.translatable("ifuto-replay.config.reset"), button -> {
 					this.config.resetToDefaults();
 					this.config.save();
 					this.clearAndInit();
 				}, ModernButton.Style.DANGER));
-		footer.add(new ModernButton(0, 0, this.widgetWidth, WIDGET_HEIGHT,
+		footer.add(new ModernButton(0, 0, footerWidth, WIDGET_HEIGHT,
 				Text.translatable("gui.done"), button -> this.close(), ModernButton.Style.PRIMARY));
 
 		this.layout.forEachChild(this::addDrawableChild);

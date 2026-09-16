@@ -270,5 +270,10 @@
 	"ifuto-replay.ffmpeg.linux_guide": "Linux は自動では入れられません。ffmpeg を入れて設定で場所を指定してください",
 	"ifuto-replay.message.audio_ffmpeg_downloading": "ffmpeg が無いので裏でダウンロードしています。終わったら次回の録画から音声が付きます",
 	"ifuto-replay.message.audio_ffmpeg_ready": "ffmpeg の用意ができました。次回の録画から音声が付きます",
-	"ifuto-replay.message.audio_ffmpeg_linux": "ffmpeg が無いので音声は録れません。ffmpeg を入れて設定で場所を指定してください"
+	"ifuto-replay.message.audio_ffmpeg_linux": "ffmpeg が無いので音声は録れません。ffmpeg を入れて設定で場所を指定してください",
+	"ifuto-replay.config.low_spec": "軽量モード",
+	"ifuto-replay.config.low_spec.tooltip": "低スペックPCむけに軽く動きます（圧縮を「速い」に・書き込みを後回しに）。録れる内容は変わりません",
+	"ifuto-replay.config.low_spec.auto": "自動",
+	"ifuto-replay.config.low_spec.on": "ON",
+	"ifuto-replay.config.low_spec.off": "OFF"
 }

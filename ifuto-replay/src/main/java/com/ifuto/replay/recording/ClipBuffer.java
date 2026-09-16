@@ -419,6 +419,8 @@ final class ClipBuffer {
 		}, "ifuto-replay-clip-save");
 
 		thread.setDaemon(true);
+		// ゲームより後回し（保存中にカクつかせないため）
+		thread.setPriority(Math.max(Thread.MIN_PRIORITY, Thread.NORM_PRIORITY - 2));
 		thread.start();
 	}
 
@@ -464,7 +466,7 @@ final class ClipBuffer {
 		long elapsed = this.session.elapsedMillis();
 
 		try {
-			ReplayFileWriter created = new ReplayFileWriter(file, this.config.compression,
+			ReplayFileWriter created = new ReplayFileWriter(file, this.config.effectiveCompression(),
 					this.config.flushIntervalMs, this.config.queuePackets, this.queuedBytes, elapsed,
 					this.session::typeDefinitions);
 			created.start();

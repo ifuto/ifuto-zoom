@@ -70,13 +70,15 @@ final class ReplayFileWriter implements Runnable {
 	 * なので、バラバラに圧縮しても結果は同じ）。
 	 */
 	private static final int COMPRESSOR_THREADS =
-			Math.max(1, Math.min(4, Runtime.getRuntime().availableProcessors() - 1));
+			Math.max(1, Math.min(2, Runtime.getRuntime().availableProcessors() - 1));
 
 	/** 圧縮だけをやる係（書き込みスレッドとは別。ゲーム側は絶対に待たせない） */
 	private static final ExecutorService COMPRESSORS = Executors.newFixedThreadPool(COMPRESSOR_THREADS,
 			(ThreadFactory) runnable -> {
 				Thread thread = new Thread(runnable, "ifuto-replay-compress");
 				thread.setDaemon(true);
+				// ゲームより後回し（コアの少ないPCでカクつかせないため）
+				thread.setPriority(Math.max(Thread.MIN_PRIORITY, Thread.NORM_PRIORITY - 2));
 				return thread;
 			});
 
@@ -189,6 +191,8 @@ final class ReplayFileWriter implements Runnable {
 
 		this.thread = new Thread(this, "ifuto-replay-writer");
 		this.thread.setDaemon(true);
+		// ゲームより後回し（コアの少ないPCでカクつかせないため）
+		this.thread.setPriority(Math.max(Thread.MIN_PRIORITY, Thread.NORM_PRIORITY - 2));
 	}
 
 	/** ファイルを開いて書き込みスレッドを開始する */
@@ -466,8 +470,9 @@ final class ReplayFileWriter implements Runnable {
 			this.inFlight++;
 		}
 
-		if (this.inFlight > MAX_IN_FLIGHT_BLOCKS) {
-			// 追いついていないので自分でやる（溜めすぎない・取りこぼさない）
+		if (this.inFlight > MAX_IN_FLIGHT_BLOCKS || this.compression == CompressionMode.FAST) {
+			// 追いついていないときと「速い」ときは自分でやる（溜めすぎない・取りこぼさない）。
+			// 「速い」は安いので、係に回す手間より自分でやるほうが速いし軽い
 			this.compressBlock(block);
 		} else {
 			try {

@@ -78,6 +78,12 @@ public class ReplayConfig {
 	 */
 	public CompressionMode compression = CompressionMode.STRONG;
 
+	/**
+	 * 低スペックPCむけの軽量動作。ON（自動ふくむ）のときは圧縮を「速い」に落とし、
+	 * 圧縮の係を増やさず、書き込みをゲームより後回しにする。録れる内容は変わらない。
+	 */
+	public LowSpecMode lowSpec = LowSpecMode.AUTO;
+
 	/** 書き込み待ちのキューに積めるパケット数（あふれた分は捨てて、ゲーム側は止めない） */
 	public int queuePackets = 4096;
 
@@ -266,6 +272,33 @@ public class ReplayConfig {
 		return this.maskServerAddress ? MASK : address;
 	}
 
+	/** いま軽量動作にするか（自動ならコア数で決める） */
+	public boolean isLowSpec() {
+		if (this.lowSpec == LowSpecMode.ON) {
+			return true;
+		}
+
+		if (this.lowSpec == LowSpecMode.OFF) {
+			return false;
+		}
+
+		return Runtime.getRuntime().availableProcessors() <= 4;
+	}
+
+	/** 実際に使う圧縮（軽量動作のときは「速い」に落とす） */
+	public CompressionMode effectiveCompression() {
+		if (!this.isLowSpec()) {
+			return this.compression == null ? CompressionMode.STRONG : this.compression;
+		}
+
+		// 「切」はそのまま尊重する（軽さでは切に勝てないので）
+		if (this.compression == CompressionMode.OFF) {
+			return CompressionMode.OFF;
+		}
+
+		return CompressionMode.FAST;
+	}
+
 	public static ReplayConfig load() {
 		Path path = getPath();
 		ReplayConfig config = new ReplayConfig();
@@ -309,6 +342,7 @@ public class ReplayConfig {
 		this.recordClientPackets = defaults.recordClientPackets;
 		this.skipKeepAlive = defaults.skipKeepAlive;
 		this.compression = defaults.compression;
+		this.lowSpec = defaults.lowSpec;
 		this.queuePackets = defaults.queuePackets;
 		this.queuedMegaBytes = defaults.queuedMegaBytes;
 		this.flushIntervalMs = defaults.flushIntervalMs;
@@ -346,6 +380,10 @@ public class ReplayConfig {
 	public void validate() {
 		if (this.compression == null) {
 			this.compression = CompressionMode.OFF;
+		}
+
+		if (this.lowSpec == null) {
+			this.lowSpec = LowSpecMode.AUTO;
 		}
 
 		if (this.indicatorPosition == null) {

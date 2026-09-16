@@ -104,7 +104,7 @@ public final class RecordingSession {
 					config.recordClientPackets, this.queuedBytes);
 		} else {
 			this.writer = new ReplayFileWriter(file, mcVersion, serverName, playerName, startedAt,
-					config.recordClientPackets, config.compression, config.indexIntervalMs, maxBytes,
+					config.recordClientPackets, config.effectiveCompression(), config.indexIntervalMs, maxBytes,
 							config.flushIntervalMs, config.queuePackets, this.queuedBytes);
 			this.clip = null;
 		}

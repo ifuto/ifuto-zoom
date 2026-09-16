@@ -393,7 +393,7 @@ public final class ClipRemux {
 
 	private static Copy copy(Path source, Path output, Scan scan, Plan plan, Progress progress) throws IOException {
 		Copy copy = new Copy();
-		int level = ReplayConfig.get().compression.deflateLevel();
+		int level = ReplayConfig.get().effectiveCompression().deflateLevel();
 		Inflater shared = scan.shared ? new Inflater() : null;
 
 		try (Cursor cursor = new Cursor(source, Long.MAX_VALUE, progress, PASS_COPY);

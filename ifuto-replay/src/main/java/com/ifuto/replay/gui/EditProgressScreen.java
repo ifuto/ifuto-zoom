@@ -48,7 +48,8 @@ public class EditProgressScreen extends Screen {
 		int centerX = this.width / 2;
 		int centerY = this.height / 2;
 
-		this.addDrawableChild(new ModernButton(centerX - 60, centerY + 34, 120, 20,
+		int buttonWidth = Math.min(120, this.width - 32);
+		this.addDrawableChild(new ModernButton(centerX - buttonWidth / 2, centerY + 34, buttonWidth, 20,
 				Text.translatable("gui.cancel"), button -> this.job.cancelRequested = true,
 				ModernButton.Style.NORMAL));
 	}

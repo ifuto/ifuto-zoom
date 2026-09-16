@@ -109,49 +109,78 @@ public class RecordingListScreen extends Screen {
 	}
 
 	private LayoutWidget row(ReplayFileReader.Info info) {
-		DirectionalLayoutWidget row = DirectionalLayoutWidget.horizontal().spacing(COLUMN_GAP);
+		// 狭い画面では2段にする（ラベルの下にボタン4個）。無理に1行へ詰めない
+		if (this.listWidth < 320) {
+			return this.stackedRow(info);
+		}
 
+		DirectionalLayoutWidget row = DirectionalLayoutWidget.horizontal().spacing(COLUMN_GAP);
+		row.add(this.labels(info, this.labelWidth));
+
+		for (ModernButton button : this.rowButtons(info, this.smallWidth)) {
+			row.add(button);
+		}
+
+		return row;
+	}
+
+	/** 狭い画面むけの2段の行（はみ出さない） */
+	private LayoutWidget stackedRow(ReplayFileReader.Info info) {
+		DirectionalLayoutWidget column = DirectionalLayoutWidget.vertical().spacing(2);
+		column.add(this.labels(info, Math.max(40, this.listWidth - 12)));
+
+		DirectionalLayoutWidget buttons = DirectionalLayoutWidget.horizontal().spacing(COLUMN_GAP);
+		int buttonWidth = Math.max(28, (this.listWidth - COLUMN_GAP * 3 - 12) / 4);
+
+		for (ModernButton button : this.rowButtons(info, buttonWidth)) {
+			buttons.add(button);
+		}
+
+		column.add(buttons);
+		return column;
+	}
+
+	private LayoutWidget labels(ReplayFileReader.Info info, int maxWidth) {
 		DirectionalLayoutWidget labels = DirectionalLayoutWidget.vertical().spacing(1);
 		TextWidget when = new TextWidget(Text.literal(formatDateTime(info.startedAt())), this.textRenderer);
 		TextWidget details = new TextWidget(Text.literal(describe(info)), this.textRenderer);
-		when.setMaxWidth(this.labelWidth);
-		details.setMaxWidth(this.labelWidth);
+		when.setMaxWidth(maxWidth);
+		details.setMaxWidth(maxWidth);
 		details.setTooltip(Tooltip.of(Text.literal(info.fileName()
 				+ "\n" + info.mcVersion()
 				+ "\n" + Text.translatable("ifuto-replay.list.player", info.playerName()).getString())));
 		labels.add(when);
 		labels.add(details);
+		return labels;
+	}
 
-		ModernButton deleteButton = new ModernButton(0, 0, this.smallWidth, BUTTON_HEIGHT,
+	/** 1行ぶんのボタン4個（編集・出力・削除・再生の順） */
+	private ModernButton[] rowButtons(ReplayFileReader.Info info, int buttonWidth) {
+		ModernButton deleteButton = new ModernButton(0, 0, buttonWidth, BUTTON_HEIGHT,
 				Text.translatable("ifuto-replay.list.delete"), button -> this.onDelete(button, info),
 				ModernButton.Style.DANGER);
 		deleteButton.setTooltip(Tooltip.of(Text.translatable("ifuto-replay.list.delete.tooltip")));
 
-		ModernButton playButton = new ModernButton(0, 0, this.smallWidth, BUTTON_HEIGHT,
+		ModernButton playButton = new ModernButton(0, 0, buttonWidth, BUTTON_HEIGHT,
 				Text.translatable("ifuto-replay.list.play"),
 				button -> ReplayPreviewScreen.open(MinecraftClient.getInstance(), info.file(), this.parent),
 				ModernButton.Style.PRIMARY);
 		playButton.setTooltip(Tooltip.of(Text.translatable("ifuto-replay.list.play.tooltip")));
 
-		ModernButton exportButton = new ModernButton(0, 0, this.smallWidth, BUTTON_HEIGHT,
+		ModernButton exportButton = new ModernButton(0, 0, buttonWidth, BUTTON_HEIGHT,
 				Text.translatable("ifuto-replay.list.export"),
 				button -> MinecraftClient.getInstance()
 						.setScreen(new ExportScreen(this.parent, info, ReplayConfig.get())),
 				ModernButton.Style.NORMAL);
 		exportButton.setTooltip(Tooltip.of(Text.translatable("ifuto-replay.list.export.tooltip")));
 
-		ModernButton editButton = new ModernButton(0, 0, this.smallWidth, BUTTON_HEIGHT,
+		ModernButton editButton = new ModernButton(0, 0, buttonWidth, BUTTON_HEIGHT,
 				Text.translatable("ifuto-replay.list.edit"),
 				button -> ClipEditorScreen.open(MinecraftClient.getInstance(), info.file(), this.parent),
 				ModernButton.Style.NORMAL);
 		editButton.setTooltip(Tooltip.of(Text.translatable("ifuto-replay.list.edit.tooltip")));
 
-		row.add(labels);
-		row.add(editButton);
-		row.add(exportButton);
-		row.add(deleteButton);
-		row.add(playButton);
-		return row;
+		return new ModernButton[]{editButton, exportButton, deleteButton, playButton};
 	}
 
 	private void onDelete(ModernButton button, ReplayFileReader.Info info) {

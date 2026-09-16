@@ -120,6 +120,7 @@ public class ClipEditorScreen extends Screen {
 
 		transport.add(Text.literal("⚑ ▶"), 52, button -> this.jumpMarker(true), ModernButton.Style.NORMAL)
 				.setTooltip(Tooltip.of(Text.translatable("ifuto-replay.preview.marker_next")));
+		transport.fit();
 
 		Row edit = new Row(left, editY, left + barWidth);
 
@@ -148,6 +149,7 @@ public class ClipEditorScreen extends Screen {
 			this.keep.add(new ClipRemux.Range(0L, this.playback.durationMs()));
 			this.clearAndInit();
 		}, ModernButton.Style.NORMAL);
+		edit.fit();
 
 		// 範囲の一覧（消すボタンだけ置き、文字は下で描く。溢れたら最終行は「他 N 件」）
 		int rows = Math.min(this.keep.size(), MAX_RANGE_ROWS);
@@ -175,6 +177,7 @@ public class ClipEditorScreen extends Screen {
 
 		footer.add(Text.literal("✕"), 26, button -> this.close(), ModernButton.Style.DANGER)
 				.setTooltip(Tooltip.of(Text.translatable("ifuto-replay.preview.close")));
+		footer.fit();
 	}
 
 	/** 世界を見せたいので背景を暗くしない */
@@ -458,6 +461,8 @@ public class ClipEditorScreen extends Screen {
 		private final int right;
 		private int x;
 		private int y;
+		private final List<ModernButton> buttons = new ArrayList<>();
+		private final List<Integer> widths = new ArrayList<>();
 
 		Row(int left, int y, int right) {
 			this.left = left;
@@ -476,7 +481,75 @@ public class ClipEditorScreen extends Screen {
 
 			addDrawableChild(button);
 			this.x += width + GAP;
+			this.buttons.add(button);
+			this.widths.add(width);
 			return button;
+		}
+
+		/**
+		 * 入り切らなければ全員少しずつ縮めて1行に収める。
+		 *
+		 * <p>上に折れると上の段と重なるので、文字が少し切れても1行に残すほうを選ぶ。
+		 */
+		void fit() {
+			int count = this.buttons.size();
+
+			if (count == 0) {
+				return;
+			}
+
+			int total = 0;
+
+			for (int width : this.widths) {
+				total += width;
+			}
+
+			int gaps = GAP * (count - 1);
+			int avail = this.right - this.left - gaps;
+
+			if (total <= avail) {
+				return;
+			}
+
+			// 比例配分（最低24）。最低幅のせいで溢れたら、大きい物から削る
+			int[] fitted = new int[count];
+			int used = 0;
+
+			for (int i = 0; i < count; i++) {
+				fitted[i] = Math.max(24, this.widths.get(i) * avail / total);
+				used += fitted[i];
+			}
+
+			int over = used - avail;
+
+			while (over > 0) {
+				int widest = 0;
+
+				for (int j = 1; j < count; j++) {
+					if (fitted[j] > fitted[widest]) {
+						widest = j;
+					}
+				}
+
+				if (fitted[widest] <= 24) {
+					break;
+				}
+
+				int cut = Math.min(over, fitted[widest] - 24);
+				fitted[widest] -= cut;
+				over -= cut;
+			}
+
+			int place = this.left;
+
+			for (int i = 0; i < count; i++) {
+				ModernButton button = this.buttons.get(i);
+				button.setX(place);
+				button.setWidth(fitted[i]);
+				place += fitted[i] + GAP;
+			}
+
+			this.x = place;
 		}
 	}
 

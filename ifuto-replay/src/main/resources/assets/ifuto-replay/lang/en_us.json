@@ -270,5 +270,10 @@
 	"ifuto-replay.ffmpeg.linux_guide": "Linux can't auto-install. Please install ffmpeg and set its path in the config",
 	"ifuto-replay.message.audio_ffmpeg_downloading": "ffmpeg is missing, downloading it in the background. Next recordings will have audio",
 	"ifuto-replay.message.audio_ffmpeg_ready": "ffmpeg is ready. Next recordings will have audio",
-	"ifuto-replay.message.audio_ffmpeg_linux": "No ffmpeg, so no audio. Install ffmpeg and set its path in the config"
+	"ifuto-replay.message.audio_ffmpeg_linux": "No ffmpeg, so no audio. Install ffmpeg and set its path in the config",
+	"ifuto-replay.config.low_spec": "Low-spec mode",
+	"ifuto-replay.config.low_spec.tooltip": "Runs lighter on slow PCs (fast compression, backgrounded writes). Recorded content is unchanged",
+	"ifuto-replay.config.low_spec.auto": "Auto",
+	"ifuto-replay.config.low_spec.on": "On",
+	"ifuto-replay.config.low_spec.off": "Off"
 }

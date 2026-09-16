@@ -43,14 +43,17 @@ public class FfmpegDownloadScreen extends Screen {
 		int centerX = this.width / 2;
 		int centerY = this.height / 2;
 
+		int buttonWidth = Math.min(120, this.width - 32);
+		int buttonX = centerX - buttonWidth / 2;
+
 		if (this.guideOnly) {
-			this.addDrawableChild(new ModernButton(centerX - 60, centerY + 34, 120, 20,
+			this.addDrawableChild(new ModernButton(buttonX, centerY + 34, buttonWidth, 20,
 					Text.translatable("gui.back"), button -> this.close(),
 					ModernButton.Style.NORMAL));
 			return;
 		}
 
-		this.addDrawableChild(new ModernButton(centerX - 60, centerY + 34, 120, 20,
+		this.addDrawableChild(new ModernButton(buttonX, centerY + 34, buttonWidth, 20,
 				Text.translatable("gui.cancel"), button -> this.job.cancelRequested = true,
 				ModernButton.Style.NORMAL));
 	}
