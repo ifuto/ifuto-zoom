@@ -330,7 +330,7 @@ public final class RecordingSession {
 
 		if (enc == null) {
 			this.errorCount.addAndGet(packets.size());
-			return;
+			return false;
 		}
 
 		try {
