@@ -60,7 +60,7 @@ public class ModernSlider extends SliderWidget {
 
 		int textY = this.getY() + 2;
 		context.drawText(renderer, this.getMessage(), this.getX() + PADDING, textY,
-				active ? ReplayTheme.TEXT : ReplayTheme.TEXT_DIM, true);
+				active ? ReplayTheme.TEXT : ReplayTheme.TEXT_DIM, false);
 
 		int trackY = this.getY() + this.getHeight() - TRACK_HEIGHT - 2;
 		int trackX = this.getX() + PADDING;

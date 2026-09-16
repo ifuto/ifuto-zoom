@@ -82,7 +82,7 @@ public class ModernToggle extends ClickableWidget {
 		int textY = this.getY() + (this.getHeight() - renderer.fontHeight) / 2 + 1;
 		int labelMax = this.getWidth() - TRACK_WIDTH - 22;
 		context.drawText(renderer, trim(renderer, this.getMessage(), labelMax), this.getX() + 8, textY,
-				this.active ? ReplayTheme.TEXT : ReplayTheme.TEXT_DIM, true);
+				this.active ? ReplayTheme.TEXT : ReplayTheme.TEXT_DIM, false);
 
 		int trackX = this.getX() + this.getWidth() - TRACK_WIDTH - 8;
 		int trackY = this.getY() + (this.getHeight() - TRACK_HEIGHT) / 2;

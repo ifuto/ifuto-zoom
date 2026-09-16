@@ -226,30 +226,30 @@ public class ClipEditorScreen extends Screen {
 
 		// 1行目: 時刻 / 長さ、残り
 		String time = timeText(this.playback.timeMs()) + " / " + timeText(this.playback.durationMs());
-		context.drawText(this.textRenderer, time, left, headerY, 0xFFFFFF, true);
+		context.drawText(this.textRenderer, time, left, headerY, 0xFFFFFF, false);
 
 		String kept = Text.translatable("ifuto-replay.editor.kept",
 				Text.literal(timeText(this.keptTotalMs())), this.keep.size()).getString();
 		int keptWidth = this.textRenderer.getWidth(kept);
-		context.drawText(this.textRenderer, kept, left + barWidth - keptWidth, headerY, 0x38BDF8, true);
+		context.drawText(this.textRenderer, kept, left + barWidth - keptWidth, headerY, 0x38BDF8, false);
 
 		// 2行目: 作業中の区間
 		long from = Math.min(this.inMs, this.outMs);
 		long to = Math.max(this.inMs, this.outMs);
 		String interval = Text.translatable("ifuto-replay.editor.interval",
 				Text.literal(timeText(from)), Text.literal(timeText(to))).getString();
-		context.drawText(this.textRenderer, interval, left, headerY + LINE_HEIGHT, 0xAAAAAA, true);
+		context.drawText(this.textRenderer, interval, left, headerY + LINE_HEIGHT, 0xAAAAAA, false);
 
 		// 3行目: つなぎ目の注意（真ん中を抜いたときだけ）
 		if (this.hasSplice()) {
 			String note = Text.translatable("ifuto-replay.editor.splice_note").getString();
-			context.drawText(this.textRenderer, note, left, headerY + LINE_HEIGHT * 2, 0xFFEB3B, true);
+			context.drawText(this.textRenderer, note, left, headerY + LINE_HEIGHT * 2, 0xFFEB3B, false);
 		}
 
 		// 範囲の一覧
 		if (this.keep.isEmpty()) {
 			String empty = Text.translatable("ifuto-replay.editor.no_ranges").getString();
-			context.drawText(this.textRenderer, empty, left, rangesY + 6, 0xF43F5E, true);
+			context.drawText(this.textRenderer, empty, left, rangesY + 6, 0xF43F5E, false);
 			return;
 		}
 
@@ -263,14 +263,14 @@ public class ClipEditorScreen extends Screen {
 		for (int i = 0; i < shown; i++) {
 			ClipRemux.Range range = this.keep.get(i);
 			String row = (i + 1) + "  " + timeText(range.startMs()) + "–" + timeText(range.endMs());
-			context.drawText(this.textRenderer, row, left, rangesY + i * (ROW_HEIGHT + GAP) + 6, 0xE6EDF3, true);
+			context.drawText(this.textRenderer, row, left, rangesY + i * (ROW_HEIGHT + GAP) + 6, 0xE6EDF3, false);
 		}
 
 		if (overflow) {
 			String more = Text.translatable("ifuto-replay.editor.more_ranges",
 					this.keep.size() - shown).getString();
 			context.drawText(this.textRenderer, more, left,
-					rangesY + shown * (ROW_HEIGHT + GAP) + 6, 0x8B98A5, true);
+					rangesY + shown * (ROW_HEIGHT + GAP) + 6, 0x8B98A5, false);
 		}
 	}
 

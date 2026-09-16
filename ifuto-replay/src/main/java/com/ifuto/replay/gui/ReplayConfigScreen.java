@@ -453,7 +453,7 @@ public class ReplayConfigScreen extends Screen {
 	@Override
 	public void render(DrawContext context, int mouseX, int mouseY, float delta) {
 		super.render(context, mouseX, mouseY, delta);
-		context.drawTextWithShadow(this.textRenderer, "Made by Ifuto_mitai", 4, this.height - 12, 0xFF6B7784);
+		context.drawText(this.textRenderer, "Made by Ifuto_mitai", 4, this.height - 12, 0xFF6B7784, false);
 	}
 
 	@Override

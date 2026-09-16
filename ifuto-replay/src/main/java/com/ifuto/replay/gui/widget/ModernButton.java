@@ -116,7 +116,7 @@ public class ModernButton extends ClickableWidget {
 
 		int textX = this.getX() + (this.getWidth() - textWidth) / 2;
 		int textY = this.getY() + (this.getHeight() - renderer.fontHeight) / 2 + 1;
-		context.drawText(renderer, message, textX, textY, this.textColor(), true);
+		context.drawText(renderer, message, textX, textY, this.textColor(), false);
 	}
 
 	@Override

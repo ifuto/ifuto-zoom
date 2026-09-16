@@ -2,6 +2,8 @@ package com.ifuto.replay;
 
 import com.ifuto.replay.config.ReplayConfig;
 import com.ifuto.replay.gui.PauseMenuButtons;
+import com.ifuto.replay.gui.RecordingListScreen;
+import com.ifuto.replay.gui.widget.ModernButton;
 import com.ifuto.replay.hud.RecordingIndicator;
 import com.ifuto.replay.playback.ReplayPlayback;
 import com.ifuto.replay.recording.RecordingManager;
@@ -14,7 +16,11 @@ import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.VanillaHudElements;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
+import net.fabricmc.fabric.api.client.screen.v1.Screens;
 import net.minecraft.client.gui.screen.GameMenuScreen;
+import net.minecraft.client.gui.screen.TitleScreen;
+import net.minecraft.client.gui.tooltip.Tooltip;
+import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,6 +46,13 @@ public class IfutoReplayClient implements ClientModInitializer {
 		ScreenEvents.AFTER_INIT.register((client, screen, scaledWidth, scaledHeight) -> {
 			if (screen instanceof GameMenuScreen) {
 				PauseMenuButtons.attach(client, screen, scaledWidth, scaledHeight);
+			} else if (screen instanceof TitleScreen) {
+				// タイトル画面の左上に「録画一覧」（ロゴは中央・Realms 通知は右上なので被らない）
+				ModernButton listButton = new ModernButton(4, 4, 112, 22,
+						Text.translatable("ifuto-replay.menu.list"),
+						button -> client.setScreen(new RecordingListScreen(screen)), ModernButton.Style.NORMAL);
+				listButton.setTooltip(Tooltip.of(Text.translatable("ifuto-replay.menu.list.tooltip")));
+				Screens.getButtons(screen).add(listButton);
 			}
 		});
 

@@ -61,12 +61,12 @@ public class EditProgressScreen extends Screen {
 		int centerY = this.height / 2 - 10;
 
 		Text title = Text.translatable("ifuto-replay.editor.progress_title");
-		context.drawTextWithShadow(this.textRenderer, title, centerX - this.textRenderer.getWidth(title) / 2,
-				centerY - 34, 0xFFFFFF);
+		context.drawText(this.textRenderer, title, centerX - this.textRenderer.getWidth(title) / 2,
+				centerY - 34, 0xFFFFFF, false);
 
 		Text phase = this.phaseText();
-		context.drawTextWithShadow(this.textRenderer, phase, centerX - this.textRenderer.getWidth(phase) / 2,
-				centerY - 18, 0xAAAAAA);
+		context.drawText(this.textRenderer, phase, centerX - this.textRenderer.getWidth(phase) / 2,
+				centerY - 18, 0xAAAAAA, false);
 
 		int left = centerX - BAR_WIDTH / 2;
 		ReplayTheme.fillRound(context, left, centerY, BAR_WIDTH, BAR_HEIGHT, 3, ReplayTheme.SURFACE_INPUT);

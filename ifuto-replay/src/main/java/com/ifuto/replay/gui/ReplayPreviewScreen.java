@@ -159,19 +159,19 @@ public class ReplayPreviewScreen extends Screen {
 
 		// 1行目: 時刻 / 長さ、サーバー名
 		String time = timeText(this.playback.timeMs()) + " / " + timeText(this.playback.durationMs());
-		context.drawText(this.textRenderer, time, left, top, 0xFFFFFF, true);
+		context.drawText(this.textRenderer, time, left, top, 0xFFFFFF, false);
 
 		int timeWidth = this.textRenderer.getWidth(time);
 		Text state = this.stateText();
 		int stateWidth = this.textRenderer.getWidth(state);
 
 		if (left + timeWidth + 8 + stateWidth < left + barWidth) {
-			context.drawText(this.textRenderer, state, left + timeWidth + 8, top, 0xAAAAAA, true);
+			context.drawText(this.textRenderer, state, left + timeWidth + 8, top, 0xAAAAAA, false);
 		}
 
 		String address = ReplayConfig.get().displayAddress(this.playback.header().serverName());
 		int addressWidth = this.textRenderer.getWidth(address);
-		context.drawText(this.textRenderer, address, left + barWidth - addressWidth, top, 0x888888, true);
+		context.drawText(this.textRenderer, address, left + barWidth - addressWidth, top, 0x888888, false);
 	}
 
 	/**
@@ -204,7 +204,7 @@ public class ReplayPreviewScreen extends Screen {
 		int left = this.width / 2 - width / 2;
 		ReplayTheme.fillRound(context, left - 5, y - 3, width + 10, 13, 6, 0xC00A0F14);
 		ReplayTheme.strokeRound(context, left - 5, y - 3, width + 10, 13, 6, ReplayTheme.BORDER);
-		context.drawTextWithShadow(this.textRenderer, text, left, y, color);
+		context.drawText(this.textRenderer, text, left, y, color, false);
 		return y + 15;
 	}
 
