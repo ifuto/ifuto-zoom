@@ -27,7 +27,7 @@
 	"ifuto-replay.config.record_client_packets": "Record Input",
 	"ifuto-replay.config.record_client_packets.tooltip": "Also store the packets you send to the server (movement, clicks, chat). Turning it off makes the file even smaller.",
 	"ifuto-replay.config.compression": "Compression",
-	"ifuto-replay.config.compression.tooltip": "Compression applied while writing, on the writer thread, so the game is barely affected. Packets are compressed in 16 KB blocks. Strong: recommended (measured at about 21-24% of the raw size). Max: a little smaller still, but uses about twice the CPU",
+	"ifuto-replay.config.compression.tooltip": "Compression applied while writing. Balanced and up use zstd (faster and smaller than deflate). Strong: recommended. Max: a little smaller still",
 	"ifuto-replay.config.compression.off": "Off",
 	"ifuto-replay.config.compression.fast": "Fast",
 	"ifuto-replay.config.compression.balanced": "Balanced",

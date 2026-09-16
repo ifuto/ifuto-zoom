@@ -2,6 +2,7 @@ package com.ifuto.replay.recording;
 
 import com.ifuto.replay.IfutoReplayClient;
 import com.ifuto.replay.audio.AudioTracks;
+import com.ifuto.replay.config.CompressionMode;
 import com.ifuto.replay.config.ReplayConfig;
 import org.jspecify.annotations.Nullable;
 
@@ -23,7 +24,6 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.zip.DataFormatException;
-import java.util.zip.Deflater;
 import java.util.zip.Inflater;
 
 /**
@@ -393,7 +393,7 @@ public final class ClipRemux {
 
 	private static Copy copy(Path source, Path output, Scan scan, Plan plan, Progress progress) throws IOException {
 		Copy copy = new Copy();
-		int level = ReplayConfig.get().effectiveCompression().deflateLevel();
+		CompressionMode mode = ReplayConfig.get().effectiveCompression();
 		Inflater shared = scan.shared ? new Inflater() : null;
 
 		try (Cursor cursor = new Cursor(source, Long.MAX_VALUE, progress, PASS_COPY);
@@ -406,7 +406,7 @@ public final class ClipRemux {
 			ReplayFileWriter.writeHeader(out, scan.mcVersion, scan.serverName, scan.playerName,
 					scan.startedAt + plan.prefixStart, recordsC2S, scan.blocked);
 
-			Emitter emitter = new Emitter(out, plan, level);
+			Emitter emitter = new Emitter(out, plan, mode);
 
 			try {
 				while (true) {
@@ -422,7 +422,7 @@ public final class ClipRemux {
 
 					switch (tag) {
 						case ReplayFormat.TAG_PACKET_TYPE -> copyTypeFrame(cursor, out);
-						case ReplayFormat.TAG_PACKET -> copyPacket(cursor, emitter, shared, level);
+						case ReplayFormat.TAG_PACKET -> copyPacket(cursor, emitter, shared, mode);
 						case ReplayFormat.TAG_BLOCK -> copyBlock(cursor, emitter, plan);
 						case ReplayFormat.TAG_INPUT -> copyInput(cursor, emitter, plan, scan.version);
 						case ReplayFormat.TAG_LOCAL -> copyLocal(cursor, emitter, plan);
@@ -469,8 +469,8 @@ public final class ClipRemux {
 		out.writeString(name);
 	}
 
-	private static void copyPacket(Cursor cursor, Emitter emitter, @Nullable Inflater shared, int level)
-			throws IOException {
+	private static void copyPacket(Cursor cursor, Emitter emitter, @Nullable Inflater shared,
+			CompressionMode mode) throws IOException {
 		PacketFrame frame = cursor.readPacketFrame(shared);
 		long outT = emitter.plan.map(cursor.timeMs);
 
@@ -478,17 +478,17 @@ public final class ClipRemux {
 			return;
 		}
 
-		if (frame.method == ReplayFormat.METHOD_DEFLATE && frame.standalonePacked) {
-			// 単独で完結した圧縮はそのまま写す（解きもしない）
+		if (BlockCodec.isPacked(frame.method) && frame.standalonePacked) {
+			// 単独で完結した圧縮はそのまま写す（解きもしない。deflate も zstd も）
 			emitter.emitPacket(cursor.timeMs, outT, frame.typeIndex, frame.length,
-					ReplayFormat.METHOD_DEFLATE, frame.rawLength, frame.payload);
+					frame.method, frame.rawLength, frame.payload);
 		} else if (frame.method == ReplayFormat.METHOD_DEFLATE) {
 			// 共有窓（古い形式）は展開済み。単独で完結するように圧縮し直す
-			byte[] packed = deflate(frame.payload, level);
+			byte[] packed = BlockCodec.compress(frame.payload, mode);
 
 			if (packed != null) {
 				emitter.emitPacket(cursor.timeMs, outT, frame.typeIndex, packed.length,
-						ReplayFormat.METHOD_DEFLATE, frame.payload.length, packed);
+						mode.codecMethod(), frame.payload.length, packed);
 			} else {
 				emitter.emitPacket(cursor.timeMs, outT, frame.typeIndex, frame.payload.length,
 						ReplayFormat.METHOD_RAW, frame.payload.length, frame.payload);
@@ -650,7 +650,7 @@ public final class ClipRemux {
 	private static final class Emitter {
 		private final ReplayDataOutput out;
 		private final Plan plan;
-		private final int level;
+		private final CompressionMode mode;
 		private long lastOut;
 		private long lastKeptT;
 		private boolean hasLast;
@@ -659,10 +659,10 @@ public final class ClipRemux {
 		private final List<long[]> indexEntries = new ArrayList<>();
 		private long nextIndexTimeMs;
 
-		Emitter(ReplayDataOutput out, Plan plan, int level) {
+		Emitter(ReplayDataOutput out, Plan plan, CompressionMode mode) {
 			this.out = out;
 			this.plan = plan;
-			this.level = level;
+			this.mode = mode;
 		}
 
 		/**
@@ -687,7 +687,7 @@ public final class ClipRemux {
 			this.out.writeVarInt(length);
 			this.out.writeByte(method);
 
-			if (method == ReplayFormat.METHOD_DEFLATE) {
+			if (BlockCodec.isPacked(method)) {
 				this.out.writeVarInt(rawLength);
 			}
 
@@ -704,7 +704,7 @@ public final class ClipRemux {
 			this.out.writeVarInt(block.rawLength);
 			this.out.writeByte(block.method);
 
-			if (block.method == ReplayFormat.METHOD_DEFLATE) {
+			if (BlockCodec.isPacked(block.method)) {
 				this.out.writeVarInt(block.packedLength);
 			}
 
@@ -749,13 +749,13 @@ public final class ClipRemux {
 			}
 
 			byte[] raw = inner.toByteArray();
-			byte[] packed = deflate(raw, this.level);
+			byte[] packed = BlockCodec.compress(raw, this.mode);
 
 			this.out.writeByte(ReplayFormat.TAG_BLOCK);
 			this.out.writeVarInt(raw.length);
 
 			if (packed != null) {
-				this.out.writeByte(ReplayFormat.METHOD_DEFLATE);
+				this.out.writeByte(this.mode.codecMethod());
 				this.out.writeVarInt(packed.length);
 				this.out.writeBytes(packed);
 			} else {
@@ -868,37 +868,6 @@ public final class ClipRemux {
 		return (int) Math.max(0L, Math.min(delta, Integer.MAX_VALUE));
 	}
 
-	/**
-	 * 圧縮する。縮まなかった・圧縮しない設定なら null（そのまま書く）。
-	 */
-	private static byte @Nullable [] deflate(byte[] raw, int level) {
-		if (level < 0 || raw.length == 0) {
-			return null;
-		}
-
-		Deflater deflater = new Deflater(level);
-
-		try {
-			deflater.setInput(raw);
-			deflater.finish();
-
-			ByteArrayOutputStream packed = new ByteArrayOutputStream(Math.max(64, raw.length / 4));
-			byte[] scratch = new byte[8192];
-
-			while (!deflater.finished()) {
-				int written = deflater.deflate(scratch);
-
-				if (written > 0) {
-					packed.write(scratch, 0, written);
-				}
-			}
-
-			byte[] result = packed.toByteArray();
-			return result.length < raw.length ? result : null;
-		} finally {
-			deflater.end();
-		}
-	}
 
 	private static void writeVarIntTo(OutputStream out, int value) throws IOException {
 		int remaining = value;
@@ -1316,17 +1285,18 @@ public final class ClipRemux {
 			checkLength(frame.length);
 			frame.method = this.readByte();
 
-			if (frame.method == ReplayFormat.METHOD_DEFLATE) {
+			if (BlockCodec.isPacked(frame.method)) {
 				frame.rawLength = this.readVarInt();
 				checkLength(frame.rawLength);
 				byte[] packed = this.readBytes(frame.length);
 
-				if (shared != null) {
+				if (shared != null && frame.method == ReplayFormat.METHOD_DEFLATE) {
 					// 共有窓（古い形式）は順番どおりに送り続けないと解けない
 					shared.setInput(packed);
 					frame.payload = this.inflateInto(shared, frame.rawLength);
 					frame.standalonePacked = false;
 				} else {
+					// 単独で完結（zstd は共有窓と混ざらない）
 					frame.payload = packed;
 					frame.standalonePacked = true;
 				}
@@ -1345,13 +1315,18 @@ public final class ClipRemux {
 			checkLength(block.rawLength);
 			block.method = this.readByte();
 
-			if (block.method == ReplayFormat.METHOD_DEFLATE) {
+			if (BlockCodec.isPacked(block.method)) {
 				block.packedLength = this.readVarInt();
 				checkLength(block.packedLength);
 				block.stored = this.readBytes(block.packedLength);
-				this.inflater.reset();
-				this.inflater.setInput(block.stored);
-				block.inner = this.inflateInto(this.inflater, block.rawLength);
+
+				if (block.method == ReplayFormat.METHOD_DEFLATE) {
+					this.inflater.reset();
+					this.inflater.setInput(block.stored);
+					block.inner = this.inflateInto(this.inflater, block.rawLength);
+				} else {
+					block.inner = BlockCodec.decompress(block.stored, block.rawLength, block.method);
+				}
 			} else {
 				block.packedLength = block.rawLength;
 				block.stored = this.readBytes(block.rawLength);
@@ -1361,19 +1336,19 @@ public final class ClipRemux {
 			return block;
 		}
 
-		void skipPacketFrame() throws IOException {
-			this.timeMs += this.readVarInt();
-			this.readVarInt();
-			int length = this.readVarInt();
-			checkLength(length);
-			int method = this.readByte();
+			void skipPacketFrame() throws IOException {
+				this.timeMs += this.readVarInt();
+				this.readVarInt();
+				int length = this.readVarInt();
+				checkLength(length);
+				int method = this.readByte();
 
-			if (method == ReplayFormat.METHOD_DEFLATE) {
-				checkLength(this.readVarInt());
+				if (BlockCodec.isPacked(method)) {
+					checkLength(this.readVarInt());
+				}
+
+				this.skipExactly(length);
 			}
-
-			this.skipExactly(length);
-		}
 
 		void skipBlockFrame() throws IOException {
 			int rawLength = this.readVarInt();
@@ -1381,13 +1356,18 @@ public final class ClipRemux {
 			int method = this.readByte();
 			byte[] inner;
 
-			if (method == ReplayFormat.METHOD_DEFLATE) {
+			if (BlockCodec.isPacked(method)) {
 				int packedLength = this.readVarInt();
 				checkLength(packedLength);
 				byte[] packed = this.readBytes(packedLength);
-				this.inflater.reset();
-				this.inflater.setInput(packed);
-				inner = this.inflateInto(this.inflater, rawLength);
+
+				if (method == ReplayFormat.METHOD_DEFLATE) {
+					this.inflater.reset();
+					this.inflater.setInput(packed);
+					inner = this.inflateInto(this.inflater, rawLength);
+				} else {
+					inner = BlockCodec.decompress(packed, rawLength, method);
+				}
 			} else {
 				inner = this.readBytes(rawLength);
 			}

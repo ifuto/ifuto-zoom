@@ -51,7 +51,8 @@ final class ReplayFileWriter implements Runnable {
 	 * 小さく切りすぎると窓を使い切れず縮まない。64KB あれば窓いっぱいに探せるし、
 	 * かたまりごとの木のぶんも薄まる。読み手は大きさを選ばないので互換性は保たれる。
 	 */
-	private static final int BLOCK_TARGET_BYTES = 64 * 1024;
+	/** かたまり1個の目安の大きさ（圧縮の設定ごと。強いほど大きい） */
+	private final int blockTargetBytes;
 
 	/** かたまりに入れるパケットの上限（小さい物ばかりのときの保険） */
 	private static final int BLOCK_MAX_PACKETS = 2048;
@@ -133,7 +134,7 @@ final class ReplayFileWriter implements Runnable {
 	private final boolean blocked;
 
 	/** ためているかたまりの中身 */
-	private ByteArrayOutputStream blockBytes = new ByteArrayOutputStream(BLOCK_TARGET_BYTES + 1024);
+	private ByteArrayOutputStream blockBytes = new ByteArrayOutputStream(65 * 1024);
 
 	/** かたまりに書くための物 */
 	private ReplayDataOutput blockOut = new ReplayDataOutput(this.blockBytes);
@@ -178,6 +179,7 @@ final class ReplayFileWriter implements Runnable {
 			throws IOException {
 		this.queue = new ArrayBlockingQueue<>(Math.max(64, queueCapacity));
 		this.compression = compression;
+		this.blockTargetBytes = compression.blockBytes();
 		this.indexIntervalMs = indexIntervalMs;
 		this.maxBytes = maxBytes;
 		this.flushIntervalMs = Math.max(100L, flushIntervalMs);
@@ -438,8 +440,8 @@ final class ReplayFileWriter implements Runnable {
 		this.writtenPackets.incrementAndGet();
 		this.queuedBytes.addAndGet(-length);
 
-		if (this.blockCount >= BLOCK_MAX_PACKETS
-				|| this.blockBytes.size() >= BLOCK_TARGET_BYTES
+			if (this.blockCount >= BLOCK_MAX_PACKETS
+				|| this.blockBytes.size() >= this.blockTargetBytes
 				|| System.currentTimeMillis() - this.blockOpenedAtMs >= BLOCK_MAX_HOLD_MS) {
 			this.flushBlock();
 		}
@@ -459,7 +461,7 @@ final class ReplayFileWriter implements Runnable {
 		byte[] raw = this.blockBytes.toByteArray();
 
 		// 先に空にしておく（途中で失敗しても同じ物を二度書かないように）
-		this.blockBytes = new ByteArrayOutputStream(BLOCK_TARGET_BYTES + 1024);
+		this.blockBytes = new ByteArrayOutputStream(this.blockTargetBytes + 1024);
 		this.blockOut = new ReplayDataOutput(this.blockBytes);
 		this.blockCount = 0;
 
@@ -486,17 +488,16 @@ final class ReplayFileWriter implements Runnable {
 	}
 
 	/**
-	 * かたまり1個を、**それだけで完結した deflate** にする（圧縮係が呼ぶ）。
+	 * かたまり1個を、**それだけで完結した圧縮** にする（圧縮係が呼ぶ）。
 	 *
-	 * <p>次のかたまりは reset() してから始めるので、かたまり同士は互いに独立。
-	 * そのぶん少しだけ縮み方が悪くなるが（実測で 0.5% ほど）、読み飛ばしや
-	 * つなぎ合わせが自由になる。
+	 * <p>かたまり同士は互いに独立。そのぶん少しだけ縮み方が悪くなるが、
+	 * 読み飛ばしやつなぎ合わせが自由になる。
 	 */
 	private void compressBlock(Block block) {
 		byte[] packed;
 
 		try {
-			packed = deflateWith(block.raw, this.compression.deflateLevel());
+			packed = BlockCodec.compress(block.raw, this.compression);
 		} catch (Throwable t) {
 			// ここで落とすと録画が全部だめになるので、縮まなくても書き切る
 			IfutoReplayClient.LOGGER.warn("[ifuto-replay] かたまりを圧縮できなかったのでそのまま書きます", t);
@@ -557,7 +558,7 @@ final class ReplayFileWriter implements Runnable {
 		this.out.writeVarInt(raw.length);
 
 		if (packed != null && packed.length < raw.length) {
-			this.out.writeByte(ReplayFormat.METHOD_DEFLATE);
+			this.out.writeByte(this.compression.codecMethod());
 			this.out.writeVarInt(packed.length);
 			this.out.writeBytes(packed);
 		} else {

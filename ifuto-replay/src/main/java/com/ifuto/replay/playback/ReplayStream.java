@@ -1,6 +1,7 @@
 package com.ifuto.replay.playback;
 
 import com.ifuto.replay.IfutoReplayClient;
+import com.ifuto.replay.recording.BlockCodec;
 import com.ifuto.replay.recording.ReplayFormat;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtIo;
@@ -145,6 +146,10 @@ public final class ReplayStream implements Closeable {
 							} catch (IOException e) {
 								stream.noteCorrupt("パケット (raw=" + rawLength + ", packed=" + length + ")");
 							}
+						} else if (method == ReplayFormat.METHOD_ZSTD) {
+							// 中身は要らないので長さだけ読んで飛ばす
+							stream.readVarInt();
+							stream.skipExactly(length);
 						} else {
 							stream.skipExactly(length);
 						}
@@ -173,14 +178,14 @@ public final class ReplayStream implements Closeable {
 						int number = stream.frameNumber++;
 						int rawLength = stream.readVarInt();
 						int method = stream.in.readByte();
-						int stored = method == ReplayFormat.METHOD_DEFLATE ? stream.readVarInt() : rawLength;
+						int stored = BlockCodec.isPacked(method) ? stream.readVarInt() : rawLength;
 						byte[] packed = new byte[stored];
 						stream.in.readFully(packed);
 
 						try {
 							byte[] raw = method == ReplayFormat.METHOD_DEFLATE
 									? stream.inflate(packed, rawLength)
-									: packed;
+									: BlockCodec.decompress(packed, rawLength, method);
 							// 中身の時刻を足さないと、このあとのしおりの時刻がずれる
 							stream.advanceThroughBlock(raw);
 						} catch (IOException e) {
@@ -307,20 +312,25 @@ public final class ReplayStream implements Closeable {
 						int method = this.in.readByte();
 						byte[] payload;
 
-						if (method == ReplayFormat.METHOD_DEFLATE) {
+						if (BlockCodec.isPacked(method)) {
 							int rawLength = this.readVarInt();
 							byte[] packed = new byte[length];
 							this.in.readFully(packed);
 
 							try {
-								payload = inflate(packed, rawLength);
+								payload = method == ReplayFormat.METHOD_DEFLATE
+										? inflate(packed, rawLength)
+										: BlockCodec.decompress(packed, rawLength, method);
 							} catch (IOException e) {
 								throw new CorruptFrameException("パケット #" + number
 										+ " (raw=" + rawLength + ", packed=" + length + ")");
 							}
-						} else {
+						} else if (method == ReplayFormat.METHOD_RAW) {
 							payload = new byte[length];
 							this.in.readFully(payload);
+						} else {
+							throw new CorruptFrameException("パケット #" + number
+									+ " (未知の圧縮方法: " + method + ")");
 						}
 
 						sink.packet(this.timeMs, typeIndex, payload, 0, payload.length);
@@ -406,20 +416,24 @@ public final class ReplayStream implements Closeable {
 		int method = this.in.readByte();
 		byte[] raw;
 
-		if (method == ReplayFormat.METHOD_DEFLATE) {
+		if (BlockCodec.isPacked(method)) {
 			int packedLength = this.readVarInt();
 			byte[] packed = new byte[packedLength];
 			this.in.readFully(packed);
 
 			try {
-				raw = this.inflate(packed, rawLength);
+				raw = method == ReplayFormat.METHOD_DEFLATE
+						? this.inflate(packed, rawLength)
+						: BlockCodec.decompress(packed, rawLength, method);
 			} catch (IOException e) {
 				throw new CorruptFrameException("かたまり #" + number
 						+ " (raw=" + rawLength + ", packed=" + packedLength + ")");
 			}
-		} else {
+		} else if (method == ReplayFormat.METHOD_RAW) {
 			raw = new byte[rawLength];
 			this.in.readFully(raw);
+		} else {
+			throw new CorruptFrameException("かたまり #" + number + " (未知の圧縮方法: " + method + ")");
 		}
 
 		this.blockBytes = raw;

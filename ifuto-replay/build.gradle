@@ -36,6 +36,10 @@ dependencies {
 	// Simple Voice Chat の「声だけ」を録るためのプラグイン API。
 	// VC Mod が入っていなくても動くように compileOnly（配布物には含めない）
 	compileOnly "de.maxhenkel.voicechat:voicechat-api:${project.voicechat_api_version}"
+
+	// 録画の圧縮に使う zstd（pure Java・0.27 は Java 8 対応）。
+	// deflate より速くて小さくなる。JarJar で同梱する（外への依存なし）
+	include 'io.airlift:aircompressor:0.27'
 }
 
 processResources {

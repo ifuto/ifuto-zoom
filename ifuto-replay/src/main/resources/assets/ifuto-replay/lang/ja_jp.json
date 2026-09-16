@@ -27,7 +27,7 @@
 	"ifuto-replay.config.record_client_packets": "操作も記録",
 	"ifuto-replay.config.record_client_packets.tooltip": "自分からサーバーへ送ったパケット（移動・クリック・チャットなど）も残します。オフにするとファイルがさらに小さくなります。",
 	"ifuto-replay.config.compression": "圧縮",
-	"ifuto-replay.config.compression.tooltip": "保存時の圧縮です。書き込みスレッド側でやるのでゲームの負荷にはほぼ影響しません。パケットを16KBずつまとめて圧縮します。強: おすすめ（実測で元の21〜24%ほど）。最強: そこからさらに少し縮みますが、CPUを約2倍使います",
+	"ifuto-replay.config.compression.tooltip": "保存時の圧縮です。標準以上はzstd（deflateより速くて小さい）を使います。強: おすすめ。最強: さらに少し縮みます",
 	"ifuto-replay.config.compression.off": "なし",
 	"ifuto-replay.config.compression.fast": "速い",
 	"ifuto-replay.config.compression.balanced": "標準",

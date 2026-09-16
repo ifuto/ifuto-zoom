@@ -10,8 +10,8 @@ public final class ReplayFormat {
 	/** ファイルの先頭に置くマジック "IFRP" */
 	public static final byte[] MAGIC = {'I', 'F', 'R', 'P'};
 
-	/** フォーマットバージョン */
-	public static final int VERSION = 5;
+	/** フォーマットバージョン（6 から zstd のかたまりが混ざる。読みは 5 も可） */
+	public static final int VERSION = 6;
 
 	/** 保存ファイルの拡張子 */
 	public static final String FILE_EXTENSION = ".ifreplay";
@@ -125,6 +125,9 @@ public final class ReplayFormat {
 
 	/** deflate（中身の先頭に展開後の長さが入る） */
 	public static final int METHOD_DEFLATE = 1;
+
+	/** zstd（deflate より速くて小さい。v6 から。長さの置き方は deflate と同じ） */
+	public static final int METHOD_ZSTD = 2;
 
 	// --- ヘッダのフラグ ---
 
