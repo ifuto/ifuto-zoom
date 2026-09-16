@@ -4,6 +4,7 @@ import com.ifuto.replay.IfutoReplayClient;
 import com.ifuto.replay.audio.AudioTracks;
 import com.ifuto.replay.config.ReplayConfig;
 import com.ifuto.replay.export.ExportOptions;
+import com.ifuto.replay.export.FfmpegInstaller;
 import com.ifuto.replay.export.ReplayExporter;
 import com.ifuto.replay.gui.theme.ReplayTheme;
 import com.ifuto.replay.gui.widget.ModernButton;
@@ -371,6 +372,14 @@ public class ExportScreen extends Screen {
 		config.exportHardwareAccel = this.useHardware;
 		config.save();
 
+		// ffmpeg が無ければ落としてきて、終わったらここへ戻って続きを始める
+		String ffmpeg = FfmpegInstaller.resolve(config.ffmpegPath);
+
+		if (ffmpeg == null) {
+			this.client.setScreen(new FfmpegDownloadScreen(this, path -> this.beginExport()));
+			return;
+		}
+
 		long startMs = this.startSec * 1000L;
 		long endMs = this.endSec * 1000L;
 
@@ -384,7 +393,7 @@ public class ExportScreen extends Screen {
 		// 音声は「録画の隣に置いてある別ファイル」。VC を外したいときは Minecraft だけの音を選ぶ
 		List<Path> audio = this.includeAudio ? AudioTracks.select(this.info.file(), this.includeVoiceChat) : null;
 		ExportOptions options = new ExportOptions(config.exportFps, config.exportWidth, config.exportHeight,
-				config.exportBitrateKbps, config.ffmpegPath, startMs, endMs, output, audio, this.speedPercent,
+				config.exportBitrateKbps, ffmpeg, startMs, endMs, output, audio, this.speedPercent,
 				config.exportHardwareAccel);
 
 		startExport(this.client, this.info.file(), options, this.parent);

@@ -8,6 +8,7 @@ import com.ifuto.replay.audio.MinecraftAudioCapture;
 import com.ifuto.replay.audio.AudioTracks;
 import com.ifuto.replay.audio.VoiceChatBridge;
 import com.ifuto.replay.config.ReplayConfig;
+import com.ifuto.replay.export.FfmpegInstaller;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.particle.ParticleEffect;
 import net.minecraft.client.MinecraftClient;
@@ -283,6 +284,19 @@ public final class RecordingManager {
 			return;
 		}
 
+		// ffmpeg が無ければ裏で落としてきて、今回は音声なしで続ける（録画は止めない）
+		if (FfmpegInstaller.resolve(config.ffmpegPath) == null) {
+			if (!FfmpegInstaller.canInstall()) {
+				notify(client, "ifuto-replay.message.audio_ffmpeg_linux");
+				return;
+			}
+
+			notify(client, "ifuto-replay.message.audio_ffmpeg_downloading");
+			FfmpegInstaller.ensureInBackground(config.ffmpegPath, path -> client.execute(() ->
+					notify(client, "ifuto-replay.message.audio_ffmpeg_ready")));
+			return;
+		}
+
 		if (config.audioMode == AudioMode.MINECRAFT) {
 			this.startMinecraftAudio(client, config, recordingFile);
 			return;
@@ -360,6 +374,19 @@ public final class RecordingManager {
 		ReplayConfig config = ReplayConfig.get();
 
 		if (config.audioMode == null || !config.audioMode.records()) {
+			return false;
+		}
+
+		// ふつうの録画と同じく、無ければ裏で落として今回は音声なし
+		if (FfmpegInstaller.resolve(config.ffmpegPath) == null) {
+			if (!FfmpegInstaller.canInstall()) {
+				notify(client, "ifuto-replay.message.audio_ffmpeg_linux");
+				return false;
+			}
+
+			notify(client, "ifuto-replay.message.audio_ffmpeg_downloading");
+			FfmpegInstaller.ensureInBackground(config.ffmpegPath, path -> client.execute(() ->
+					notify(client, "ifuto-replay.message.audio_ffmpeg_ready")));
 			return false;
 		}
 

@@ -101,7 +101,7 @@
 	"ifuto-replay.export.end.tooltip": "Timestamp to end the export at",
 	"ifuto-replay.export.bitrate": "Bitrate (kbps)",
 	"ifuto-replay.export.ffmpeg": "ffmpeg",
-	"ifuto-replay.export.ffmpeg.tooltip": "The ffmpeg executable. \"ffmpeg\" works if it is on your PATH.",
+	"ifuto-replay.export.ffmpeg.tooltip": "The ffmpeg executable. It is fetched automatically if missing (on Linux, install it yourself).",
 	"ifuto-replay.export.name": "File name",
 	"ifuto-replay.export.summary": "%s / %s to %s / about %s frames",
 	"ifuto-replay.export.begin": "Start export",
@@ -263,5 +263,12 @@
 	"ifuto-replay.export.hwaccel": "Hardware encoding",
 	"ifuto-replay.export.hwaccel.tooltip": "Encode with the GPU (fast; falls back to CPU if unavailable)",
 	"ifuto-replay.export.error_encoder": " (encoder: %s)",
-	"ifuto-replay.preview.error_unknown": "Couldn't start playback (%s)"
+	"ifuto-replay.preview.error_unknown": "Couldn't start playback (%s)",
+	"ifuto-replay.ffmpeg.title": "Setting up ffmpeg",
+	"ifuto-replay.ffmpeg.downloading": "Downloading… (%s / %s)",
+	"ifuto-replay.ffmpeg.failed": "Couldn't set up ffmpeg (%s)",
+	"ifuto-replay.ffmpeg.linux_guide": "Linux can't auto-install. Please install ffmpeg and set its path in the config",
+	"ifuto-replay.message.audio_ffmpeg_downloading": "ffmpeg is missing, downloading it in the background. Next recordings will have audio",
+	"ifuto-replay.message.audio_ffmpeg_ready": "ffmpeg is ready. Next recordings will have audio",
+	"ifuto-replay.message.audio_ffmpeg_linux": "No ffmpeg, so no audio. Install ffmpeg and set its path in the config"
 }

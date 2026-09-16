@@ -367,7 +367,8 @@ public class ReplayConfigScreen extends Screen {
 	private void detectAudioDevice(ModernTextField field) {
 		field.setText(Text.translatable("ifuto-replay.config.audio_device.detecting").getString());
 		MinecraftClient client = MinecraftClient.getInstance();
-		String ffmpegPath = this.config.ffmpegPath;
+		String resolved = com.ifuto.replay.export.FfmpegInstaller.resolve(this.config.ffmpegPath);
+		String ffmpegPath = resolved == null ? this.config.ffmpegPath : resolved;
 
 		Thread thread = new Thread(() -> {
 			List<String> devices = SystemAudioCapture.detectDevices(ffmpegPath);

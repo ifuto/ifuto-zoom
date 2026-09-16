@@ -997,6 +997,12 @@ public final class ClipRemux {
 
 	private static boolean cutTrack(Path input, Path output, List<Range> spans, ReplayConfig config,
 			Progress progress) {
+		String ffmpeg = com.ifuto.replay.export.FfmpegInstaller.resolve(config.ffmpegPath);
+
+		if (ffmpeg == null) {
+			return false;
+		}
+
 		List<String> args = new ArrayList<>();
 		args.add("-y");
 		args.add("-hide_banner");
@@ -1031,7 +1037,7 @@ public final class ClipRemux {
 		args.add(output.toAbsolutePath().toString());
 
 		List<String> command = new ArrayList<>();
-		command.add(config.ffmpegPath);
+		command.add(ffmpeg);
 		command.addAll(args);
 
 		try {

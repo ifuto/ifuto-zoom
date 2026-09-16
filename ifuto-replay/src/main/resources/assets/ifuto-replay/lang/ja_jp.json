@@ -101,7 +101,7 @@
 	"ifuto-replay.export.end.tooltip": "書き出しを終わる時刻",
 	"ifuto-replay.export.bitrate": "ビットレート (kbps)",
 	"ifuto-replay.export.ffmpeg": "ffmpeg",
-	"ifuto-replay.export.ffmpeg.tooltip": "ffmpeg の実行ファイル。パスが通っていれば \"ffmpeg\" のままで大丈夫です",
+	"ifuto-replay.export.ffmpeg.tooltip": "ffmpeg の実行ファイル。見つからなければ自動で用意します（Linux は手動で入れてください）",
 	"ifuto-replay.export.name": "ファイル名",
 	"ifuto-replay.export.summary": "%s / %s → %s / 約 %s フレーム",
 	"ifuto-replay.export.begin": "書き出し開始",
@@ -263,5 +263,12 @@
 	"ifuto-replay.export.hwaccel": "GPUエンコード",
 	"ifuto-replay.export.hwaccel.tooltip": "GPUでmp4を作る（速い。使えなければCPUに切り替わる）",
 	"ifuto-replay.export.error_encoder": "（エンコーダー: %s）",
-	"ifuto-replay.preview.error_unknown": "再生を始められませんでした（%s）"
+	"ifuto-replay.preview.error_unknown": "再生を始められませんでした（%s）",
+	"ifuto-replay.ffmpeg.title": "ffmpeg の用意",
+	"ifuto-replay.ffmpeg.downloading": "ダウンロードしています…（%s / %s）",
+	"ifuto-replay.ffmpeg.failed": "ffmpeg を用意できませんでした（%s）",
+	"ifuto-replay.ffmpeg.linux_guide": "Linux は自動では入れられません。ffmpeg を入れて設定で場所を指定してください",
+	"ifuto-replay.message.audio_ffmpeg_downloading": "ffmpeg が無いので裏でダウンロードしています。終わったら次回の録画から音声が付きます",
+	"ifuto-replay.message.audio_ffmpeg_ready": "ffmpeg の用意ができました。次回の録画から音声が付きます",
+	"ifuto-replay.message.audio_ffmpeg_linux": "ffmpeg が無いので音声は録れません。ffmpeg を入れて設定で場所を指定してください"
 }

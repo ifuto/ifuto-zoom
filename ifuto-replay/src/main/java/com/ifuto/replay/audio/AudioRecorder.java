@@ -65,13 +65,20 @@ public final class AudioRecorder {
 		this.stopping = false;
 		this.output = target;
 
+		String ffmpeg = com.ifuto.replay.export.FfmpegInstaller.resolve(config.ffmpegPath);
+
+		if (ffmpeg == null) {
+			this.failure = "ffmpeg がありません";
+			return false;
+		}
+
 		String device = config.audioDevice;
 
 		if (device == null || device.isBlank()) {
-			device = SystemAudioCapture.autoDevice(config.ffmpegPath);
+			device = SystemAudioCapture.autoDevice(ffmpeg);
 		}
 
-		List<String> command = SystemAudioCapture.command(config.ffmpegPath, config.audioBitrateKbps,
+		List<String> command = SystemAudioCapture.command(ffmpeg, config.audioBitrateKbps,
 				device, target);
 		IfutoReplayClient.LOGGER.info("[ifuto-replay] 音声を録ります: {}", String.join(" ", command));
 
