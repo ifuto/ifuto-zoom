@@ -51,6 +51,11 @@ public class RecordingListScreen extends Screen {
 	private ScrollableLayoutWidget scrollable;
 	private ThreePartsLayoutWidget layout;
 
+	/** 一覧・ラベル・小ボタンの幅（画面が狭いときは縮める。init で決める） */
+	private int listWidth = LIST_WIDTH;
+	private int labelWidth = LABEL_WIDTH;
+	private int smallWidth = SMALL_BUTTON_WIDTH;
+
 	private ModernButton armedDeleteButton;
 	private long armedUntil;
 
@@ -61,6 +66,12 @@ public class RecordingListScreen extends Screen {
 
 	@Override
 	protected void init() {
+		// 画面が狭い（GUIサイズが大きい）ときは一覧ごと縮めてはみ出さないようにする
+		this.listWidth = Math.min(LIST_WIDTH, this.width - 16);
+		// 1行 = ラベル + 小ボタン4個 + 隙間4個 + スクロールバーぶん。ボタンは縮めても押せる幅を残す
+		this.smallWidth = Math.min(SMALL_BUTTON_WIDTH,
+				Math.max(38, (this.listWidth - COLUMN_GAP * 4 - 12 - 90) / 4));
+		this.labelWidth = Math.max(56, this.listWidth - this.smallWidth * 4 - COLUMN_GAP * 4 - 12);
 		this.layout = new ThreePartsLayoutWidget(this);
 		this.layout.addHeader(this.title, this.textRenderer);
 
@@ -80,17 +91,17 @@ public class RecordingListScreen extends Screen {
 		}
 
 		this.scrollable = new ScrollableLayoutWidget(this.client, content, SCROLL_MIN_HEIGHT);
-		this.scrollable.setWidth(LIST_WIDTH);
+		this.scrollable.setWidth(this.listWidth);
 		body.add(this.scrollable);
 
 		DirectionalLayoutWidget footer = this.layout.addFooter(DirectionalLayoutWidget.horizontal().spacing(COLUMN_GAP));
-		footer.add(new ModernButton(0, 0, SMALL_BUTTON_WIDTH, BUTTON_HEIGHT,
+		footer.add(new ModernButton(0, 0, this.smallWidth, BUTTON_HEIGHT,
 				Text.translatable("ifuto-replay.list.refresh"), button -> this.clearAndInit(),
 				ModernButton.Style.NORMAL));
-		footer.add(new ModernButton(0, 0, SMALL_BUTTON_WIDTH, BUTTON_HEIGHT,
+		footer.add(new ModernButton(0, 0, this.smallWidth, BUTTON_HEIGHT,
 				Text.translatable("ifuto-replay.config.open_folder"), button -> this.openFolder(),
 				ModernButton.Style.NORMAL));
-		footer.add(new ModernButton(0, 0, SMALL_BUTTON_WIDTH, BUTTON_HEIGHT,
+		footer.add(new ModernButton(0, 0, this.smallWidth, BUTTON_HEIGHT,
 				Text.translatable("gui.done"), button -> this.close(), ModernButton.Style.PRIMARY));
 
 		this.layout.forEachChild(this::addDrawableChild);
@@ -103,33 +114,33 @@ public class RecordingListScreen extends Screen {
 		DirectionalLayoutWidget labels = DirectionalLayoutWidget.vertical().spacing(1);
 		TextWidget when = new TextWidget(Text.literal(formatDateTime(info.startedAt())), this.textRenderer);
 		TextWidget details = new TextWidget(Text.literal(describe(info)), this.textRenderer);
-		when.setMaxWidth(LABEL_WIDTH);
-		details.setMaxWidth(LABEL_WIDTH);
+		when.setMaxWidth(this.labelWidth);
+		details.setMaxWidth(this.labelWidth);
 		details.setTooltip(Tooltip.of(Text.literal(info.fileName()
 				+ "\n" + info.mcVersion()
 				+ "\n" + Text.translatable("ifuto-replay.list.player", info.playerName()).getString())));
 		labels.add(when);
 		labels.add(details);
 
-		ModernButton deleteButton = new ModernButton(0, 0, SMALL_BUTTON_WIDTH, BUTTON_HEIGHT,
+		ModernButton deleteButton = new ModernButton(0, 0, this.smallWidth, BUTTON_HEIGHT,
 				Text.translatable("ifuto-replay.list.delete"), button -> this.onDelete(button, info),
 				ModernButton.Style.DANGER);
 		deleteButton.setTooltip(Tooltip.of(Text.translatable("ifuto-replay.list.delete.tooltip")));
 
-		ModernButton playButton = new ModernButton(0, 0, SMALL_BUTTON_WIDTH, BUTTON_HEIGHT,
+		ModernButton playButton = new ModernButton(0, 0, this.smallWidth, BUTTON_HEIGHT,
 				Text.translatable("ifuto-replay.list.play"),
 				button -> ReplayPreviewScreen.open(MinecraftClient.getInstance(), info.file(), this.parent),
 				ModernButton.Style.PRIMARY);
 		playButton.setTooltip(Tooltip.of(Text.translatable("ifuto-replay.list.play.tooltip")));
 
-		ModernButton exportButton = new ModernButton(0, 0, SMALL_BUTTON_WIDTH, BUTTON_HEIGHT,
+		ModernButton exportButton = new ModernButton(0, 0, this.smallWidth, BUTTON_HEIGHT,
 				Text.translatable("ifuto-replay.list.export"),
 				button -> MinecraftClient.getInstance()
 						.setScreen(new ExportScreen(this.parent, info, ReplayConfig.get())),
 				ModernButton.Style.NORMAL);
 		exportButton.setTooltip(Tooltip.of(Text.translatable("ifuto-replay.list.export.tooltip")));
 
-		ModernButton editButton = new ModernButton(0, 0, SMALL_BUTTON_WIDTH, BUTTON_HEIGHT,
+		ModernButton editButton = new ModernButton(0, 0, this.smallWidth, BUTTON_HEIGHT,
 				Text.translatable("ifuto-replay.list.edit"),
 				button -> ClipEditorScreen.open(MinecraftClient.getInstance(), info.file(), this.parent),
 				ModernButton.Style.NORMAL);

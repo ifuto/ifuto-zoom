@@ -68,11 +68,12 @@ public class EditProgressScreen extends Screen {
 		context.drawText(this.textRenderer, phase, centerX - this.textRenderer.getWidth(phase) / 2,
 				centerY - 18, 0xAAAAAA, false);
 
-		int left = centerX - BAR_WIDTH / 2;
-		ReplayTheme.fillRound(context, left, centerY, BAR_WIDTH, BAR_HEIGHT, 3, ReplayTheme.SURFACE_INPUT);
+		int barWidth = Math.min(BAR_WIDTH, this.width - 40);
+		int left = centerX - barWidth / 2;
+		ReplayTheme.fillRound(context, left, centerY, barWidth, BAR_HEIGHT, 3, ReplayTheme.SURFACE_INPUT);
 
 		double ratio = this.job.total > 0L ? (double) this.job.done / (double) this.job.total : 0.0;
-		int filled = (int) Math.round(BAR_WIDTH * Math.max(0.0, Math.min(1.0, ratio)));
+		int filled = (int) Math.round(barWidth * Math.max(0.0, Math.min(1.0, ratio)));
 
 		if (filled > 0) {
 			ReplayTheme.fillRound(context, left, centerY, filled, BAR_HEIGHT, 3, ReplayTheme.ACCENT);

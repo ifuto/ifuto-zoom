@@ -53,6 +53,9 @@ public class ReplayConfigScreen extends Screen {
 	private ScrollableLayoutWidget scrollable;
 	private ThreePartsLayoutWidget layout;
 
+	/** 部品の幅（画面が狭いときは細くする。init で決める） */
+	private int widgetWidth = WIDGET_WIDTH;
+
 	public ReplayConfigScreen(Screen parent) {
 		super(Text.translatable("ifuto-replay.config.title"));
 		this.parent = parent;
@@ -61,6 +64,8 @@ public class ReplayConfigScreen extends Screen {
 
 	@Override
 	protected void init() {
+		// 画面が狭い（GUIサイズが大きい）ときは部品を細くしてはみ出さないようにする
+		this.widgetWidth = Math.min(WIDGET_WIDTH, Math.max(96, (this.width - 24 - COLUMN_GAP - 8) / 2));
 		this.layout = new ThreePartsLayoutWidget(this);
 		this.layout.addHeader(this.title, this.textRenderer);
 
@@ -204,7 +209,7 @@ public class ReplayConfigScreen extends Screen {
 
 		// 7行目: 保存先（全幅）
 		ModernTextField folderField = new ModernTextField(this.textRenderer,
-				0, 0, WIDGET_WIDTH * 2 + COLUMN_GAP, WIDGET_HEIGHT,
+				0, 0, this.widgetWidth * 2 + COLUMN_GAP, WIDGET_HEIGHT,
 				Text.translatable("ifuto-replay.config.save_folder"));
 		folderField.setMaxLength(120);
 		folderField.setText(this.config.saveFolder);
@@ -225,21 +230,21 @@ public class ReplayConfigScreen extends Screen {
 						value -> this.config.audioBitrateKbps = value)));
 
 		ModernTextField deviceField = new ModernTextField(this.textRenderer,
-				0, 0, WIDGET_WIDTH, WIDGET_HEIGHT,
+				0, 0, this.widgetWidth, WIDGET_HEIGHT,
 				Text.translatable("ifuto-replay.config.audio_device"));
 		deviceField.setMaxLength(120);
 		deviceField.setText(this.config.audioDevice);
 		deviceField.setPlaceholder(Text.translatable("ifuto-replay.config.audio_device.placeholder"));
 		deviceField.setTooltip(Tooltip.of(Text.translatable("ifuto-replay.config.audio_device.tooltip")));
 		deviceField.setChangedListener(value -> this.config.audioDevice = value.trim());
-		ModernButton detectButton = new ModernButton(0, 0, WIDGET_WIDTH, WIDGET_HEIGHT,
+		ModernButton detectButton = new ModernButton(0, 0, this.widgetWidth, WIDGET_HEIGHT,
 				Text.translatable("ifuto-replay.config.audio_device.detect"),
 				button -> this.detectAudioDevice(deviceField), ModernButton.Style.NORMAL);
 		detectButton.setTooltip(Tooltip.of(Text.translatable("ifuto-replay.config.audio_device.detect.tooltip")));
 		content.add(row(deviceField, detectButton));
 		content.add(row(toggle("ifuto-replay.config.record_voice_chat", this.config.recordVoiceChat,
 				"ifuto-replay.config.record_voice_chat.tooltip",
-				value -> this.config.recordVoiceChat = value, WIDGET_WIDTH * 2 + COLUMN_GAP), null));
+				value -> this.config.recordVoiceChat = value, this.widgetWidth * 2 + COLUMN_GAP), null));
 
 		// 8行目: 書き出しの既定値（FPS / 解像度）
 		String currentResolution = this.config.exportWidth + "x" + this.config.exportHeight;
@@ -264,7 +269,7 @@ public class ReplayConfigScreen extends Screen {
 						value -> this.applyResolution(value))));
 
 		// 9行目: ビットレート
-		ModernTextField bitrateField = new ModernTextField(this.textRenderer, 0, 0, WIDGET_WIDTH, WIDGET_HEIGHT,
+		ModernTextField bitrateField = new ModernTextField(this.textRenderer, 0, 0, this.widgetWidth, WIDGET_HEIGHT,
 				Text.translatable("ifuto-replay.config.export_bitrate"));
 		bitrateField.setMaxLength(9);
 		bitrateField.setText(String.valueOf(this.config.exportBitrateKbps));
@@ -284,7 +289,7 @@ public class ReplayConfigScreen extends Screen {
 
 		// 10行目: ffmpeg（全幅）
 		ModernTextField ffmpegField = new ModernTextField(this.textRenderer,
-				0, 0, WIDGET_WIDTH * 2 + COLUMN_GAP, WIDGET_HEIGHT,
+				0, 0, this.widgetWidth * 2 + COLUMN_GAP, WIDGET_HEIGHT,
 				Text.translatable("ifuto-replay.config.ffmpeg_path"));
 		ffmpegField.setMaxLength(240);
 		ffmpegField.setText(this.config.ffmpegPath);
@@ -294,20 +299,20 @@ public class ReplayConfigScreen extends Screen {
 		content.add(row(ffmpegField, null));
 
 		this.scrollable = new ScrollableLayoutWidget(this.client, content, SCROLL_MIN_HEIGHT);
-		this.scrollable.setWidth(WIDGET_WIDTH * 2 + COLUMN_GAP + 8);
+		this.scrollable.setWidth(this.widgetWidth * 2 + COLUMN_GAP + 8);
 		body.add(this.scrollable);
 
 		DirectionalLayoutWidget footer = this.layout.addFooter(DirectionalLayoutWidget.horizontal().spacing(COLUMN_GAP));
-		footer.add(new ModernButton(0, 0, WIDGET_WIDTH, WIDGET_HEIGHT,
+		footer.add(new ModernButton(0, 0, this.widgetWidth, WIDGET_HEIGHT,
 				Text.translatable("ifuto-replay.config.open_folder"), button -> openFolder(),
 				ModernButton.Style.NORMAL));
-		footer.add(new ModernButton(0, 0, WIDGET_WIDTH, WIDGET_HEIGHT,
+		footer.add(new ModernButton(0, 0, this.widgetWidth, WIDGET_HEIGHT,
 				Text.translatable("ifuto-replay.config.reset"), button -> {
 					this.config.resetToDefaults();
 					this.config.save();
 					this.clearAndInit();
 				}, ModernButton.Style.DANGER));
-		footer.add(new ModernButton(0, 0, WIDGET_WIDTH, WIDGET_HEIGHT,
+		footer.add(new ModernButton(0, 0, this.widgetWidth, WIDGET_HEIGHT,
 				Text.translatable("gui.done"), button -> this.close(), ModernButton.Style.PRIMARY));
 
 		this.layout.forEachChild(this::addDrawableChild);
@@ -316,32 +321,32 @@ public class ReplayConfigScreen extends Screen {
 
 	// --- 部品を作る（同じ形を何度も書かないためのまとめ） ---
 
-	private static ModernToggle toggle(String labelKey, boolean initial, String tooltipKey,
-									   Consumer<Boolean> setter) {
-		return toggle(labelKey, initial, tooltipKey, setter, WIDGET_WIDTH);
+	private ModernToggle toggle(String labelKey, boolean initial, String tooltipKey,
+			Consumer<Boolean> setter) {
+		return toggle(labelKey, initial, tooltipKey, setter, this.widgetWidth);
 	}
 
-	private static ModernToggle toggle(String labelKey, boolean initial, String tooltipKey,
-									   Consumer<Boolean> setter, int width) {
+	private ModernToggle toggle(String labelKey, boolean initial, String tooltipKey,
+			Consumer<Boolean> setter, int width) {
 		ModernToggle toggle = new ModernToggle(0, 0, width, WIDGET_HEIGHT,
 				Text.translatable(labelKey), initial, setter);
 		toggle.setTooltip(Tooltip.of(Text.translatable(tooltipKey)));
 		return toggle;
 	}
 
-	private static <T> ModernCycling<T> cycle(String labelKey, List<T> values, T initial,
+	private <T> ModernCycling<T> cycle(String labelKey, List<T> values, T initial,
 											  Function<T, Text> formatter, String tooltipKey,
 											  Consumer<T> setter) {
-		ModernCycling<T> cycling = new ModernCycling<>(0, 0, WIDGET_WIDTH, WIDGET_HEIGHT,
+		ModernCycling<T> cycling = new ModernCycling<>(0, 0, this.widgetWidth, WIDGET_HEIGHT,
 				Text.translatable(labelKey), values, initial, formatter, setter);
 		cycling.setTooltip(Tooltip.of(Text.translatable(tooltipKey)));
 		return cycling;
 	}
 
-	private static ModernSlider slider(String labelKey, int min, int max, int initial,
+	private ModernSlider slider(String labelKey, int min, int max, int initial,
 									   ModernSlider.ValueFormatter formatter, String tooltipKey,
 									   IntConsumer setter) {
-		ModernSlider slider = new ModernSlider(0, 0, WIDGET_WIDTH, WIDGET_HEIGHT, labelKey, min, max, initial,
+		ModernSlider slider = new ModernSlider(0, 0, this.widgetWidth, WIDGET_HEIGHT, labelKey, min, max, initial,
 				formatter, setter);
 		slider.setTooltip(Tooltip.of(Text.translatable(tooltipKey)));
 		return slider;

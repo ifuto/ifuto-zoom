@@ -48,13 +48,14 @@ public class ExportProgressScreen extends Screen {
 		DirectionalLayoutWidget body = this.layout.addBody(DirectionalLayoutWidget.vertical().spacing(8));
 		this.statusText = new TextWidget(Text.translatable("ifuto-replay.export.preparing"), this.textRenderer);
 		this.detailText = new TextWidget(Text.empty(), this.textRenderer);
-		this.statusText.setMaxWidth(MAX_TEXT_WIDTH);
-		this.detailText.setMaxWidth(MAX_TEXT_WIDTH);
+		int textWidth = Math.min(MAX_TEXT_WIDTH, this.width - 40);
+		this.statusText.setMaxWidth(textWidth);
+		this.detailText.setMaxWidth(textWidth);
 		body.add(this.statusText);
 		body.add(this.detailText);
 
-		this.layout.addFooter(new ModernButton(0, 0, 200, 20, Text.translatable("gui.cancel"),
-				button -> this.cancel(), ModernButton.Style.DANGER));
+		this.layout.addFooter(new ModernButton(0, 0, Math.min(200, this.width - 40), 20,
+				Text.translatable("gui.cancel"), button -> this.cancel(), ModernButton.Style.DANGER));
 
 		this.layout.forEachChild(this::addDrawableChild);
 		this.refreshWidgetPositions();
