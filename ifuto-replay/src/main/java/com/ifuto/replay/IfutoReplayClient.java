@@ -73,7 +73,7 @@ public class IfutoReplayClient implements ClientModInitializer {
 				RecordingManager.INSTANCE.onJoin(client, handler));
 
 		// 抜けたら必ず保存して閉じる
-		ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> RecordingManager.INSTANCE.stop(client));
+		ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> RecordingManager.INSTANCE.onDisconnect(client));
 
 		// ゲーム終了時も同じ（再生中なら先に片付ける）
 		ClientLifecycleEvents.CLIENT_STOPPING.register(client -> {

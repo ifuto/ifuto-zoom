@@ -224,7 +224,9 @@ public final class RecordingManager {
 	}
 
 	public synchronized void stop(MinecraftClient client) {
-		forgetWorldPackets();
+		// 世界のパケットは覚えたままにする。同じワールドで録り直すときに要る
+		// （ここで忘れると、2回目以降の録画が「途中から」扱いで再生不能になる）。
+		// 忘れるのは切断したときだけ（onDisconnect）。
 		RecordingSession current = this.session;
 
 		if (current == null) {
@@ -252,6 +254,12 @@ public final class RecordingManager {
 				Text.literal(formatSize(stats.bytes())),
 				Text.literal(formatDuration(stats.durationMs())),
 				Text.literal(String.valueOf(stats.packets())));
+	}
+
+	/** 切断したとき。保存して閉じて、別のワールドの写しに混ざらないよう忘れる */
+	public void onDisconnect(MinecraftClient client) {
+		this.stop(client);
+		forgetWorldPackets();
 	}
 
 	public void toggle(MinecraftClient client) {

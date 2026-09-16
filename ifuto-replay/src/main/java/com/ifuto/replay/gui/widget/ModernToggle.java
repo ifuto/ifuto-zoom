@@ -81,8 +81,9 @@ public class ModernToggle extends ClickableWidget {
 
 		int textY = this.getY() + (this.getHeight() - renderer.fontHeight) / 2 + 1;
 		int labelMax = this.getWidth() - TRACK_WIDTH - 22;
-		context.drawText(renderer, trim(renderer, this.getMessage(), labelMax), this.getX() + 8, textY,
-				this.active ? ReplayTheme.TEXT : ReplayTheme.TEXT_DIM, false);
+		// 入りきらないときは流して全部見せる
+		MarqueeText.draw(context, renderer, this.getMessage(), this.getX() + 8, textY, labelMax,
+				this.active ? ReplayTheme.TEXT : ReplayTheme.TEXT_DIM);
 
 		int trackX = this.getX() + this.getWidth() - TRACK_WIDTH - 8;
 		int trackY = this.getY() + (this.getHeight() - TRACK_HEIGHT) / 2;
@@ -107,14 +108,5 @@ public class ModernToggle extends ClickableWidget {
 	@Override
 	protected void appendClickableNarrations(NarrationMessageBuilder builder) {
 		this.appendDefaultNarrations(builder);
-	}
-
-	/** 入りきらない文字は「…」で切る（切れない長さのときはそのまま） */
-	private static Text trim(TextRenderer renderer, Text text, int maxWidth) {
-		if (renderer.getWidth(text) <= maxWidth || maxWidth <= renderer.getWidth("…")) {
-			return text;
-		}
-
-		return Text.literal(renderer.trimToWidth(text.getString(), maxWidth - renderer.getWidth("…")) + "…");
 	}
 }

@@ -93,22 +93,20 @@ public class ModernCycling<T> extends ClickableWidget {
 		// 右: いまの値（アクセント色）
 		Text value = this.formatter.apply(this.value());
 		int valueWidth = renderer.getWidth(value);
-		context.drawText(renderer, value, this.getX() + this.getWidth() - PADDING - valueWidth, textY,
-				this.active ? ReplayTheme.ACCENT : ReplayTheme.TEXT_DIM, false);
+		int innerWidth = this.getWidth() - PADDING * 2;
 
-		// 左: 項目名（弱い色。値にぶつからない範囲で）
-		int labelMax = this.getWidth() - PADDING * 3 - valueWidth;
+		if (valueWidth > innerWidth) {
+			// 値だけでいっぱいのときは値を流して全部見せる（項目名は出さない）
+			MarqueeText.draw(context, renderer, value, this.getX() + PADDING, textY, innerWidth,
+					this.active ? ReplayTheme.ACCENT : ReplayTheme.TEXT_DIM);
+		} else {
+			context.drawText(renderer, value, this.getX() + this.getWidth() - PADDING - valueWidth, textY,
+					this.active ? ReplayTheme.ACCENT : ReplayTheme.TEXT_DIM, false);
 
-		if (labelMax > renderer.getWidth("…")) {
-			Text label = this.getMessage();
-
-			if (renderer.getWidth(label) > labelMax) {
-				label = Text.literal(renderer.trimToWidth(label.getString(),
-						labelMax - renderer.getWidth("…")) + "…");
-			}
-
-			context.drawText(renderer, label, this.getX() + PADDING, textY,
-					this.active ? ReplayTheme.TEXT_DIM : ReplayTheme.withAlpha(ReplayTheme.TEXT_DIM, 0x99), false);
+			// 左: 項目名（弱い色。値にぶつからない範囲で。入りきらなければ流れる）
+			int labelMax = this.getWidth() - PADDING * 3 - valueWidth;
+			MarqueeText.draw(context, renderer, this.getMessage(), this.getX() + PADDING, textY, labelMax,
+					this.active ? ReplayTheme.TEXT_DIM : ReplayTheme.withAlpha(ReplayTheme.TEXT_DIM, 0x99));
 		}
 
 		if (this.isFocused()) {

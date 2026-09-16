@@ -190,6 +190,17 @@ public final class ReplayPlayback implements ReplayStream.Sink {
 	}
 
 	/**
+	 * 世界を作るパケットが無い（途中から録って写しが無い古いファイル）。
+	 *
+	 * <p>他の失敗（壊れたファイル等）と混ぜない。画面に出す文言を変えるためだけの区別。
+	 */
+	public static final class NoWorldException extends IOException {
+		NoWorldException(String message) {
+			super(message);
+		}
+	}
+
+	/**
 	 * 再生を始める。{@code GameJoin} のパケットを流し込んでバニラに世界を作らせたところまで
 	 * 進めた状態で返す。
 	 */
@@ -660,7 +671,7 @@ public final class ReplayPlayback implements ReplayStream.Sink {
 			}
 
 			if (Util.getMeasuringTimeMs() > deadline) {
-				throw new IOException("ワールドを開始できませんでした（GameJoin パケットが見つかりません）");
+				throw new NoWorldException("ワールドを開始できませんでした（GameJoin パケットが見つかりません）");
 			}
 
 			// 時刻を進めずに、世界ができるまで必要なパケットを流す
@@ -676,7 +687,7 @@ public final class ReplayPlayback implements ReplayStream.Sink {
 		}
 
 		if (this.client.world == null || this.client.player == null) {
-			throw new IOException("ワールドを開始できませんでした");
+			throw new NoWorldException("ワールドを開始できませんでした");
 		}
 
 		this.setupPlayer();

@@ -124,7 +124,7 @@
 	"ifuto-replay.config.snapshot_radius": "地形を一緒に保存",
 	"ifuto-replay.config.snapshot_radius.value": "%s チャンク",
 	"ifuto-replay.config.snapshot_radius.off": "保存しない",
-	"ifuto-replay.config.snapshot_radius.tooltip": "途中から録り始めたとき、いまの地形とエンティティを一緒に保存する半径。0 = 保存しない（その場合、途中からの録画は再生できなくなります）",
+	"ifuto-replay.config.snapshot_radius.tooltip": "途中から録り始めたとき、いまの地形とエンティティを一緒に保存する半径。0 にしても 1 として扱います（写しが無いと再生できなくなるため）",
 	"ifuto-replay.message.snapshot": "途中から録り始めたので、いまの世界の写しを一緒に保存しました",
 	"ifuto-replay.message.disk_low": "保存先の空きが %s MB です。少なくなると録画を自動で止めます",
 	"ifuto-replay.message.disk_critical": "保存先の空きが %s MB を切ったので、録画を保存して止めました",
@@ -262,5 +262,6 @@
 	"ifuto-replay.editor.nospace_message": "切り出すには元ファイルぶんの空きが必要です",
 	"ifuto-replay.export.hwaccel": "GPUエンコード",
 	"ifuto-replay.export.hwaccel.tooltip": "GPUでmp4を作る（速い。使えなければCPUに切り替わる）",
-	"ifuto-replay.export.error_encoder": "（エンコーダー: %s）"
+	"ifuto-replay.export.error_encoder": "（エンコーダー: %s）",
+	"ifuto-replay.preview.error_unknown": "再生を始められませんでした（%s）"
 }

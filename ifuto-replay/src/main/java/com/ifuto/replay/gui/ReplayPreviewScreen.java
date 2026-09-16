@@ -404,12 +404,19 @@ public class ReplayPreviewScreen extends Screen {
 			}
 
 			client.setScreen(new ReplayPreviewScreen(playback));
-		} catch (Exception e) {
+		} catch (ReplayPlayback.NoWorldException e) {
 			IfutoReplayClient.LOGGER.error("[ifuto-replay] 再生を始められませんでした", e);
 			Screen back = parent == null ? new TitleScreen() : parent;
 			client.setScreen(new NoticeScreen(new RecordingListScreen(back),
 					Text.translatable("ifuto-replay.preview.error_title"),
 					Text.translatable("ifuto-replay.preview.error_no_join")));
+		} catch (Exception e) {
+			IfutoReplayClient.LOGGER.error("[ifuto-replay] 再生を始められませんでした", e);
+			Screen back = parent == null ? new TitleScreen() : parent;
+			String detail = e.getMessage() == null ? e.toString() : e.getMessage();
+			client.setScreen(new NoticeScreen(new RecordingListScreen(back),
+					Text.translatable("ifuto-replay.preview.error_title"),
+					Text.translatable("ifuto-replay.preview.error_unknown", Text.literal(detail))));
 		}
 	}
 }

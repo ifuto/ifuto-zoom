@@ -282,8 +282,7 @@ public final class RecordingSession {
 			return false;
 		}
 
-		this.offerSnapshot(snapshot);
-		return true;
+		return this.offerSnapshot(snapshot);
 	}
 
 	/**
@@ -295,12 +294,15 @@ public final class RecordingSession {
 	 * @return 写し。作れなかったら null
 	 */
 	public WorldSnapshot.@Nullable Snapshot buildSnapshot(MinecraftClient client) {
-		if (this.stopping || client == null || this.config.snapshotRadius <= 0) {
+		if (this.stopping || client == null) {
 			return null;
 		}
 
+		// 半径 0 でも最低 1 として写しは必ず作る（無いと再生不能になるため。設定の 0 は無視する）
+		int radius = Math.max(1, this.config.snapshotRadius);
+
 		try {
-			return WorldSnapshot.build(client, this.config.snapshotRadius);
+			return WorldSnapshot.build(client, radius);
 		} catch (Throwable t) {
 			IfutoReplayClient.LOGGER.warn("[ifuto-replay] 世界の写しを作れませんでした", t);
 			return null;
@@ -312,10 +314,12 @@ public final class RecordingSession {
 	 *
 	 * <p>写しの直前に「ここに写しがある」のしおり（{@code __snap__}）を置く。
 	 * 編集で切り出すときの起点に使う。再生の一覧には出さない。
+	 *
+	 * @return 書けたら true
 	 */
-	public void offerSnapshot(WorldSnapshot.Snapshot snapshot) {
+	public boolean offerSnapshot(WorldSnapshot.Snapshot snapshot) {
 		if (this.stopping || snapshot == null) {
-			return;
+			return false;
 		}
 
 		// 写しの直列化は重い（チャンク169個で数百ms）ので、クライアントスレッドでは
@@ -358,7 +362,7 @@ public final class RecordingSession {
 				this.droppedCount.addAndGet(packets.size());
 				IfutoReplayClient.LOGGER.warn("[ifuto-replay] 世界の写しを書ききれませんでした"
 						+ "（書き出しが追いついていません。地形が一部欠けます）");
-				return;
+				return false;
 			}
 
 			if (dropped > 0) {
@@ -371,8 +375,10 @@ public final class RecordingSession {
 			IfutoReplayClient.LOGGER.info("[ifuto-replay] 世界の写しを保存しました (チャンク {}, エンティティ {}, {} パケット, {} ms)",
 					snapshot.chunks(), snapshot.entities(), packets.size(),
 					(System.nanoTime() - startedAt) / 1_000_000L);
+			return true;
 		} catch (Throwable t) {
 			IfutoReplayClient.LOGGER.warn("[ifuto-replay] 世界の写しを書けませんでした", t);
+			return false;
 		}
 	}
 

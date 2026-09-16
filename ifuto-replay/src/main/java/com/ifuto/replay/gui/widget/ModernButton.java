@@ -107,15 +107,16 @@ public class ModernButton extends ClickableWidget {
 		Text message = this.getMessage();
 		int maxWidth = this.getWidth() - 10;
 		int textWidth = renderer.getWidth(message);
+		int textY = this.getY() + (this.getHeight() - renderer.fontHeight) / 2 + 1;
 
-		if (textWidth > maxWidth && maxWidth > renderer.getWidth("...")) {
-			message = Text.literal(renderer.trimToWidth(message.getString(),
-					maxWidth - renderer.getWidth("...")) + "...");
-			textWidth = renderer.getWidth(message);
+		if (textWidth > maxWidth) {
+			// 入りきらないときは流して全部見せる
+			MarqueeText.draw(context, renderer, message, this.getX() + 5, textY, maxWidth,
+					this.textColor());
+			return;
 		}
 
 		int textX = this.getX() + (this.getWidth() - textWidth) / 2;
-		int textY = this.getY() + (this.getHeight() - renderer.fontHeight) / 2 + 1;
 		context.drawText(renderer, message, textX, textY, this.textColor(), false);
 	}
 

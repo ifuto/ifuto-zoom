@@ -124,7 +124,7 @@
 	"ifuto-replay.config.snapshot_radius": "Save world state",
 	"ifuto-replay.config.snapshot_radius.value": "%s chunks",
 	"ifuto-replay.config.snapshot_radius.off": "Off",
-	"ifuto-replay.config.snapshot_radius.tooltip": "When you start recording mid-session, save the terrain and entities within this radius. 0 = don't save (mid-session recordings won't be playable)",
+	"ifuto-replay.config.snapshot_radius.tooltip": "When you start recording mid-session, save the terrain and entities within this radius. 0 is treated as 1 (a recording without it cannot be played back)",
 	"ifuto-replay.message.snapshot": "Recording started mid-session, so the current world state was saved along with it",
 	"ifuto-replay.message.disk_low": "Only %s MB left where recordings are saved. Recording stops automatically when it runs out",
 	"ifuto-replay.message.disk_critical": "Less than %s MB left, so the recording was saved and stopped",
@@ -262,5 +262,6 @@
 	"ifuto-replay.editor.nospace_message": "Cutting needs as much free space as the source file",
 	"ifuto-replay.export.hwaccel": "Hardware encoding",
 	"ifuto-replay.export.hwaccel.tooltip": "Encode with the GPU (fast; falls back to CPU if unavailable)",
-	"ifuto-replay.export.error_encoder": " (encoder: %s)"
+	"ifuto-replay.export.error_encoder": " (encoder: %s)",
+	"ifuto-replay.preview.error_unknown": "Couldn't start playback (%s)"
 }
