@@ -40,7 +40,7 @@ import net.minecraft.world.chunk.Chunk;
 import net.minecraft.world.chunk.ChunkManager;
 import net.minecraft.world.chunk.ChunkStatus;
 import net.minecraft.world.chunk.WorldChunk;
-import net.minecraft.world.chunk.light.ChunkLightProvider;
+import net.minecraft.world.chunk.light.ChunkLightingView;
 import net.minecraft.world.chunk.light.LightingProvider;
 import org.jspecify.annotations.Nullable;
 
@@ -236,7 +236,7 @@ public final class WorldSnapshot {
 	 * 番号は「いちばん下の区画 - 1」から数える。バニラと同じ数え方。
 	 */
 	private static BitSet lightMask(WorldChunk chunk, LightingProvider lighting, LightType type) {
-		ChunkLightProvider<?, ?> provider = lighting.get(type);
+		ChunkLightingView provider = lighting.get(type);
 		int sections = chunk.getSectionArray().length;
 		BitSet mask = new BitSet(sections + 2);
 
