@@ -1,1 +1,2 @@
-2026-09-17-05:52:45
+workdir: ifuto-replay
+artifact_path: ifuto-replay/build/libs/*.jar
