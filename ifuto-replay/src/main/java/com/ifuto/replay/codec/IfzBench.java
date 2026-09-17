@@ -26,6 +26,19 @@ public final class IfzBench {
 	}
 
 	public static void main(String[] args) throws Exception {
+		try {
+			run();
+		} catch (Throwable t) {
+			System.out.println("::error::IFZFAIL " + t);
+			for (StackTraceElement e : t.getStackTrace()) {
+				System.out.println("::error::IFZFAIL at " + e);
+			}
+
+			throw t;
+		}
+	}
+
+	private static void run() throws Exception {
 		List<byte[]> blocks = generate(20260917L);
 		long rawTotal = 0;
 
