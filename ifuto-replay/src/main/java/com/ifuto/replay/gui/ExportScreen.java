@@ -12,6 +12,7 @@ import com.ifuto.replay.gui.widget.ModernDropdown;
 import com.ifuto.replay.gui.widget.ModernSlider;
 import com.ifuto.replay.gui.widget.ModernTextField;
 import com.ifuto.replay.gui.widget.ModernToggle;
+import com.ifuto.replay.gui.widget.PopupHost;
 import com.ifuto.replay.playback.ReplayPlayback;
 import com.ifuto.replay.recording.ClipRemux;
 import com.ifuto.replay.recording.ReplayFileReader;
@@ -41,7 +42,7 @@ import java.util.List;
  * あとからいくらでも変えられる（画面録画と違って実時間に縛られない）。
  */
 @Environment(EnvType.CLIENT)
-public class ExportScreen extends Screen {
+public class ExportScreen extends Screen implements PopupHost {
 	private static final int WIDGET_WIDTH = 158;
 	private static final int WIDGET_HEIGHT = 20;
 	private static final int COLUMN_GAP = 8;
@@ -480,5 +481,15 @@ public class ExportScreen extends Screen {
 	@Override
 	public void close() {
 		MinecraftClient.getInstance().setScreen(this.parent);
+	}
+
+	@Override
+	public void replay$addPopup(ClickableWidget widget) {
+		this.addDrawableChild(widget);
+	}
+
+	@Override
+	public void replay$removePopup(ClickableWidget widget) {
+		this.remove(widget);
 	}
 }

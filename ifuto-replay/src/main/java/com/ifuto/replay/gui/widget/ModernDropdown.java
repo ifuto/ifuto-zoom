@@ -96,7 +96,7 @@ public class ModernDropdown<T> extends ClickableWidget {
 
 		// 外を押したら閉じる受け止め（いちばん下に敷く）
 		Catcher catcher = new Catcher(this, this.screen.width, this.screen.height);
-		this.screen.addDrawableChild(catcher);
+		((PopupHost) this.screen).replay$addPopup(catcher);
 		this.popup.add(catcher);
 
 		int shown = Math.min(this.values.size(), MAX_VISIBLE);
@@ -111,7 +111,7 @@ public class ModernDropdown<T> extends ClickableWidget {
 		}
 
 		this.panel = new Panel(px, py, this.getWidth(), panelHeight);
-		this.screen.addDrawableChild(this.panel);
+		((PopupHost) this.screen).replay$addPopup(this.panel);
 		this.popup.add(this.panel);
 
 		for (int i = 0; i < this.values.size(); i++) {
@@ -119,7 +119,7 @@ public class ModernDropdown<T> extends ClickableWidget {
 					this.getWidth() - 8, OPTION_HEIGHT);
 			row.visible = i < shown;
 			this.options.add(row);
-			this.screen.addDrawableChild(row);
+			((PopupHost) this.screen).replay$addPopup(row);
 			this.popup.add(row);
 		}
 	}
@@ -134,7 +134,7 @@ public class ModernDropdown<T> extends ClickableWidget {
 		this.panel = null;
 
 		for (ClickableWidget widget : this.popup) {
-			this.screen.remove(widget);
+			((PopupHost) this.screen).replay$removePopup(widget);
 		}
 
 		this.popup.clear();

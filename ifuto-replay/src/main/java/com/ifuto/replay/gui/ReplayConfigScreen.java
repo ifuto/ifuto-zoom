@@ -12,6 +12,7 @@ import com.ifuto.replay.gui.widget.ModernDropdown;
 import com.ifuto.replay.gui.widget.ModernSlider;
 import com.ifuto.replay.gui.widget.ModernTextField;
 import com.ifuto.replay.gui.widget.ModernToggle;
+import com.ifuto.replay.gui.widget.PopupHost;
 import com.ifuto.replay.recording.RecordingManager;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
@@ -42,7 +43,7 @@ import java.util.function.IntConsumer;
  * 押し心地やキー操作はバニラのままなので、触り方は変わらない。
  */
 @Environment(EnvType.CLIENT)
-public class ReplayConfigScreen extends Screen {
+public class ReplayConfigScreen extends Screen implements PopupHost {
 	private static final int WIDGET_WIDTH = 158;
 	private static final int WIDGET_HEIGHT = 20;
 	private static final int COLUMN_GAP = 8;
@@ -481,5 +482,15 @@ public class ReplayConfigScreen extends Screen {
 	public void removed() {
 		this.config.save();
 		super.removed();
+	}
+
+	@Override
+	public void replay$addPopup(ClickableWidget widget) {
+		this.addDrawableChild(widget);
+	}
+
+	@Override
+	public void replay$removePopup(ClickableWidget widget) {
+		this.remove(widget);
 	}
 }

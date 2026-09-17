@@ -39,6 +39,7 @@ dependencies {
 
 	// 録画の圧縮に使う zstd（pure Java・0.27 は Java 8 対応）。
 	// deflate より速くて小さくなる。JarJar で同梱する（外への依存なし）
+	implementation 'io.airlift:aircompressor:0.27'
 	include 'io.airlift:aircompressor:0.27'
 }
 
