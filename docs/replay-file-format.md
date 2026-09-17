@@ -170,6 +170,8 @@ v6 からは「標準」以上で zstd を使う。zstd level 3 は deflate 6 �
 なって勝てなかった。Huffman を足しても天井が zstd に届かない。前段の変換
 （OpenZL 式の shuffle・delta・型順整列）も最大で数%どまり。よって既定は
 zstd のまま。IFZ1 の残骸は計測用（`/replaybench`・CI の往復ゲート）に残す。
+CI の合成データでの Java 実測: zstd-3 は 46.3%・25MB/s、IFZ1-fast は
+70.1%・44MB/s（展開は 159〜203MB/s で zstd の 3〜4倍速いが容量1.5倍）。
 
 ### `7` TAG_LOCAL（クライアントの内側で起きた出来事）
 
