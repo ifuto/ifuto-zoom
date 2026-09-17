@@ -7,6 +7,8 @@ import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import net.minecraft.network.ClientConnection;
 import net.minecraft.network.packet.Packet;
+import net.minecraft.network.packet.s2c.play.GameJoinS2CPacket;
+import net.minecraft.network.packet.s2c.play.PlayerRespawnS2CPacket;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -34,6 +36,14 @@ public class ClientConnectionMixin {
 	private void ifutoReplay$onInboundPacket(ChannelHandlerContext context, Packet<?> packet, CallbackInfo ci) {
 		// このあいだにクライアントが湧かせた物は「パケットとして残る物」なので記録しない
 		LocalEvents.setFromPacket(true);
+
+		// 世界を作ったパケットは録画していなくても覚える（あとで途中から
+		// 録り始めたときの土台にする。受け取り側でも覚えているが念のため）
+		if (packet instanceof GameJoinS2CPacket join) {
+			RecordingManager.rememberJoinPacket(join);
+		} else if (packet instanceof PlayerRespawnS2CPacket respawn) {
+			RecordingManager.rememberRespawnPacket(respawn);
+		}
 
 		if (!RecordingManager.INSTANCE.isRecording()) {
 			return;

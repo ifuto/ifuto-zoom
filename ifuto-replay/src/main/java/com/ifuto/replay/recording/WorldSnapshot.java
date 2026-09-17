@@ -1,5 +1,6 @@
 package com.ifuto.replay.recording;
 
+import com.ifuto.replay.IfutoReplayClient;
 import com.mojang.datafixers.util.Pair;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerEntity;
@@ -32,15 +33,19 @@ import net.minecraft.network.packet.s2c.play.PlayerPositionLookS2CPacket;
 import net.minecraft.network.packet.s2c.play.ScreenHandlerSlotUpdateS2CPacket;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkPos;
+import net.minecraft.util.math.ChunkSectionPos;
 import net.minecraft.util.math.MathHelper;
+import net.minecraft.world.LightType;
 import net.minecraft.world.chunk.Chunk;
 import net.minecraft.world.chunk.ChunkManager;
 import net.minecraft.world.chunk.ChunkStatus;
 import net.minecraft.world.chunk.WorldChunk;
+import net.minecraft.world.chunk.light.ChunkLightProvider;
 import net.minecraft.world.chunk.light.LightingProvider;
 import org.jspecify.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.BitSet;
 import java.util.List;
 import java.util.Set;
 
@@ -88,6 +93,8 @@ public final class WorldSnapshot {
 		Packet<?> join = RecordingManager.getJoinPacket();
 
 		if (world == null || player == null || join == null || radius <= 0) {
+			IfutoReplayClient.LOGGER.warn("[ifuto-replay] 写しを作れません (world={}, player={}, join={}, radius={})",
+					world != null, player != null, join != null, radius);
 			return null;
 		}
 
@@ -133,7 +140,9 @@ public final class WorldSnapshot {
 				player.totalExperience));
 		packets.add(PlayerPositionLookS2CPacket.of(0, EntityPosition.fromEntity(player), Set.of()));
 
-		// 5) 地形（明るさもバニラのプロバイダからそのまま持ってくる）
+		// 5) 地形（明るさもバニラのプロバイダからそのまま持ってくる。
+		// 明るさの有無はサーバーと同じ見方（区画ごとにあるかないか）で調べる。
+		// 無いことにする（null）と真っ暗な地形になるので、必ず本物を渡す）
 		ChunkPos center = player.getChunkPos();
 		ChunkManager chunks = world.getChunkManager();
 		LightingProvider lighting = world.getLightingProvider();
@@ -147,8 +156,16 @@ public final class WorldSnapshot {
 					continue;
 				}
 
-				packets.add(new ChunkDataS2CPacket(worldChunk, lighting, null, null));
-				chunkCount++;
+				try {
+					packets.add(new ChunkDataS2CPacket(worldChunk, lighting,
+							lightMask(worldChunk, lighting, LightType.SKY),
+							lightMask(worldChunk, lighting, LightType.BLOCK)));
+					chunkCount++;
+				} catch (Throwable t) {
+					// 1個の地形で写し全体を捨てない（欠けた所はあとから届く）
+					IfutoReplayClient.LOGGER.warn("[ifuto-replay] 地形1個を写せませんでした ({}, {})",
+							worldChunk.getPos().x, worldChunk.getPos().z, t);
+				}
 			}
 		}
 
@@ -166,44 +183,77 @@ public final class WorldSnapshot {
 				continue;
 			}
 
-			packets.add(new EntitySpawnS2CPacket(entity, 0, BlockPos.ofFloored(entity.getSyncedPos())));
-			packets.add(EntityPositionSyncS2CPacket.create(entity));
-			packets.add(new EntityVelocityUpdateS2CPacket(entity));
-			packets.add(new EntitySetHeadYawS2CPacket(entity,
-					(byte) MathHelper.floor(entity.getHeadYaw() * 256.0F / 360.0F)));
+			try {
+				packets.add(new EntitySpawnS2CPacket(entity, 0, BlockPos.ofFloored(entity.getSyncedPos())));
+				packets.add(EntityPositionSyncS2CPacket.create(entity));
+				packets.add(new EntityVelocityUpdateS2CPacket(entity));
+				packets.add(new EntitySetHeadYawS2CPacket(entity,
+						(byte) MathHelper.floor(entity.getHeadYaw() * 256.0F / 360.0F)));
 
-			List<DataTracker.SerializedEntry<?>> tracked = entity.getDataTracker().getChangedEntries();
+				List<DataTracker.SerializedEntry<?>> tracked = entity.getDataTracker().getChangedEntries();
 
-			if (tracked != null && !tracked.isEmpty()) {
-				packets.add(new EntityTrackerUpdateS2CPacket(entity.getId(), tracked));
-			}
-
-			if (entity instanceof LivingEntity living) {
-				AttributeContainer attributes = living.getAttributes();
-
-				if (attributes != null) {
-					packets.add(new EntityAttributesS2CPacket(entity.getId(), attributes.getAttributesToSend()));
+				if (tracked != null && !tracked.isEmpty()) {
+					packets.add(new EntityTrackerUpdateS2CPacket(entity.getId(), tracked));
 				}
 
-				List<Pair<EquipmentSlot, ItemStack>> equipment = equipment(living);
+				if (entity instanceof LivingEntity living) {
+					AttributeContainer attributes = living.getAttributes();
 
-				if (!equipment.isEmpty()) {
-					packets.add(new EntityEquipmentUpdateS2CPacket(entity.getId(), equipment));
+					if (attributes != null) {
+						packets.add(new EntityAttributesS2CPacket(entity.getId(), attributes.getAttributesToSend()));
+					}
+
+					List<Pair<EquipmentSlot, ItemStack>> equipment = equipment(living);
+
+					if (!equipment.isEmpty()) {
+						packets.add(new EntityEquipmentUpdateS2CPacket(entity.getId(), equipment));
+					}
+
+					for (StatusEffectInstance effect : living.getStatusEffects()) {
+						packets.add(new EntityStatusEffectS2CPacket(entity.getId(), effect, false));
+					}
 				}
 
-				for (StatusEffectInstance effect : living.getStatusEffects()) {
-					packets.add(new EntityStatusEffectS2CPacket(entity.getId(), effect, false));
+				if (entity.hasPassengers()) {
+					packets.add(new EntityPassengersSetS2CPacket(entity));
 				}
-			}
 
-			if (entity.hasPassengers()) {
-				packets.add(new EntityPassengersSetS2CPacket(entity));
+				entityCount++;
+			} catch (Throwable t) {
+				// 1匹の写しで全体を捨てない（欠けた分はあとから届く）
+				IfutoReplayClient.LOGGER.warn("[ifuto-replay] 实体1匹を写せませんでした ({})",
+						entity.getType().getTranslationKey(), t);
 			}
-
-			entityCount++;
 		}
 
 		return new Snapshot(packets, chunkCount, entityCount);
+	}
+
+	/**
+	 * 明るさのデータがある区画の一覧（サーバーがパケットに添える物と同じ）。
+	 *
+	 * <p>明るさは地形の上下1区画ぶん広く持つ（境目の混ざり具合のため）ので、
+	 * 番号は「いちばん下の区画 - 1」から数える。バニラと同じ数え方。
+	 */
+	private static BitSet lightMask(WorldChunk chunk, LightingProvider lighting, LightType type) {
+		ChunkLightProvider<?, ?> provider = lighting.get(type);
+		int sections = chunk.getSectionArray().length;
+		BitSet mask = new BitSet(sections + 2);
+
+		if (provider == null) {
+			return mask;
+		}
+
+		ChunkPos pos = chunk.getPos();
+		int bottom = chunk.getBottomSectionCoord() - 1;
+
+		for (int i = 0; i < sections + 2; i++) {
+			if (provider.getLightSection(ChunkSectionPos.from(pos.x, bottom + i, pos.z)) != null) {
+				mask.set(i);
+			}
+		}
+
+		return mask;
 	}
 
 	/** 装備のうち、何か持っている枠だけ */
