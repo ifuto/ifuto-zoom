@@ -275,5 +275,8 @@
 	"ifuto-replay.config.low_spec.tooltip": "低スペックPCむけに軽く動きます（圧縮を「速い」に・書き込みを後回しに）。録れる内容は変わりません",
 	"ifuto-replay.config.low_spec.auto": "自動",
 	"ifuto-replay.config.low_spec.on": "ON",
-	"ifuto-replay.config.low_spec.off": "OFF"
+	"ifuto-replay.config.low_spec.off": "OFF",
+	"ifuto-replay.command.bench.started": "圧縮を計測中…",
+	"ifuto-replay.command.bench.failed": "計測に失敗しました",
+	"ifuto-replay.command.bench.nofile": "録画がありません"
 }

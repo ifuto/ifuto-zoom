@@ -83,3 +83,11 @@ publishing {
 	repositories {
 	}
 }
+
+// IFZ1 の正しさと速さ比べ（CI で毎回。壊れていたら落とす）
+tasks.register('benchCodec', JavaExec) {
+	classpath = sourceSets.main.runtimeClasspath
+	mainClass = 'com.ifuto.replay.codec.IfzBench'
+}
+
+check.dependsOn benchCodec

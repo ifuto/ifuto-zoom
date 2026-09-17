@@ -1,5 +1,6 @@
 package com.ifuto.replay;
 
+import com.ifuto.replay.codec.BenchCommand;
 import com.ifuto.replay.config.ReplayConfig;
 import com.ifuto.replay.gui.PauseMenuButtons;
 import com.ifuto.replay.gui.RecordingListScreen;
@@ -10,6 +11,8 @@ import com.ifuto.replay.recording.RecordingManager;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
+import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
+import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
@@ -41,6 +44,15 @@ public class IfutoReplayClient implements ClientModInitializer {
 	public void onInitializeClient() {
 		// 最初のフレームより前に設定ファイルを作って読み込んでおく
 		ReplayConfig.get();
+
+		// 実機の録画で圧縮を比べる（/replaybench）
+		ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
+			dispatcher.register(ClientCommandManager.literal("replaybench")
+					.executes(context -> {
+						BenchCommand.run(context.getSource().getClient());
+						return 1;
+					}));
+		});
 
 		// ESC のポーズメニューに「録画 / 一覧 / 設定」のボタンを足す（Flashback と同じ置き方）
 		ScreenEvents.AFTER_INIT.register((client, screen, scaledWidth, scaledHeight) -> {
