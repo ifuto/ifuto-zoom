@@ -195,7 +195,11 @@ public final class Ifz1 {
 					break;
 				}
 
-				if (length < 0 || pos + length > buf.length) {
+				if (length < 0) {
+					throw new IOException("IFZ1 の長さがおかしいです");
+				}
+
+				if (length > buf.length - pos) {
 					// 中身がまだ揃わないので待つ
 					this.buffer.reset();
 					this.buffer.write(buf, start, buf.length - start);
@@ -534,6 +538,7 @@ public final class Ifz1 {
 
 		out.write(MAGIC, 0, MAGIC.length);
 		out.write(0);
+		writeVarInt(out, raw.length);
 		out.write(work, 0, packedLength);
 		return out.toByteArray();
 	}
@@ -548,28 +553,21 @@ public final class Ifz1 {
 		int flags = packed[off + 4] & 0xFF;
 
 		if ((flags & FLAG_LANES) == 0) {
-			// 小塊は元の長さを外に持たないので、余裕を見て広げながら読む
 			if ((flags & FLAG_STORED) != 0) {
 				return Arrays.copyOfRange(packed, off + 5, off + len);
 			}
 
-			int guess = Math.max(64, (len - 5) * 4);
+			Cursor single = new Cursor(packed, off + 5);
+			int plainLength = single.readVarInt();
 
-			for (;;) {
-				byte[] raw = new byte[guess];
-
-				try {
-					int done = Lzx1.decompress(packed, off + 5, len - 5, history, historyLength,
-							raw, 0, guess);
-					return Arrays.copyOf(raw, done);
-				} catch (IOException overflow) {
-					if (guess >= 64 * 1024 * 1024) {
-						throw overflow;
-					}
-
-					guess *= 2;
-				}
+			if (plainLength < 0 || plainLength > 64 * 1024 * 1024) {
+				throw new IOException("IFZ1 の小塊の長さがおかしいです");
 			}
+
+			byte[] raw = new byte[plainLength];
+			int lzOff = single.pos;
+			Lzx1.decompress(packed, lzOff, off + len - lzOff, history, historyLength, raw, 0, plainLength);
+			return raw;
 		}
 
 		Cursor cursor = new Cursor(packed, off + 5);
