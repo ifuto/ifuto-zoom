@@ -264,7 +264,7 @@ public final class IfzBench {
 			int pos = 0;
 
 			while (pos < block.length) {
-				int step = Math.min(block.length - pos, 1 + (pos * 7919) % 5000);
+				int step = Math.min(block.length - pos, 1 + (int) ((pos * 7919L) % 5000));
 				encoder.write(block, pos, step);
 				pos += step;
 			}
@@ -281,7 +281,7 @@ public final class IfzBench {
 		int pos = 0;
 
 		while (pos < bytes.length) {
-			int step = Math.min(bytes.length - pos, 1 + (pos * 104729) % 7000);
+			int step = Math.min(bytes.length - pos, 1 + (int) ((pos * 104729L) % 7000));
 			decoder.feed(bytes, pos, step, out);
 			pos += step;
 		}
