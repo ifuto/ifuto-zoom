@@ -1,5 +1,5 @@
-workdir: ifuto-replay
-artifact_path: ifuto-replay/build/libs/*.jar
+workdir: ifuto-smoothhud
+artifact_path: ifuto-smoothhud/build/libs/*.jar
 # 2026-09-17-06:03:20
 # 2026-09-17-06:32:25
 # 2026-09-17-06:35:40
@@ -9,3 +9,4 @@ artifact_path: ifuto-replay/build/libs/*.jar
 # 2026-09-17-11:14:28
 # 2026-09-17-11:16:43
 # 2026-10-03-22:37:55
+# 2026-10-03-23:22:39
