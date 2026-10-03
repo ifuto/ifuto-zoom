@@ -278,5 +278,6 @@
 	"ifuto-replay.config.low_spec.off": "OFF",
 	"ifuto-replay.command.bench.started": "圧縮を計測中…",
 	"ifuto-replay.command.bench.failed": "計測に失敗しました",
-	"ifuto-replay.command.bench.nofile": "録画がありません"
+	"ifuto-replay.command.bench.nofile": "録画がありません",
+	"ifuto-replay.command.bench.busy": "計測中です"
 }

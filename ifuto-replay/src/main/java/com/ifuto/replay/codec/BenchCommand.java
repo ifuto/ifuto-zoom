@@ -18,6 +18,7 @@ import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * 実機の録画で IFZ1 と zstd を比べる（{@code /replaybench}）。
@@ -29,11 +30,22 @@ import java.util.Arrays;
 public final class BenchCommand {
 	/** 測るかたまりの上限 */
 	private static final int MAX_BLOCKS = 256;
+	/** 測る元データの上限（これ以上は数字が変わらないので切る） */
+	private static final long MAX_RAW_BYTES = 32L * 1024 * 1024;
+	/** かたまりの合間に遊ばせる時間（ゲーム側にCPUを譲る。計測には含めない） */
+	private static final long REST_MS = 25;
+	/** 測定中か（二重に回さない） */
+	private static final AtomicBoolean RUNNING = new AtomicBoolean();
 
 	private BenchCommand() {
 	}
 
 	public static void run(MinecraftClient client) {
+		if (!RUNNING.compareAndSet(false, true)) {
+			client.player.sendMessage(Text.translatable("ifuto-replay.command.bench.busy"), false);
+			return;
+		}
+
 		client.player.sendMessage(Text.translatable("ifuto-replay.command.bench.started"), false);
 
 		Thread worker = new Thread(BenchCommand::work, "replay-bench");
@@ -68,6 +80,8 @@ public final class BenchCommand {
 					}
 				});
 			}
+		} finally {
+			RUNNING.set(false);
 		}
 	}
 
@@ -88,6 +102,9 @@ public final class BenchCommand {
 		long zstdEncNs = 0;
 		long zstdDecNs = 0;
 		int blocks = 0;
+		byte[] packedBuf = new byte[0];
+		byte[] zstdWork = new byte[0];
+		byte[] zstdBack = new byte[0];
 
 		try (DataInputStream in = new DataInputStream(
 				new BufferedInputStream(Files.newInputStream(newest), 1 << 16))) {
@@ -117,7 +134,8 @@ public final class BenchCommand {
 					break;
 				}
 
-				if (tag < 0 || tag == ReplayFormat.TAG_END || blocks >= MAX_BLOCKS) {
+				if (tag < 0 || tag == ReplayFormat.TAG_END || blocks >= MAX_BLOCKS
+						|| rawTotal >= MAX_RAW_BYTES) {
 					break;
 				}
 
@@ -161,8 +179,18 @@ public final class BenchCommand {
 						int rawLength = readVarInt(in);
 						int method = in.readByte();
 						int stored = BlockCodec.isPacked(method) ? readVarInt(in) : rawLength;
-						byte[] packed = new byte[stored];
-						in.readFully(packed);
+
+						if (rawLength < 0 || stored < 0 || rawLength > 64 * 1024 * 1024
+								|| stored > 64 * 1024 * 1024) {
+							throw new IOException("かたまりの長さがおかしいです");
+						}
+
+						if (packedBuf.length < stored) {
+							packedBuf = new byte[stored];
+						}
+
+						in.readFully(packedBuf, 0, stored);
+						byte[] packed = Arrays.copyOf(packedBuf, stored);
 						byte[] raw = BlockCodec.decompress(packed, rawLength, method);
 
 						rawTotal += raw.length;
@@ -181,17 +209,32 @@ public final class BenchCommand {
 							throw new IOException("IFZ1 の往復が合いません");
 						}
 
-						byte[] zstdWork = new byte[zstdOut.maxCompressedLength(raw.length)];
+						int workLength = zstdOut.maxCompressedLength(raw.length);
+
+						if (zstdWork.length < workLength) {
+							zstdWork = new byte[workLength];
+						}
+
 						start = System.nanoTime();
 						int zstdLength = zstdOut.compress(raw, 0, raw.length,
 								zstdWork, 0, zstdWork.length);
 						zstdEncNs += System.nanoTime() - start;
 						zstdTotal += Math.min(zstdLength, raw.length);
 
-						byte[] zstdBack = new byte[raw.length];
+						if (zstdBack.length < raw.length) {
+							zstdBack = new byte[raw.length];
+						}
+
 						start = System.nanoTime();
-						zstdIn.decompress(zstdWork, 0, zstdLength, zstdBack, 0, zstdBack.length);
+						zstdIn.decompress(zstdWork, 0, zstdLength, zstdBack, 0, raw.length);
 						zstdDecNs += System.nanoTime() - start;
+
+						try {
+							Thread.sleep(REST_MS);
+						} catch (InterruptedException e) {
+							Thread.currentThread().interrupt();
+							throw new IOException("計測をやめました");
+						}
 					}
 					case ReplayFormat.TAG_INDEX -> {
 						int count = readVarInt(in);

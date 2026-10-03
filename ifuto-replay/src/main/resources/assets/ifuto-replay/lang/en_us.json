@@ -278,5 +278,6 @@
 	"ifuto-replay.config.low_spec.off": "Off",
 	"ifuto-replay.command.bench.started": "Benchmarking…",
 	"ifuto-replay.command.bench.failed": "Benchmark failed",
-	"ifuto-replay.command.bench.nofile": "No recordings"
+	"ifuto-replay.command.bench.nofile": "No recordings",
+	"ifuto-replay.command.bench.busy": "Benchmark already running"
 }
