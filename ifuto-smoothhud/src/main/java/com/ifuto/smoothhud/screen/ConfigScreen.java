@@ -70,16 +70,6 @@ public class ConfigScreen extends Screen {
 	}
 
 	@Override
-	public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-		if (keyCode >= 49 && keyCode <= 57) {
-			this.selectedSlot = keyCode - 49;
-			return true;
-		}
-
-		return super.keyPressed(keyCode, scanCode, modifiers);
-	}
-
-	@Override
 	public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
 		double scrolled = MathHelper.clamp(verticalAmount, -1.0, 1.0);
 
@@ -117,7 +107,7 @@ public class ConfigScreen extends Screen {
 				hotbarX + selectionX, hotbarY - 1, 24, 23);
 
 		int color = ((now / 300) % 2 == 0) ? 0xFF555555 : 0xFF666666;
-		context.drawCenteredTextWithShadow(this.textRenderer, "Scroll or press hotkeys to preview",
+		context.drawCenteredTextWithShadow(this.textRenderer, "Scroll to preview",
 				this.width / 2, hotbarY + 25, color);
 	}
 }
