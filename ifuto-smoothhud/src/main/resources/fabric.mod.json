@@ -1,0 +1,42 @@
+{
+	"schemaVersion": 1,
+	"id": "ifuto-smoothhud",
+	"version": "${version}",
+	"name": "Ifuto SmoothHud",
+	"description": "Animates the selected hotbar slot highlight. Fixed fork of treegfx's SmoothHud (LGPL-3.0-or-later): the highlight can no longer overshoot out of the hotbar.",
+	"authors": [
+		"treegfx (original)",
+		"ifuto (fix)"
+	],
+	"contact": {
+		"homepage": "https://github.com/ifuto/ifuto-zoom",
+		"sources": "https://github.com/ifuto/ifuto-zoom",
+		"issues": "https://github.com/ifuto/ifuto-zoom/issues"
+	},
+	"license": "LGPL-3.0-or-later",
+	"icon": "assets/ifuto-smoothhud/icon.png",
+	"environment": "client",
+	"entrypoints": {
+		"modmenu": [
+			"com.ifuto.smoothhud.ModMenu"
+		]
+	},
+	"mixins": [
+		{
+			"config": "ifuto-smoothhud.mixins.json",
+			"environment": "client"
+		}
+	],
+	"depends": {
+		"fabricloader": ">=0.16.0",
+		"minecraft": "~1.21.11",
+		"java": ">=21",
+		"fabric-api": "*"
+	},
+	"suggests": {
+		"modmenu": "*"
+	},
+	"conflicts": {
+		"smoothhud": "*"
+	}
+}
