@@ -13,7 +13,7 @@ import java.util.concurrent.TimeUnit;
  * （{@link ArrayBlockingQueue}）と比べる。
  *
  * <p>結果は {@code ::notice::} でも出す（Checks から読めるように）。
- * 途中の段階も出す（どこで止まったか分かるように）。番犬つき
+ * 途中経過は標準出力だけ（notice は10件/手順の上限があるため）。番犬つき
  * （5分で終わらなければ積み上げを出して落とす。無限には待たない）。
  */
 public final class QueueBench {
@@ -71,22 +71,14 @@ public final class QueueBench {
 
 	private static void run() throws Exception {
 		checkEmptyFull();
-		report("phase emptyFull done");
 		checkWakeup();
-		report("phase wakeup done");
 		checkExactlyOnce(1, 200_000);
-		report("phase once-1P done");
 		checkExactlyOnce(4, 100_000);
-		report("phase once-4P done");
 
 		double mpsc1 = perf(true, 1);
-		report("phase perf-mpsc-1P done");
 		double abq1 = perf(false, 1);
-		report("phase perf-abq-1P done");
 		double mpsc4 = perf(true, 4);
-		report("phase perf-mpsc-4P done");
 		double abq4 = perf(false, 4);
-		report("phase perf-abq-4P done");
 
 		report("correctness OK (exactly-once 1P/4P, full/empty, wakeup)");
 		report(String.format("1P1C mpsc=%.2fM/s abq=%.2fM/s speedup=%.2fx",
