@@ -505,7 +505,8 @@ public final class ReplayExporter {
 				return false;
 			}
 
-			long pointer = ((NativeImageAccessor) image).ifutoReplay$getPointer();
+			// NativeImage は final なので Object を経由する（実行時は mixin が口を付ける）
+			long pointer = ((NativeImageAccessor) (Object) image).ifutoReplay$getPointer();
 
 			if (pointer == 0L) {
 				return false;
