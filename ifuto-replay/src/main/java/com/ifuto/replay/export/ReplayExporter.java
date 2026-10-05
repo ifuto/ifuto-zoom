@@ -57,6 +57,7 @@ public final class ReplayExporter {
 	private int savedMaxFps;
 	private boolean savedVsync;
 	private boolean displayUncapped;
+	private boolean soundMuted;
 
 	private final MinecraftClient client;
 	private final ReplayPlayback playback;
@@ -102,6 +103,15 @@ public final class ReplayExporter {
 	private volatile String failureMessage = "";
 	private long startedAtMs;
 	private volatile long lastProgressMs;
+
+	/** どこに時間がかかっているか（描画スレッドだけが触る。単位ns） */
+	private long pumpNs;
+	private long tickNs;
+	private long renderNs;
+	private long captureNs;
+	private long blockNs;
+	private long lastAdvanceEndNs;
+	private int capturedFrames;
 
 	/** いま動いている書き出し（なければ null） */
 	private static volatile ReplayExporter active;
@@ -368,6 +378,12 @@ public final class ReplayExporter {
 			options.getEnableVsync().setValue(false);
 			GLFW.glfwSwapInterval(0);
 			this.displayUncapped = true;
+
+			// 等倍速以外は音が密になりすぎるので黙らせる（等倍速は見ながら聞ける）
+			if (this.options.speedPercent() != 100) {
+				this.client.getSoundManager().pauseAll();
+				this.soundMuted = true;
+			}
 		} catch (Throwable t) {
 			IfutoReplayClient.LOGGER.warn("[ifuto-replay] 表示設定の一時変更に失敗しました（書き出しは続けます）", t);
 		}
@@ -417,9 +433,18 @@ public final class ReplayExporter {
 		this.pace();
 
 		long target = this.startMs + this.frameIndex * this.frameStepMs;
-		this.playback.jumpTo(target);
+		long t0 = System.nanoTime();
+		// その場で追いつく（tick 待ちだと1秒20枚しか進めない）
+		this.playback.advanceTo(target);
+		long t1 = System.nanoTime();
+		// 世界も1コマ進める（実体・パーティクル・時刻。1コマ1tickは普段と同じ比率）
+		this.client.tick();
+		long t2 = System.nanoTime();
+		this.pumpNs += t1 - t0;
+		this.tickNs += t2 - t1;
 		this.frameIndex++;
 		this.awaitingCapture = true;
+		this.lastAdvanceEndNs = System.nanoTime();
 	}
 
 	/**
@@ -476,11 +501,20 @@ public final class ReplayExporter {
 		this.awaitingCapture = false;
 		this.captureRequested = true;
 
+		long r0 = System.nanoTime();
+
+		if (this.lastAdvanceEndNs != 0L) {
+			this.renderNs += r0 - this.lastAdvanceEndNs;
+			this.lastAdvanceEndNs = 0L;
+		}
+
 		try {
 			ScreenshotRecorder.takeScreenshot(this.client.getFramebuffer(), this::onCaptured);
 		} catch (Throwable t) {
 			this.captureRequested = false;
 			this.fail(t);
+		} finally {
+			this.captureNs += System.nanoTime() - r0;
 		}
 	}
 
@@ -497,9 +531,32 @@ public final class ReplayExporter {
 		// 絵の始末は writeFrame の先（渡せたら書き込み係、渡せなければ writeFrame）
 		try {
 			this.writeFrame(image);
+			this.capturedFrames++;
+
+			if (this.capturedFrames % 600 == 0) {
+				this.logProgress("書き出し中");
+			}
 		} catch (Throwable t) {
 			this.fail(t);
 		}
+	}
+
+	/**
+	 * 進み具合と内訳を出す（pump=追いつき tick=世界 render=描画 cap=取込
+	 * wait=書込待ち。wait が大きいときはエンコードが追いついていない）。
+	 */
+	private void logProgress(String prefix) {
+		int done = Math.max(1, this.capturedFrames);
+		long elapsedMs = Math.max(1L, System.currentTimeMillis() - this.startedAtMs);
+		double fps = done * 1000.0 / elapsedMs;
+		IfutoReplayClient.LOGGER.info("[ifuto-replay] {}",
+				String.format(Locale.ROOT, "%s %d/%d (%.1ffps, pump %.2fms tick %.2fms render %.2fms cap %.2fms wait %.2fms)",
+						prefix, done, this.totalFrames, fps,
+						this.pumpNs / 1_000_000.0 / done,
+						this.tickNs / 1_000_000.0 / done,
+						this.renderNs / 1_000_000.0 / done,
+						this.captureNs / 1_000_000.0 / done,
+						this.blockNs / 1_000_000.0 / done));
 	}
 
 	/**
@@ -528,7 +585,9 @@ public final class ReplayExporter {
 		byte[] stage;
 
 		try {
+			long w0 = System.nanoTime();
 			stage = this.emptyStages.take();
+			this.blockNs += System.nanoTime() - w0;
 		} catch (InterruptedException e) {
 			Thread.currentThread().interrupt();
 			image.close();
@@ -650,6 +709,7 @@ public final class ReplayExporter {
 			IfutoReplayClient.LOGGER.warn("[ifuto-replay] ffmpeg への書き込みを閉じられませんでした", e);
 		}
 
+		this.logProgress("書き出し完了");
 		this.restore();
 		this.state = State.FINISHING;
 		active = null;
@@ -782,6 +842,16 @@ public final class ReplayExporter {
 				GLFW.glfwSwapInterval(this.savedVsync ? 1 : 0);
 			} catch (Throwable t) {
 				IfutoReplayClient.LOGGER.warn("[ifuto-replay] 表示設定を元に戻せませんでした", t);
+			}
+		}
+
+		if (this.soundMuted) {
+			this.soundMuted = false;
+
+			try {
+				this.client.getSoundManager().resumeAll();
+			} catch (Throwable t) {
+				IfutoReplayClient.LOGGER.warn("[ifuto-replay] 音を元に戻せませんでした", t);
 			}
 		}
 	}

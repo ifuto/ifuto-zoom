@@ -322,6 +322,36 @@ public final class ReplayPlayback implements ReplayStream.Sink {
 	}
 
 	/**
+	 * 書き出し用：目標時刻までその場で追いつく（次の tick を待たない）。
+	 *
+	 * <p>tick 駆動（1秒20回）にぶら下げると、書き出しが tick の速さに縛られる
+	 * （1tickに1枚しか進めない。30分物で90分）。連続するコマは17msしか
+	 * 離れていないので、その場で流し切っても一瞬で終わる。流したら構えと
+	 * カメラもその場で合わせる（1コマ1描画と対にするため）。
+	 *
+	 * <p>実体・パーティクル・時刻の歩みは呼び出し側が tick を回して進める
+	 * （1コマに1tick。普段の1描画1tickと同じ比率なので見え方は変わらない）。
+	 */
+	public void advanceTo(long targetMs) {
+		this.jumpTo(targetMs);
+
+		while (this.timeMs < this.seekTargetMs) {
+			this.timeMs = Math.min(this.timeMs + 250L, this.seekTargetMs);
+			this.pumpDue();
+
+			if (this.stream.isEnded() || this.finished) {
+				break;
+			}
+		}
+
+		this.seeking = false;
+		this.lastRealMs = 0L;
+		this.applyInputState();
+		this.applyStance();
+		this.updateCamera(this.timeMs);
+	}
+
+	/**
 	 * 再生をやめて画面を戻す。
 	 *
 	 * <p>世界の片付けはバニラの切断処理に任せる（ここを自分でやるとあとで壊れやすい）。

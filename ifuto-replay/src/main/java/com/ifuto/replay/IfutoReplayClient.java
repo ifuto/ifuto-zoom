@@ -2,6 +2,7 @@ package com.ifuto.replay;
 
 import com.ifuto.replay.codec.BenchCommand;
 import com.ifuto.replay.config.ReplayConfig;
+import com.ifuto.replay.export.ReplayExporter;
 import com.ifuto.replay.gui.PauseMenuButtons;
 import com.ifuto.replay.gui.RecordingListScreen;
 import com.ifuto.replay.gui.widget.ModernButton;
@@ -72,10 +73,11 @@ public class IfutoReplayClient implements ClientModInitializer {
 			// サイズ・時間の上限に達していたら自動で止める
 			RecordingManager.INSTANCE.tick(client);
 
-			// 再生中なら時刻を進めてパケットを流す
+			// 再生中なら時刻を進めてパケットを流す。書き出し中は描画ごとに
+			// その場で追いつく（advanceTo）ので、ここでは触らない（二重に進めない）
 			ReplayPlayback playback = ReplayPlayback.getActive();
 
-			if (playback != null) {
+			if (playback != null && ReplayExporter.getActive() == null) {
 				playback.tick();
 			}
 		});
