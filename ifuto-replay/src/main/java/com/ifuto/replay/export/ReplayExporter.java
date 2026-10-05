@@ -7,6 +7,7 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.option.GameOptions;
 import net.minecraft.client.texture.NativeImage;
 import net.minecraft.client.util.ScreenshotRecorder;
+import net.minecraft.sound.SoundCategory;
 import net.minecraft.text.Text;
 import org.jspecify.annotations.Nullable;
 import org.lwjgl.glfw.GLFW;
@@ -58,6 +59,7 @@ public final class ReplayExporter {
 	private boolean savedVsync;
 	private boolean displayUncapped;
 	private boolean soundMuted;
+	private double savedMasterVolume = 1.0;
 
 	private final MinecraftClient client;
 	private final ReplayPlayback playback;
@@ -379,9 +381,12 @@ public final class ReplayExporter {
 			GLFW.glfwSwapInterval(0);
 			this.displayUncapped = true;
 
-			// 等倍速以外は音が密になりすぎるので黙らせる（等倍速は見ながら聞ける）
+			// 等倍速以外は音が密になりすぎるので黙らせる（等倍速は見ながら聞ける）。
+			// 主音量を 0 にする（止めるだけだと新しく鳴る音が漏れる）
 			if (this.options.speedPercent() != 100) {
-				this.client.getSoundManager().pauseAll();
+				this.savedMasterVolume = this.client.options.getSoundVolumeOption(SoundCategory.MASTER).getValue();
+				this.client.options.getSoundVolumeOption(SoundCategory.MASTER).setValue(0.0);
+				this.client.getSoundManager().stopAll();
 				this.soundMuted = true;
 			}
 		} catch (Throwable t) {
@@ -849,9 +854,9 @@ public final class ReplayExporter {
 			this.soundMuted = false;
 
 			try {
-				this.client.getSoundManager().resumeAll();
+				this.client.options.getSoundVolumeOption(SoundCategory.MASTER).setValue(this.savedMasterVolume);
 			} catch (Throwable t) {
-				IfutoReplayClient.LOGGER.warn("[ifuto-replay] 音を元に戻せませんでした", t);
+				IfutoReplayClient.LOGGER.warn("[ifuto-replay] 音量を元に戻せませんでした", t);
 			}
 		}
 	}
