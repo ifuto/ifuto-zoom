@@ -17,3 +17,4 @@ artifact_path: ifuto-replay/build/libs/*.jar
 # 2026-10-05-cast
 # 2026-10-05-diag
 # 2026-10-05-notice
+# 2026-10-05-r2
