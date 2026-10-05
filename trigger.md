@@ -22,3 +22,4 @@ artifact_path: ifuto-replay/build/libs/*.jar
 - tput r101: PlayerInput stance fix
 - tput r102: 0.17.0 cuda pixel convert
 - tput r102: 0.17.0 per-render export advance
+- tput r103: 0.18.0 volume-mute fix
