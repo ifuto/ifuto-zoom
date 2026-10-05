@@ -1,18 +1,13 @@
-# Build Trigger
-
-このファイルを編集して push すると **Multi Build** ワークフローが起動します。
-（`.github/workflows/multi-build.yml` のセットアップが必要です。セットアップ手順は `ci/multi-build.yml` の先頭参照）
-
-下の `key: value` 行がビルドパラメータになります。空欄なら `gradle.properties` の値が使われます。
-パラメータを変えずに再実行したいときは `note` の内容を書き換えて push してください。
-
-mc:
-yarn:
-loader:
-fabric_api:
-modmenu:
-java: 21
 workdir: ifuto-replay
 artifact_path: ifuto-replay/build/libs/*.jar
-
-note: 並列圧縮
+# 2026-09-17-06:03:20
+# 2026-09-17-06:32:25
+# 2026-09-17-06:35:40
+# 2026-09-17-11:04:27
+# 2026-09-17-11:09:22
+# 2026-09-17-11:11:21
+# 2026-09-17-11:14:28
+# 2026-10-03-22:37:55
+# 2026-10-03-23:22:39
+# 2026-10-03-23:27:12
+# 2026-10-05-replay-perf

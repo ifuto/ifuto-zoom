@@ -4,13 +4,15 @@ import com.ifuto.replay.audio.AudioMode;
 import com.ifuto.replay.audio.SystemAudioCapture;
 import com.ifuto.replay.config.CompressionMode;
 import com.ifuto.replay.config.IndicatorPosition;
+import com.ifuto.replay.config.LowSpecMode;
 import com.ifuto.replay.config.ReplayConfig;
 import com.ifuto.replay.gui.theme.ReplayTheme;
 import com.ifuto.replay.gui.widget.ModernButton;
-import com.ifuto.replay.gui.widget.ModernCycling;
+import com.ifuto.replay.gui.widget.ModernDropdown;
 import com.ifuto.replay.gui.widget.ModernSlider;
 import com.ifuto.replay.gui.widget.ModernTextField;
 import com.ifuto.replay.gui.widget.ModernToggle;
+import com.ifuto.replay.gui.widget.PopupHost;
 import com.ifuto.replay.recording.RecordingManager;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
@@ -41,7 +43,7 @@ import java.util.function.IntConsumer;
  * 押し心地やキー操作はバニラのままなので、触り方は変わらない。
  */
 @Environment(EnvType.CLIENT)
-public class ReplayConfigScreen extends Screen {
+public class ReplayConfigScreen extends Screen implements PopupHost {
 	private static final int WIDGET_WIDTH = 158;
 	private static final int WIDGET_HEIGHT = 20;
 	private static final int COLUMN_GAP = 8;
@@ -53,6 +55,9 @@ public class ReplayConfigScreen extends Screen {
 	private ScrollableLayoutWidget scrollable;
 	private ThreePartsLayoutWidget layout;
 
+	/** 部品の幅（画面が狭いときは細くする。init で決める） */
+	private int widgetWidth = WIDGET_WIDTH;
+
 	public ReplayConfigScreen(Screen parent) {
 		super(Text.translatable("ifuto-replay.config.title"));
 		this.parent = parent;
@@ -61,6 +66,8 @@ public class ReplayConfigScreen extends Screen {
 
 	@Override
 	protected void init() {
+		// 画面が狭い（GUIサイズが大きい）ときは部品を細くしてはみ出さないようにする
+		this.widgetWidth = Math.min(WIDGET_WIDTH, Math.max(96, (this.width - 24 - COLUMN_GAP - 8) / 2));
 		this.layout = new ThreePartsLayoutWidget(this);
 		this.layout.addHeader(this.title, this.textRenderer);
 
@@ -115,7 +122,9 @@ public class ReplayConfigScreen extends Screen {
 				toggle("ifuto-replay.config.record_particles", this.config.recordParticles,
 						"ifuto-replay.config.record_particles.tooltip",
 						value -> this.config.recordParticles = value),
-				null));
+				toggle("ifuto-replay.config.skip_keep_alive", this.config.skipKeepAlive,
+						"ifuto-replay.config.skip_keep_alive.tooltip",
+						value -> this.config.skipKeepAlive = value)));
 
 		// 2行目: 軽さの調整
 		content.add(row(
@@ -123,9 +132,10 @@ public class ReplayConfigScreen extends Screen {
 						this.config.compression, CompressionMode::getText,
 						"ifuto-replay.config.compression.tooltip",
 						value -> this.config.compression = value),
-				toggle("ifuto-replay.config.skip_keep_alive", this.config.skipKeepAlive,
-						"ifuto-replay.config.skip_keep_alive.tooltip",
-						value -> this.config.skipKeepAlive = value)));
+				cycle("ifuto-replay.config.low_spec", List.of(LowSpecMode.values()),
+						this.config.lowSpec, LowSpecMode::getText,
+						"ifuto-replay.config.low_spec.tooltip",
+						value -> this.config.lowSpec = value)));
 
 		// 3行目: 再生とプライバシー
 		content.add(row(
@@ -204,7 +214,7 @@ public class ReplayConfigScreen extends Screen {
 
 		// 7行目: 保存先（全幅）
 		ModernTextField folderField = new ModernTextField(this.textRenderer,
-				0, 0, WIDGET_WIDTH * 2 + COLUMN_GAP, WIDGET_HEIGHT,
+				0, 0, this.widgetWidth * 2 + COLUMN_GAP, WIDGET_HEIGHT,
 				Text.translatable("ifuto-replay.config.save_folder"));
 		folderField.setMaxLength(120);
 		folderField.setText(this.config.saveFolder);
@@ -225,21 +235,21 @@ public class ReplayConfigScreen extends Screen {
 						value -> this.config.audioBitrateKbps = value)));
 
 		ModernTextField deviceField = new ModernTextField(this.textRenderer,
-				0, 0, WIDGET_WIDTH, WIDGET_HEIGHT,
+				0, 0, this.widgetWidth, WIDGET_HEIGHT,
 				Text.translatable("ifuto-replay.config.audio_device"));
 		deviceField.setMaxLength(120);
 		deviceField.setText(this.config.audioDevice);
 		deviceField.setPlaceholder(Text.translatable("ifuto-replay.config.audio_device.placeholder"));
 		deviceField.setTooltip(Tooltip.of(Text.translatable("ifuto-replay.config.audio_device.tooltip")));
 		deviceField.setChangedListener(value -> this.config.audioDevice = value.trim());
-		ModernButton detectButton = new ModernButton(0, 0, WIDGET_WIDTH, WIDGET_HEIGHT,
+		ModernButton detectButton = new ModernButton(0, 0, this.widgetWidth, WIDGET_HEIGHT,
 				Text.translatable("ifuto-replay.config.audio_device.detect"),
 				button -> this.detectAudioDevice(deviceField), ModernButton.Style.NORMAL);
 		detectButton.setTooltip(Tooltip.of(Text.translatable("ifuto-replay.config.audio_device.detect.tooltip")));
 		content.add(row(deviceField, detectButton));
 		content.add(row(toggle("ifuto-replay.config.record_voice_chat", this.config.recordVoiceChat,
 				"ifuto-replay.config.record_voice_chat.tooltip",
-				value -> this.config.recordVoiceChat = value, WIDGET_WIDTH * 2 + COLUMN_GAP), null));
+				value -> this.config.recordVoiceChat = value, this.widgetWidth * 2 + COLUMN_GAP), null));
 
 		// 8行目: 書き出しの既定値（FPS / 解像度）
 		String currentResolution = this.config.exportWidth + "x" + this.config.exportHeight;
@@ -264,7 +274,7 @@ public class ReplayConfigScreen extends Screen {
 						value -> this.applyResolution(value))));
 
 		// 9行目: ビットレート
-		ModernTextField bitrateField = new ModernTextField(this.textRenderer, 0, 0, WIDGET_WIDTH, WIDGET_HEIGHT,
+		ModernTextField bitrateField = new ModernTextField(this.textRenderer, 0, 0, this.widgetWidth, WIDGET_HEIGHT,
 				Text.translatable("ifuto-replay.config.export_bitrate"));
 		bitrateField.setMaxLength(9);
 		bitrateField.setText(String.valueOf(this.config.exportBitrateKbps));
@@ -284,7 +294,7 @@ public class ReplayConfigScreen extends Screen {
 
 		// 10行目: ffmpeg（全幅）
 		ModernTextField ffmpegField = new ModernTextField(this.textRenderer,
-				0, 0, WIDGET_WIDTH * 2 + COLUMN_GAP, WIDGET_HEIGHT,
+				0, 0, this.widgetWidth * 2 + COLUMN_GAP, WIDGET_HEIGHT,
 				Text.translatable("ifuto-replay.config.ffmpeg_path"));
 		ffmpegField.setMaxLength(240);
 		ffmpegField.setText(this.config.ffmpegPath);
@@ -294,20 +304,25 @@ public class ReplayConfigScreen extends Screen {
 		content.add(row(ffmpegField, null));
 
 		this.scrollable = new ScrollableLayoutWidget(this.client, content, SCROLL_MIN_HEIGHT);
-		this.scrollable.setWidth(WIDGET_WIDTH * 2 + COLUMN_GAP + 8);
+		this.scrollable.setWidth(this.widgetWidth * 2 + COLUMN_GAP + 8);
 		body.add(this.scrollable);
 
 		DirectionalLayoutWidget footer = this.layout.addFooter(DirectionalLayoutWidget.horizontal().spacing(COLUMN_GAP));
-		footer.add(new ModernButton(0, 0, WIDGET_WIDTH, WIDGET_HEIGHT,
+		// 3個並べるので本文と同じ幅だと入り切らない。入る幅まで縮める（最低でも押せる幅は残す）
+		int contentWidth = this.widgetWidth * 2 + COLUMN_GAP;
+		int footerWidth = Math.max(64, Math.min(this.widgetWidth, (contentWidth - COLUMN_GAP * 2) / 3));
+		// 画面自体が狭いときは画面に合わせる（中央寄せではみ出さないように）
+		footerWidth = Math.min(footerWidth, Math.max(48, (this.width - 32 - COLUMN_GAP * 2) / 3));
+		footer.add(new ModernButton(0, 0, footerWidth, WIDGET_HEIGHT,
 				Text.translatable("ifuto-replay.config.open_folder"), button -> openFolder(),
 				ModernButton.Style.NORMAL));
-		footer.add(new ModernButton(0, 0, WIDGET_WIDTH, WIDGET_HEIGHT,
+		footer.add(new ModernButton(0, 0, footerWidth, WIDGET_HEIGHT,
 				Text.translatable("ifuto-replay.config.reset"), button -> {
 					this.config.resetToDefaults();
 					this.config.save();
 					this.clearAndInit();
 				}, ModernButton.Style.DANGER));
-		footer.add(new ModernButton(0, 0, WIDGET_WIDTH, WIDGET_HEIGHT,
+		footer.add(new ModernButton(0, 0, footerWidth, WIDGET_HEIGHT,
 				Text.translatable("gui.done"), button -> this.close(), ModernButton.Style.PRIMARY));
 
 		this.layout.forEachChild(this::addDrawableChild);
@@ -316,32 +331,32 @@ public class ReplayConfigScreen extends Screen {
 
 	// --- 部品を作る（同じ形を何度も書かないためのまとめ） ---
 
-	private static ModernToggle toggle(String labelKey, boolean initial, String tooltipKey,
-									   Consumer<Boolean> setter) {
-		return toggle(labelKey, initial, tooltipKey, setter, WIDGET_WIDTH);
+	private ModernToggle toggle(String labelKey, boolean initial, String tooltipKey,
+			Consumer<Boolean> setter) {
+		return toggle(labelKey, initial, tooltipKey, setter, this.widgetWidth);
 	}
 
-	private static ModernToggle toggle(String labelKey, boolean initial, String tooltipKey,
-									   Consumer<Boolean> setter, int width) {
+	private ModernToggle toggle(String labelKey, boolean initial, String tooltipKey,
+			Consumer<Boolean> setter, int width) {
 		ModernToggle toggle = new ModernToggle(0, 0, width, WIDGET_HEIGHT,
 				Text.translatable(labelKey), initial, setter);
 		toggle.setTooltip(Tooltip.of(Text.translatable(tooltipKey)));
 		return toggle;
 	}
 
-	private static <T> ModernCycling<T> cycle(String labelKey, List<T> values, T initial,
+	private <T> ModernDropdown<T> cycle(String labelKey, List<T> values, T initial,
 											  Function<T, Text> formatter, String tooltipKey,
 											  Consumer<T> setter) {
-		ModernCycling<T> cycling = new ModernCycling<>(0, 0, WIDGET_WIDTH, WIDGET_HEIGHT,
+		ModernDropdown<T> cycling = new ModernDropdown<>(this, 0, 0, this.widgetWidth, WIDGET_HEIGHT,
 				Text.translatable(labelKey), values, initial, formatter, setter);
 		cycling.setTooltip(Tooltip.of(Text.translatable(tooltipKey)));
 		return cycling;
 	}
 
-	private static ModernSlider slider(String labelKey, int min, int max, int initial,
+	private ModernSlider slider(String labelKey, int min, int max, int initial,
 									   ModernSlider.ValueFormatter formatter, String tooltipKey,
 									   IntConsumer setter) {
-		ModernSlider slider = new ModernSlider(0, 0, WIDGET_WIDTH, WIDGET_HEIGHT, labelKey, min, max, initial,
+		ModernSlider slider = new ModernSlider(0, 0, this.widgetWidth, WIDGET_HEIGHT, labelKey, min, max, initial,
 				formatter, setter);
 		slider.setTooltip(Tooltip.of(Text.translatable(tooltipKey)));
 		return slider;
@@ -362,7 +377,8 @@ public class ReplayConfigScreen extends Screen {
 	private void detectAudioDevice(ModernTextField field) {
 		field.setText(Text.translatable("ifuto-replay.config.audio_device.detecting").getString());
 		MinecraftClient client = MinecraftClient.getInstance();
-		String ffmpegPath = this.config.ffmpegPath;
+		String resolved = com.ifuto.replay.export.FfmpegInstaller.resolve(this.config.ffmpegPath);
+		String ffmpegPath = resolved == null ? this.config.ffmpegPath : resolved;
 
 		Thread thread = new Thread(() -> {
 			List<String> devices = SystemAudioCapture.detectDevices(ffmpegPath);
@@ -453,7 +469,7 @@ public class ReplayConfigScreen extends Screen {
 	@Override
 	public void render(DrawContext context, int mouseX, int mouseY, float delta) {
 		super.render(context, mouseX, mouseY, delta);
-		context.drawTextWithShadow(this.textRenderer, "Made by Ifuto_mitai", 4, this.height - 12, 0xFF6B7784);
+		context.drawText(this.textRenderer, "Made by Ifuto_mitai", 4, this.height - 12, 0xFF6B7784, false);
 	}
 
 	@Override
@@ -466,5 +482,15 @@ public class ReplayConfigScreen extends Screen {
 	public void removed() {
 		this.config.save();
 		super.removed();
+	}
+
+	@Override
+	public void replay$addPopup(ClickableWidget widget) {
+		this.addDrawableChild(widget);
+	}
+
+	@Override
+	public void replay$removePopup(ClickableWidget widget) {
+		this.remove(widget);
 	}
 }

@@ -2,8 +2,10 @@ package com.ifuto.replay.recording;
 
 import com.ifuto.replay.IfutoReplayClient;
 import com.ifuto.replay.config.CompressionMode;
+import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufUtil;
 import net.minecraft.nbt.NbtCompound;
+import net.minecraft.network.packet.Packet;
 import net.minecraft.nbt.NbtIo;
 
 import java.io.BufferedOutputStream;
@@ -42,8 +44,15 @@ final class ReplayFileWriter implements Runnable {
 	private static final int BUFFER_SIZE = 1 << 16;
 	private static final int POLL_TIMEOUT_MS = 200;
 
-	/** かたまりを圧縮しはじめる大きさ（ためすぎても縮まないのでこれくらい） */
-	private static final int BLOCK_TARGET_BYTES = 16 * 1024;
+	/**
+	 * かたまりを圧縮しはじめる大きさ。
+	 *
+	 * <p>deflate は最大で 32KB 前まで遡って重なりを探せる（RFC 1951）ので、
+	 * 小さく切りすぎると窓を使い切れず縮まない。64KB あれば窓いっぱいに探せるし、
+	 * かたまりごとの木のぶんも薄まる。読み手は大きさを選ばないので互換性は保たれる。
+	 */
+	/** かたまり1個の目安の大きさ（圧縮の設定ごと。強いほど大きい） */
+	private final int blockTargetBytes;
 
 	/** かたまりに入れるパケットの上限（小さい物ばかりのときの保険） */
 	private static final int BLOCK_MAX_PACKETS = 2048;
@@ -51,7 +60,7 @@ final class ReplayFileWriter implements Runnable {
 	/** かたまりを抱えたままにする時間の上限（落ちたときの被害をこれだけにする） */
 	private static final long BLOCK_MAX_HOLD_MS = 1000L;
 
-	/** 同時に圧縮しっぱなしにしてよい数（メモリの上限。16KB × この数） */
+	/** 同時に圧縮しっぱなしにしてよい数（メモリの上限。64KB × この数で 512KB まで） */
 	private static final int MAX_IN_FLIGHT_BLOCKS = 8;
 
 	/**
@@ -62,21 +71,23 @@ final class ReplayFileWriter implements Runnable {
 	 * なので、バラバラに圧縮しても結果は同じ）。
 	 */
 	private static final int COMPRESSOR_THREADS =
-			Math.max(1, Math.min(4, Runtime.getRuntime().availableProcessors() - 1));
+			Math.max(1, Math.min(2, Runtime.getRuntime().availableProcessors() - 1));
 
 	/** 圧縮だけをやる係（書き込みスレッドとは別。ゲーム側は絶対に待たせない） */
 	private static final ExecutorService COMPRESSORS = Executors.newFixedThreadPool(COMPRESSOR_THREADS,
 			(ThreadFactory) runnable -> {
 				Thread thread = new Thread(runnable, "ifuto-replay-compress");
 				thread.setDaemon(true);
+				// ゲームより後回し（コアの少ないPCでカクつかせないため）
+				thread.setPriority(Math.max(Thread.MIN_PRIORITY, Thread.NORM_PRIORITY - 2));
 				return thread;
 			});
 
 	/** スレッドごとの deflate 器（複数人で使うので1人1個） */
 	private static final ThreadLocal<Deflater> DEFLATERS = ThreadLocal.withInitial(Deflater::new);
 
-	/** スレッドごとの作業用の入れ物 */
-	private static final ThreadLocal<byte[]> SCRATCHES = ThreadLocal.withInitial(() -> new byte[8192]);
+	/** スレッドごとの作業用の入れ物（かたまりが大きくなったので広げる。JNI を叩く回数が減る） */
+	private static final ThreadLocal<byte[]> SCRATCHES = ThreadLocal.withInitial(() -> new byte[32768]);
 
 	private final BlockingQueue<PacketTask> queue;
 	private final ReplayDataOutput out;
@@ -123,7 +134,7 @@ final class ReplayFileWriter implements Runnable {
 	private final boolean blocked;
 
 	/** ためているかたまりの中身 */
-	private ByteArrayOutputStream blockBytes = new ByteArrayOutputStream(BLOCK_TARGET_BYTES + 1024);
+	private ByteArrayOutputStream blockBytes = new ByteArrayOutputStream(65 * 1024);
 
 	/** かたまりに書くための物 */
 	private ReplayDataOutput blockOut = new ReplayDataOutput(this.blockBytes);
@@ -166,8 +177,9 @@ final class ReplayFileWriter implements Runnable {
 							 long flushIntervalMs, int queueCapacity, AtomicLong queuedBytes,
 							 long initialTimeMs, @Nullable Supplier<List<PacketTask>> preamble)
 			throws IOException {
-		this.queue = new ArrayBlockingQueue<>(Math.max(64, queueCapacity));
+		this.queue = new MpscPacketQueue(queueCapacity);
 		this.compression = compression;
+		this.blockTargetBytes = compression.blockBytes();
 		this.indexIntervalMs = indexIntervalMs;
 		this.maxBytes = maxBytes;
 		this.flushIntervalMs = Math.max(100L, flushIntervalMs);
@@ -181,6 +193,8 @@ final class ReplayFileWriter implements Runnable {
 
 		this.thread = new Thread(this, "ifuto-replay-writer");
 		this.thread.setDaemon(true);
+		// ゲームより後回し（コアの少ないPCでカクつかせないため）
+		this.thread.setPriority(Math.max(Thread.MIN_PRIORITY, Thread.NORM_PRIORITY - 2));
 	}
 
 	/** ファイルを開いて書き込みスレッドを開始する */
@@ -314,6 +328,13 @@ final class ReplayFileWriter implements Runnable {
 		} finally {
 			// 最後にファイルへ移したあとに書いた量（周期フラッシュの判定に使う）
 			this.bytesSinceFlush += 1L + task.size();
+
+			// パケットの中身は Netty のプールから借りた物なので、書き終わったら必ず返す。
+			// 返さないとダイレクトメモリが録画中ずっと増え続ける（ここで返すのが唯一の場所）。
+			// 例外で抜けたときも finally で返す（大きさの計算よりあとに置くこと）。
+			if (task.kind == PacketTask.KIND_PACKET && task.payload != null) {
+				task.payload.release();
+			}
 		}
 	}
 
@@ -333,8 +354,9 @@ final class ReplayFileWriter implements Runnable {
 				this.out.writeByte(task.direction);
 				this.out.writeString(task.text);
 			}
-			case PacketTask.KIND_PACKET -> this.writePacket(task);
-			case PacketTask.KIND_LOCAL -> this.writeLocal(task);
+		case PacketTask.KIND_PACKET -> this.writePacket(task);
+		case PacketTask.KIND_SNAPSHOT -> this.writeSnapshot(task);
+		case PacketTask.KIND_LOCAL -> this.writeLocal(task);
 			case PacketTask.KIND_REGISTRIES -> this.writeRegistries(task.nbt);
 			case PacketTask.KIND_MARKER -> {
 				this.out.writeByte(ReplayFormat.TAG_MARKER);
@@ -418,8 +440,8 @@ final class ReplayFileWriter implements Runnable {
 		this.writtenPackets.incrementAndGet();
 		this.queuedBytes.addAndGet(-length);
 
-		if (this.blockCount >= BLOCK_MAX_PACKETS
-				|| this.blockBytes.size() >= BLOCK_TARGET_BYTES
+			if (this.blockCount >= BLOCK_MAX_PACKETS
+				|| this.blockBytes.size() >= this.blockTargetBytes
 				|| System.currentTimeMillis() - this.blockOpenedAtMs >= BLOCK_MAX_HOLD_MS) {
 			this.flushBlock();
 		}
@@ -439,7 +461,7 @@ final class ReplayFileWriter implements Runnable {
 		byte[] raw = this.blockBytes.toByteArray();
 
 		// 先に空にしておく（途中で失敗しても同じ物を二度書かないように）
-		this.blockBytes = new ByteArrayOutputStream(BLOCK_TARGET_BYTES + 1024);
+		this.blockBytes = new ByteArrayOutputStream(this.blockTargetBytes + 1024);
 		this.blockOut = new ReplayDataOutput(this.blockBytes);
 		this.blockCount = 0;
 
@@ -450,8 +472,9 @@ final class ReplayFileWriter implements Runnable {
 			this.inFlight++;
 		}
 
-		if (this.inFlight > MAX_IN_FLIGHT_BLOCKS) {
-			// 追いついていないので自分でやる（溜めすぎない・取りこぼさない）
+		if (this.inFlight > MAX_IN_FLIGHT_BLOCKS || this.compression == CompressionMode.FAST) {
+			// 追いついていないときと「速い」ときは自分でやる（溜めすぎない・取りこぼさない）。
+			// 「速い」は安いので、係に回す手間より自分でやるほうが速いし軽い
 			this.compressBlock(block);
 		} else {
 			try {
@@ -465,17 +488,16 @@ final class ReplayFileWriter implements Runnable {
 	}
 
 	/**
-	 * かたまり1個を、**それだけで完結した deflate** にする（圧縮係が呼ぶ）。
+	 * かたまり1個を、**それだけで完結した圧縮** にする（圧縮係が呼ぶ）。
 	 *
-	 * <p>次のかたまりは reset() してから始めるので、かたまり同士は互いに独立。
-	 * そのぶん少しだけ縮み方が悪くなるが（実測で 0.5% ほど）、読み飛ばしや
-	 * つなぎ合わせが自由になる。
+	 * <p>かたまり同士は互いに独立。そのぶん少しだけ縮み方が悪くなるが、
+	 * 読み飛ばしやつなぎ合わせが自由になる。
 	 */
 	private void compressBlock(Block block) {
 		byte[] packed;
 
 		try {
-			packed = deflateWith(block.raw, this.compression.deflateLevel());
+			packed = BlockCodec.compress(block.raw, this.compression);
 		} catch (Throwable t) {
 			// ここで落とすと録画が全部だめになるので、縮まなくても書き切る
 			IfutoReplayClient.LOGGER.warn("[ifuto-replay] かたまりを圧縮できなかったのでそのまま書きます", t);
@@ -536,7 +558,7 @@ final class ReplayFileWriter implements Runnable {
 		this.out.writeVarInt(raw.length);
 
 		if (packed != null && packed.length < raw.length) {
-			this.out.writeByte(ReplayFormat.METHOD_DEFLATE);
+			this.out.writeByte(this.compression.codecMethod());
 			this.out.writeVarInt(packed.length);
 			this.out.writeBytes(packed);
 		} else {
@@ -573,6 +595,58 @@ final class ReplayFileWriter implements Runnable {
 	}
 
 	/**
+	 * 世界の写し（関門）をほどいて書く。
+	 *
+	 * <p>クライアントスレッドでは重すぎる直列化をこっちでやる。種類の登録は
+	 * 積む前に済んでいるので、ここでは番号だけ見ればいい。写しの中身は
+	 * 録画側で作った物（誰も触っていない）なので、ここで読んで安全。
+	 */
+	private void writeSnapshot(PacketTask task) throws IOException {
+		WorldSnapshot.Snapshot snapshot = task.snapshot;
+		PacketEncoder encoder = task.encoder;
+		int[] indices = task.typeIndices;
+
+		if (snapshot == null || encoder == null || indices == null) {
+			return;
+		}
+
+		List<Packet<?>> packets = snapshot.packets();
+
+		for (int i = 0; i < packets.size() && i < indices.length; i++) {
+			int index = indices[i];
+			Packet<?> packet = packets.get(i);
+
+			if (index < 0 || packet == null) {
+				continue;
+			}
+
+			ByteBuf buffer = PacketTask.sizedBuffer(task.sizeHints, index);
+
+			try {
+				encoder.encode(buffer, packet, false);
+			} catch (Throwable t) {
+				// 1個の失敗で全体を止めない（今までと同じ）
+				buffer.release();
+				continue;
+			}
+
+			int size = buffer.readableBytes();
+			PacketTask.noteSize(task.sizeHints, index, size);
+			// 通し番号の管理（録画側で足すぶんをここで足して、書くときに返す。差し引きゼロ）
+			this.queuedBytes.addAndGet(size);
+
+			PacketTask inner = PacketTask.packet(task.timeMs, index, ReplayFormat.DIRECTION_S2C, buffer);
+
+			try {
+				this.writePacket(inner);
+			} finally {
+				this.bytesSinceFlush += 1L + size;
+				buffer.release();
+			}
+		}
+	}
+
+	/**
 	 * クライアントの内側でだけ起きた出来事（パーティクルなど）。
 	 *
 	 * <p>中身は {@link LocalEvents} が組み立てた物。**パケットとして残らない物** なので、
@@ -590,6 +664,9 @@ final class ReplayFileWriter implements Runnable {
 		this.out.writeVarInt(task.typeIndex);
 		this.out.writeVarInt(data.length);
 		this.out.writeBytes(data);
+		// 録画側で数えたぶんを返す（返さないと溜まっているように見え続け、
+		// 長い録画のどこかでパケットを捨て始めてしまう）
+		this.queuedBytes.addAndGet(-data.length);
 	}
 
 	/** 入力（マウス・キー・画面）の差分。中身は InputTracker が組み立てた物 */
@@ -602,8 +679,12 @@ final class ReplayFileWriter implements Runnable {
 
 		this.out.writeByte(ReplayFormat.TAG_INPUT);
 		this.out.writeVarInt(this.takeDelta(task.timeMs));
+		// 種類を先に1バイト（読み手はここを見る。中身の先頭にも同じ物が入っている）
+		this.out.writeByte(data[0] & 0xFF);
 		this.out.writeVarInt(data.length);
 		this.out.writeBytes(data);
+		// 録画側で数えたぶんを返す（writeLocal と同じ理由）
+		this.queuedBytes.addAndGet(-data.length);
 	}
 
 	/**

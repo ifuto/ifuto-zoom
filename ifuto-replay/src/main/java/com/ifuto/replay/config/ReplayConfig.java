@@ -69,8 +69,20 @@ public class ReplayConfig {
 
 	// --- 軽さの調整 ---
 
-	/** 保存時の圧縮 */
-	public CompressionMode compression = CompressionMode.MAX;
+	/**
+	 * 保存時にかける圧縮。既定は「強」（deflate 8）。
+	 *
+	 * <p>「最強」（9）は「強」より少し縮むかわりに倍近く重い。書き込みスレッド側の
+	 * 仕事ではあるが、コアの少ない PC ではゲーム側の分まで食うので既定は「強」にする。
+	 * ファイルの大きさは 1% も違わない。軽さ優先なら「標準」以下を選ぶ。
+	 */
+	public CompressionMode compression = CompressionMode.STRONG;
+
+	/**
+	 * 低スペックPCむけの軽量動作。ON（自動ふくむ）のときは圧縮を「速い」に落とし、
+	 * 圧縮の係を増やさず、書き込みをゲームより後回しにする。録れる内容は変わらない。
+	 */
+	public LowSpecMode lowSpec = LowSpecMode.AUTO;
 
 	/** 書き込み待ちのキューに積めるパケット数（あふれた分は捨てて、ゲーム側は止めない） */
 	public int queuePackets = 4096;
@@ -158,8 +170,15 @@ public class ReplayConfig {
 	public int exportBitrateKbps = 20000;
 
 	/**
+	 * 書き出しに GPU エンコーダーを使う（速い。使えなければ CPU に切り替わる）。
+	 *
+	 * <p>NVIDIA / Intel / AMD / Apple の順に探す。切ると libx264 の medium で出す。
+	 */
+	public boolean exportHardwareAccel = true;
+
+	/**
 	 * 途中から録り始めたとき、一緒に保存する地形の半径（チャンク）。
-	 * 0 にすると保存しない（その場合、途中からの録画は再生できなくなる）
+	 * 0 にしても 1 として扱う（写しが無いと再生不能になるため、必ず作る）
 	 */
 	public int snapshotRadius = 6;
 
@@ -253,6 +272,33 @@ public class ReplayConfig {
 		return this.maskServerAddress ? MASK : address;
 	}
 
+	/** いま軽量動作にするか（自動ならコア数で決める） */
+	public boolean isLowSpec() {
+		if (this.lowSpec == LowSpecMode.ON) {
+			return true;
+		}
+
+		if (this.lowSpec == LowSpecMode.OFF) {
+			return false;
+		}
+
+		return Runtime.getRuntime().availableProcessors() <= 4;
+	}
+
+	/** 実際に使う圧縮（軽量動作のときは「速い」に落とす） */
+	public CompressionMode effectiveCompression() {
+		if (!this.isLowSpec()) {
+			return this.compression == null ? CompressionMode.STRONG : this.compression;
+		}
+
+		// 「切」はそのまま尊重する（軽さでは切に勝てないので）
+		if (this.compression == CompressionMode.OFF) {
+			return CompressionMode.OFF;
+		}
+
+		return CompressionMode.FAST;
+	}
+
 	public static ReplayConfig load() {
 		Path path = getPath();
 		ReplayConfig config = new ReplayConfig();
@@ -296,6 +342,7 @@ public class ReplayConfig {
 		this.recordClientPackets = defaults.recordClientPackets;
 		this.skipKeepAlive = defaults.skipKeepAlive;
 		this.compression = defaults.compression;
+		this.lowSpec = defaults.lowSpec;
 		this.queuePackets = defaults.queuePackets;
 		this.queuedMegaBytes = defaults.queuedMegaBytes;
 		this.flushIntervalMs = defaults.flushIntervalMs;
@@ -316,6 +363,7 @@ public class ReplayConfig {
 		this.exportWidth = defaults.exportWidth;
 		this.exportHeight = defaults.exportHeight;
 		this.exportBitrateKbps = defaults.exportBitrateKbps;
+		this.exportHardwareAccel = defaults.exportHardwareAccel;
 		this.ffmpegPath = defaults.ffmpegPath;
 		this.snapshotRadius = defaults.snapshotRadius;
 		this.audioMode = defaults.audioMode;
@@ -332,6 +380,10 @@ public class ReplayConfig {
 	public void validate() {
 		if (this.compression == null) {
 			this.compression = CompressionMode.OFF;
+		}
+
+		if (this.lowSpec == null) {
+			this.lowSpec = LowSpecMode.AUTO;
 		}
 
 		if (this.indicatorPosition == null) {
@@ -366,7 +418,7 @@ public class ReplayConfig {
 		}
 
 		this.audioBitrateKbps = clampStrict(this.audioBitrateKbps, 32, 512, 96);
-		this.clipSeconds = clampStrict(this.clipSeconds, 5, 600, 30);
+		this.clipSeconds = clampStrict(this.clipSeconds, 5, 14400, 7200);
 		this.clipKeepHours = clampStrict(this.clipKeepHours, 0, 720, 24);
 		this.clipBufferMb = clampStrict(this.clipBufferMb, 0, 65536, 0);
 

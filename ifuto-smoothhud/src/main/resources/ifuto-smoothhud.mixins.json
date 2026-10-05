@@ -1,0 +1,11 @@
+{
+	"required": true,
+	"package": "com.ifuto.smoothhud.mixin",
+	"compatibilityLevel": "JAVA_21",
+	"injectors": {
+		"defaultRequire": 1
+	},
+	"client": [
+		"InGameHudMixin"
+	]
+}

@@ -4,14 +4,17 @@ import com.ifuto.replay.IfutoReplayClient;
 import com.ifuto.replay.audio.AudioTracks;
 import com.ifuto.replay.config.ReplayConfig;
 import com.ifuto.replay.export.ExportOptions;
+import com.ifuto.replay.export.FfmpegInstaller;
 import com.ifuto.replay.export.ReplayExporter;
 import com.ifuto.replay.gui.theme.ReplayTheme;
 import com.ifuto.replay.gui.widget.ModernButton;
-import com.ifuto.replay.gui.widget.ModernCycling;
+import com.ifuto.replay.gui.widget.ModernDropdown;
 import com.ifuto.replay.gui.widget.ModernSlider;
 import com.ifuto.replay.gui.widget.ModernTextField;
 import com.ifuto.replay.gui.widget.ModernToggle;
+import com.ifuto.replay.gui.widget.PopupHost;
 import com.ifuto.replay.playback.ReplayPlayback;
+import com.ifuto.replay.recording.ClipRemux;
 import com.ifuto.replay.recording.ReplayFileReader;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
@@ -39,7 +42,7 @@ import java.util.List;
  * あとからいくらでも変えられる（画面録画と違って実時間に縛られない）。
  */
 @Environment(EnvType.CLIENT)
-public class ExportScreen extends Screen {
+public class ExportScreen extends Screen implements PopupHost {
 	private static final int WIDGET_WIDTH = 158;
 	private static final int WIDGET_HEIGHT = 20;
 	private static final int COLUMN_GAP = 8;
@@ -59,6 +62,9 @@ public class ExportScreen extends Screen {
 
 	private ScrollableLayoutWidget scrollable;
 	private ThreePartsLayoutWidget layout;
+
+	/** 部品の幅（画面が狭いときは細くする。init で決める） */
+	private int widgetWidth = WIDGET_WIDTH;
 	private ModernTextField widthField;
 	private ModernTextField heightField;
 	private ModernTextField bitrateField;
@@ -67,6 +73,7 @@ public class ExportScreen extends Screen {
 	private TextWidget summaryText;
 	private boolean includeAudio;
 	private boolean includeVoiceChat = true;
+	private boolean useHardware;
 	private int speedPercent;
 	private int startSec;
 	private int endSec;
@@ -79,15 +86,20 @@ public class ExportScreen extends Screen {
 		this.config = config;
 		this.durationMs = info.hasDuration() ? Math.max(0L, info.durationMs()) : 0L;
 		this.durationSec = (int) Math.max(0L, this.durationMs / 1000L);
-		this.startSec = 0;
+		// 編集で先頭を落とした物は「ここから見せる」位置から始める（前書きを出さない）
+		long trimMs = ClipRemux.findTrimStartMs(info.file(), 128L << 20);
+		this.startSec = trimMs > 0L ? (int) Math.min(this.durationSec, trimMs / 1000L) : 0;
 		this.endSec = this.durationSec;
 		this.fps = config.exportFps;
 		this.includeAudio = AudioTracks.hasAny(info.file());
+		this.useHardware = config.exportHardwareAccel;
 		this.speedPercent = config.exportSpeedPercent;
 	}
 
 	@Override
 	protected void init() {
+		// 画面が狭い（GUIサイズが大きい）ときは部品を細くしてはみ出さないようにする
+		this.widgetWidth = Math.min(WIDGET_WIDTH, Math.max(96, (this.width - 24 - COLUMN_GAP - 8) / 2));
 		this.layout = new ThreePartsLayoutWidget(this);
 		this.layout.addHeader(this.title, this.textRenderer);
 
@@ -99,7 +111,7 @@ public class ExportScreen extends Screen {
 		DirectionalLayoutWidget content = DirectionalLayoutWidget.vertical().spacing(ROW_SPACING);
 
 		// 1行目: FPS と解像度のプリセット
-		ModernCycling<Integer> fpsCycling = new ModernCycling<>(0, 0, WIDGET_WIDTH, WIDGET_HEIGHT,
+		ModernDropdown<Integer> fpsCycling = new ModernDropdown<>(this, 0, 0, this.widgetWidth, WIDGET_HEIGHT,
 				Text.translatable("ifuto-replay.export.fps"), List.of(FPS_VALUES), this.fps,
 				value -> Text.translatable("ifuto-replay.export.fps.value", value),
 				value -> {
@@ -108,18 +120,18 @@ public class ExportScreen extends Screen {
 				});
 		fpsCycling.setTooltip(Tooltip.of(Text.translatable("ifuto-replay.export.fps.tooltip")));
 
-		ModernCycling<String> resolutionCycling = new ModernCycling<>(0, 0, WIDGET_WIDTH, WIDGET_HEIGHT,
+		ModernDropdown<String> resolutionCycling = new ModernDropdown<>(this, 0, 0, this.widgetWidth, WIDGET_HEIGHT,
 				Text.translatable("ifuto-replay.export.resolution"), List.of(this.resolutionValues()),
 				this.initialResolution(), this::resolutionText, value -> this.applyResolution(value));
 		resolutionCycling.setTooltip(Tooltip.of(Text.translatable("ifuto-replay.export.resolution.tooltip")));
 		content.add(row(fpsCycling, resolutionCycling));
 
 		// 2行目: 幅・高さ（プリセットを選んだあとでも書き換えられる）
-		this.widthField = new ModernTextField(this.textRenderer, 0, 0, WIDGET_WIDTH, WIDGET_HEIGHT,
+		this.widthField = new ModernTextField(this.textRenderer, 0, 0, this.widgetWidth, WIDGET_HEIGHT,
 				Text.translatable("ifuto-replay.export.width"));
 		this.widthField.setText(String.valueOf(this.config.exportWidth));
 		this.widthField.setChangedListener(text -> this.updateSummary());
-		this.heightField = new ModernTextField(this.textRenderer, 0, 0, WIDGET_WIDTH, WIDGET_HEIGHT,
+		this.heightField = new ModernTextField(this.textRenderer, 0, 0, this.widgetWidth, WIDGET_HEIGHT,
 				Text.translatable("ifuto-replay.export.height"));
 		this.heightField.setText(String.valueOf(this.config.exportHeight));
 		this.heightField.setChangedListener(text -> this.updateSummary());
@@ -127,7 +139,7 @@ public class ExportScreen extends Screen {
 
 		// 3行目: 開始・終了（秒）
 		if (this.durationSec > 0) {
-			ModernSlider startSlider = new ModernSlider(0, 0, WIDGET_WIDTH, WIDGET_HEIGHT,
+			ModernSlider startSlider = new ModernSlider(0, 0, this.widgetWidth, WIDGET_HEIGHT,
 						"ifuto-replay.export.start", 0, this.durationSec, this.startSec,
 						ExportScreen::secondsText,
 						value -> {
@@ -136,7 +148,7 @@ public class ExportScreen extends Screen {
 						});
 			startSlider.setTooltip(Tooltip.of(Text.translatable("ifuto-replay.export.start.tooltip")));
 
-			ModernSlider endSlider = new ModernSlider(0, 0, WIDGET_WIDTH, WIDGET_HEIGHT,
+			ModernSlider endSlider = new ModernSlider(0, 0, this.widgetWidth, WIDGET_HEIGHT,
 						"ifuto-replay.export.end", 0, this.durationSec, this.endSec,
 						ExportScreen::secondsText,
 						value -> {
@@ -148,25 +160,25 @@ public class ExportScreen extends Screen {
 		}
 
 		// 4行目: ビットレートと ffmpeg
-		this.bitrateField = new ModernTextField(this.textRenderer, 0, 0, WIDGET_WIDTH, WIDGET_HEIGHT,
+		this.bitrateField = new ModernTextField(this.textRenderer, 0, 0, this.widgetWidth, WIDGET_HEIGHT,
 				Text.translatable("ifuto-replay.export.bitrate"));
 		this.bitrateField.setText(String.valueOf(this.config.exportBitrateKbps));
 		this.bitrateField.setChangedListener(text -> this.updateSummary());
-		this.ffmpegField = new ModernTextField(this.textRenderer, 0, 0, WIDGET_WIDTH, WIDGET_HEIGHT,
+		this.ffmpegField = new ModernTextField(this.textRenderer, 0, 0, this.widgetWidth, WIDGET_HEIGHT,
 				Text.translatable("ifuto-replay.export.ffmpeg"));
 		this.ffmpegField.setText(this.config.ffmpegPath);
 		this.ffmpegField.setTooltip(Tooltip.of(Text.translatable("ifuto-replay.export.ffmpeg.tooltip")));
 		content.add(row(this.bitrateField, this.ffmpegField));
 
 		// 5行目: ファイル名
-		this.nameField = new ModernTextField(this.textRenderer, 0, 0, WIDGET_WIDTH * 2 + COLUMN_GAP, WIDGET_HEIGHT,
+		this.nameField = new ModernTextField(this.textRenderer, 0, 0, this.widgetWidth * 2 + COLUMN_GAP, WIDGET_HEIGHT,
 				Text.translatable("ifuto-replay.export.name"));
 		this.nameField.setText(this.defaultFileName());
 		content.add(row(this.nameField, null));
 
 		// 6行目: 音声（録画と一緒に録られていたときだけ出す）
 		if (AudioTracks.hasAny(this.info.file())) {
-			ModernToggle audioToggle = new ModernToggle(0, 0, WIDGET_WIDTH, WIDGET_HEIGHT,
+			ModernToggle audioToggle = new ModernToggle(0, 0, this.widgetWidth, WIDGET_HEIGHT,
 					Text.translatable("ifuto-replay.export.include_audio"), this.includeAudio,
 					value -> {
 						this.includeAudio = value;
@@ -174,7 +186,7 @@ public class ExportScreen extends Screen {
 					});
 			audioToggle.setTooltip(Tooltip.of(Text.translatable("ifuto-replay.export.include_audio.tooltip")));
 
-			ModernToggle voiceToggle = new ModernToggle(0, 0, WIDGET_WIDTH, WIDGET_HEIGHT,
+			ModernToggle voiceToggle = new ModernToggle(0, 0, this.widgetWidth, WIDGET_HEIGHT,
 					Text.translatable("ifuto-replay.export.include_vc"), this.includeVoiceChat,
 					value -> {
 						this.includeVoiceChat = value;
@@ -188,27 +200,35 @@ public class ExportScreen extends Screen {
 		}
 
 		// 7行目: 書き出しの速さ（時間に依存する演出のため、等倍速も選べる）
-		ModernCycling<Integer> speedCycling = new ModernCycling<>(0, 0, WIDGET_WIDTH, WIDGET_HEIGHT,
+		ModernDropdown<Integer> speedCycling = new ModernDropdown<>(this, 0, 0, this.widgetWidth, WIDGET_HEIGHT,
 				Text.translatable("ifuto-replay.export.speed"), List.of(SPEED_VALUES), this.speedPercent,
 				value -> value <= 0
 						? Text.translatable("ifuto-replay.export.speed.fastest")
 						: Text.translatable("ifuto-replay.export.speed.value", value),
 				value -> this.speedPercent = value);
 		speedCycling.setTooltip(Tooltip.of(Text.translatable("ifuto-replay.export.speed.tooltip")));
-		content.add(row(speedCycling, null));
+
+		ModernToggle hardwareToggle = new ModernToggle(0, 0, this.widgetWidth, WIDGET_HEIGHT,
+				Text.translatable("ifuto-replay.export.hwaccel"), this.useHardware,
+				value -> {
+					this.useHardware = value;
+					this.updateSummary();
+				});
+		hardwareToggle.setTooltip(Tooltip.of(Text.translatable("ifuto-replay.export.hwaccel.tooltip")));
+		content.add(row(speedCycling, hardwareToggle));
 
 		this.summaryText = new TextWidget(Text.empty(), this.textRenderer);
-		this.summaryText.setMaxWidth(WIDGET_WIDTH * 2 + COLUMN_GAP);
+		this.summaryText.setMaxWidth(this.widgetWidth * 2 + COLUMN_GAP);
 		content.add(this.summaryText);
 
 		this.scrollable = new ScrollableLayoutWidget(this.client, content, SCROLL_MIN_HEIGHT);
 		body.add(this.scrollable);
 
 		DirectionalLayoutWidget footer = this.layout.addFooter(DirectionalLayoutWidget.horizontal().spacing(COLUMN_GAP));
-		footer.add(new ModernButton(0, 0, WIDGET_WIDTH, WIDGET_HEIGHT,
+		footer.add(new ModernButton(0, 0, this.widgetWidth, WIDGET_HEIGHT,
 				Text.translatable("ifuto-replay.export.begin"), button -> this.beginExport(),
 				ModernButton.Style.PRIMARY));
-		footer.add(new ModernButton(0, 0, WIDGET_WIDTH, WIDGET_HEIGHT,
+		footer.add(new ModernButton(0, 0, this.widgetWidth, WIDGET_HEIGHT,
 				Text.translatable("gui.cancel"), button -> this.close(), ModernButton.Style.NORMAL));
 
 		this.layout.forEachChild(this::addDrawableChild);
@@ -350,7 +370,16 @@ public class ExportScreen extends Screen {
 		config.ffmpegPath = this.ffmpegField.getText().trim().isEmpty()
 				? "ffmpeg" : this.ffmpegField.getText().trim();
 		config.exportSpeedPercent = this.speedPercent;
+		config.exportHardwareAccel = this.useHardware;
 		config.save();
+
+		// ffmpeg が無ければ落としてきて、終わったらここへ戻って続きを始める
+		String ffmpeg = FfmpegInstaller.resolve(config.ffmpegPath);
+
+		if (ffmpeg == null) {
+			this.client.setScreen(new FfmpegDownloadScreen(this, path -> this.beginExport()));
+			return;
+		}
 
 		long startMs = this.startSec * 1000L;
 		long endMs = this.endSec * 1000L;
@@ -365,7 +394,8 @@ public class ExportScreen extends Screen {
 		// 音声は「録画の隣に置いてある別ファイル」。VC を外したいときは Minecraft だけの音を選ぶ
 		List<Path> audio = this.includeAudio ? AudioTracks.select(this.info.file(), this.includeVoiceChat) : null;
 		ExportOptions options = new ExportOptions(config.exportFps, config.exportWidth, config.exportHeight,
-				config.exportBitrateKbps, config.ffmpegPath, startMs, endMs, output, audio, this.speedPercent);
+				config.exportBitrateKbps, ffmpeg, startMs, endMs, output, audio, this.speedPercent,
+				config.exportHardwareAccel);
 
 		startExport(this.client, this.info.file(), options, this.parent);
 	}
@@ -451,5 +481,15 @@ public class ExportScreen extends Screen {
 	@Override
 	public void close() {
 		MinecraftClient.getInstance().setScreen(this.parent);
+	}
+
+	@Override
+	public void replay$addPopup(ClickableWidget widget) {
+		this.addDrawableChild(widget);
+	}
+
+	@Override
+	public void replay$removePopup(ClickableWidget widget) {
+		this.remove(widget);
 	}
 }

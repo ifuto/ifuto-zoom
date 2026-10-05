@@ -106,6 +106,6 @@ public class RecordingIndicator implements HudElement {
 
 		int textX = dotX + DOT_SIZE + DOT_GAP;
 		int textY = y + (boxHeight - renderer.fontHeight) / 2;
-		context.drawText(renderer, text, textX, textY, ReplayTheme.TEXT, true);
+		context.drawText(renderer, text, textX, textY, ReplayTheme.TEXT, false);
 	}
 }

@@ -39,6 +39,7 @@ import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -92,11 +93,16 @@ public final class ReplayPlayback implements ReplayStream.Sink {
 	private final List<ReplayStream.Marker> markers;
 	private final long durationMs;
 
+	/** 編集で先頭を落としたファイルの「ここから見せる」位置（無ければ -1） */
+	private final long trimStartMs;
+
 	/** 読んだけど「まだ時刻が来ていない」パケット */
 	private boolean pending;
 	private long pendingTimeMs;
 	private int pendingTypeIndex;
 	private byte @Nullable [] pendingPayload;
+	private int pendingOffset;
+	private int pendingLength;
 
 	private long timeMs;
 	private long previousTickMs;
@@ -137,7 +143,22 @@ public final class ReplayPlayback implements ReplayStream.Sink {
 		this.file = file;
 		this.meta = meta;
 		this.durationMs = Math.max(0L, meta.durationMs());
-		this.markers = List.copyOf(meta.markers());
+		// 構造用のしおり（__snap__ / __start__）は一覧に出さない。__start__ は開始位置に使う
+		long trim = -1L;
+		List<ReplayStream.Marker> visible = new ArrayList<>();
+
+		for (ReplayStream.Marker marker : meta.markers()) {
+			if (ReplayFormat.TRIM_MARKER.equals(marker.name())) {
+				if (trim < 0L) {
+					trim = marker.timeMs();
+				}
+			} else if (!ReplayFormat.SNAP_MARKER.equals(marker.name())) {
+				visible.add(marker);
+			}
+		}
+
+		this.markers = List.copyOf(visible);
+		this.trimStartMs = trim;
 		this.stream = new ReplayStream(file);
 
 		DynamicRegistryManager.Immutable registries = resolveRegistries(client, this.stream.registries());
@@ -166,6 +187,17 @@ public final class ReplayPlayback implements ReplayStream.Sink {
 		);
 
 		this.handler = new ClientPlayNetworkHandler(client, this.connection, state);
+	}
+
+	/**
+	 * 世界を作るパケットが無い（途中から録って写しが無い古いファイル）。
+	 *
+	 * <p>他の失敗（壊れたファイル等）と混ぜない。画面に出す文言を変えるためだけの区別。
+	 */
+	public static final class NoWorldException extends IOException {
+		NoWorldException(String message) {
+			super(message);
+		}
 	}
 
 	/**
@@ -213,6 +245,11 @@ public final class ReplayPlayback implements ReplayStream.Sink {
 
 	public List<ReplayStream.Marker> markers() {
 		return this.markers;
+	}
+
+	/** 編集で先頭を落としたファイルの「ここから見せる」位置（無ければ -1） */
+	public long trimStartMs() {
+		return this.trimStartMs;
 	}
 
 	public ReplayStream.Header header() {
@@ -437,11 +474,14 @@ public final class ReplayPlayback implements ReplayStream.Sink {
 	}
 
 	@Override
-	public void packet(long timeMs, int typeIndex, byte[] payload, int length) {
+	public void packet(long timeMs, int typeIndex, byte[] payload, int offset, int length) {
+		// 未適用のあいだは読み進めないので、かたまりの中身を指したままで安全
 		this.pending = true;
 		this.pendingTimeMs = timeMs;
 		this.pendingTypeIndex = typeIndex;
 		this.pendingPayload = payload;
+		this.pendingOffset = offset;
+		this.pendingLength = length;
 	}
 
 	/**
@@ -499,6 +539,8 @@ public final class ReplayPlayback implements ReplayStream.Sink {
 	public void local(long timeMs, int subtype, byte[] data, int length) {
 		if (subtype == LocalEvents.TYPE_PARTICLE) {
 			LocalEvents.playParticle(this.client, data);
+		} else if (subtype == LocalEvents.TYPE_PARTICLE_BATCH) {
+			LocalEvents.playBatch(this.client, data);
 		}
 	}
 
@@ -520,7 +562,7 @@ public final class ReplayPlayback implements ReplayStream.Sink {
 	private void applyPending() {
 		byte[] payload = this.pendingPayload;
 
-		if (payload == null || payload.length == 0) {
+		if (payload == null || this.pendingLength <= 0) {
 			return;
 		}
 
@@ -530,13 +572,14 @@ public final class ReplayPlayback implements ReplayStream.Sink {
 		if (direction == ReplayFormat.DIRECTION_C2S) {
 			// 自分の操作は「カメラの位置」だけ使う。あとは流さない（サーバーがいないので）
 			if (name != null && isPlayerMove(name)) {
-				this.applyCameraPacket(name, payload);
+				this.applyCameraPacket(name, payload, this.pendingOffset, this.pendingLength);
 			}
 
 			return;
 		}
 
-		ByteBuf buf = Unpooled.wrappedBuffer(payload);
+		// 中身を複写せず、その場で読む（wrappedBuffer は見るだけで所有しない）
+		ByteBuf buf = Unpooled.wrappedBuffer(payload, this.pendingOffset, this.pendingLength);
 
 		try {
 			Packet<? super ClientPlayPacketListener> packet = this.serverToClient.codec().decode(buf);
@@ -548,8 +591,8 @@ public final class ReplayPlayback implements ReplayStream.Sink {
 		}
 	}
 
-	private void applyCameraPacket(String name, byte[] payload) {
-		ByteBuf buf = Unpooled.wrappedBuffer(payload);
+	private void applyCameraPacket(String name, byte[] payload, int offset, int length) {
+		ByteBuf buf = Unpooled.wrappedBuffer(payload, offset, length);
 
 		try {
 			Packet<? super ServerPlayPacketListener> packet = this.clientToServer.codec().decode(buf);
@@ -604,7 +647,10 @@ public final class ReplayPlayback implements ReplayStream.Sink {
 		this.camX = MathHelper.lerp(t, this.camFrom.x(), this.camTo.x());
 		this.camY = MathHelper.lerp(t, this.camFrom.y(), this.camTo.y());
 		this.camZ = MathHelper.lerp(t, this.camFrom.z(), this.camTo.z());
-		this.camYaw = MathHelper.lerp(t, this.camFrom.yaw(), this.camTo.yaw());
+		// 向きは近いほうへ回す（179°→-179°で1周させない。遠回りすると一瞬だけ後ろを向く）
+		double yawDelta = this.camTo.yaw() - this.camFrom.yaw();
+		yawDelta -= Math.floor(yawDelta / 360.0 + 0.5) * 360.0;
+		this.camYaw = this.camFrom.yaw() + yawDelta * t;
 		this.camPitch = MathHelper.lerp(t, this.camFrom.pitch(), this.camTo.pitch());
 
 		player.setPosition(this.camX, this.camY, this.camZ);
@@ -628,7 +674,7 @@ public final class ReplayPlayback implements ReplayStream.Sink {
 			}
 
 			if (Util.getMeasuringTimeMs() > deadline) {
-				throw new IOException("ワールドを開始できませんでした（GameJoin パケットが見つかりません）");
+				throw new NoWorldException("ワールドを開始できませんでした（GameJoin パケットが見つかりません）");
 			}
 
 			// 時刻を進めずに、世界ができるまで必要なパケットを流す
@@ -644,7 +690,13 @@ public final class ReplayPlayback implements ReplayStream.Sink {
 		}
 
 		if (this.client.world == null || this.client.player == null) {
-			throw new IOException("ワールドを開始できませんでした");
+			// 世界の入っているかたまり自体が壊れていた。場所を出して諦める
+			if (this.stream.corruptFrames() > 0) {
+				throw new IOException("圧縮が壊れています（" + this.stream.firstCorruptDetail()
+						+ " / 全" + this.stream.corruptFrames() + "か所）。録り直してください");
+			}
+
+			throw new NoWorldException("ワールドを開始できませんでした");
 		}
 
 		this.setupPlayer();

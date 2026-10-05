@@ -2,7 +2,7 @@
 	"schemaVersion": 1,
 	"id": "ifuto-replay",
 	"version": "${version}",
-	"name": "Ifuto Replay",
+	"name": "POV Replay +",
 	"description": "An ultra-lightweight packet recorder for Minecraft. It saves the raw network stream (server to client, optionally client to server) while you play, so playback and export can use any FPS and resolution you like. No per-frame capture, no FPS drop while recording.",
 	"authors": [
 		"ifuto"

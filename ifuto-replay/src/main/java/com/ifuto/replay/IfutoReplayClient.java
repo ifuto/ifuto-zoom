@@ -1,20 +1,29 @@
 package com.ifuto.replay;
 
+import com.ifuto.replay.codec.BenchCommand;
 import com.ifuto.replay.config.ReplayConfig;
 import com.ifuto.replay.gui.PauseMenuButtons;
+import com.ifuto.replay.gui.RecordingListScreen;
+import com.ifuto.replay.gui.widget.ModernButton;
 import com.ifuto.replay.hud.RecordingIndicator;
 import com.ifuto.replay.playback.ReplayPlayback;
 import com.ifuto.replay.recording.RecordingManager;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
+import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
+import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.VanillaHudElements;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
+import net.fabricmc.fabric.api.client.screen.v1.Screens;
 import net.minecraft.client.gui.screen.GameMenuScreen;
+import net.minecraft.client.gui.screen.TitleScreen;
+import net.minecraft.client.gui.tooltip.Tooltip;
+import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,10 +45,26 @@ public class IfutoReplayClient implements ClientModInitializer {
 		// 最初のフレームより前に設定ファイルを作って読み込んでおく
 		ReplayConfig.get();
 
+		// 実機の録画で圧縮を比べる（/replaybench）
+		ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
+			dispatcher.register(ClientCommandManager.literal("replaybench")
+					.executes(context -> {
+						BenchCommand.run(context.getSource().getClient());
+						return 1;
+					}));
+		});
+
 		// ESC のポーズメニューに「録画 / 一覧 / 設定」のボタンを足す（Flashback と同じ置き方）
 		ScreenEvents.AFTER_INIT.register((client, screen, scaledWidth, scaledHeight) -> {
 			if (screen instanceof GameMenuScreen) {
 				PauseMenuButtons.attach(client, screen, scaledWidth, scaledHeight);
+			} else if (screen instanceof TitleScreen) {
+				// タイトル画面の左上に「録画一覧」（ロゴは中央・Realms 通知は右上なので被らない）
+				ModernButton listButton = new ModernButton(4, 4, 112, 22,
+						Text.translatable("ifuto-replay.menu.list"),
+						button -> client.setScreen(new RecordingListScreen(screen)), ModernButton.Style.NORMAL);
+				listButton.setTooltip(Tooltip.of(Text.translatable("ifuto-replay.menu.list.tooltip")));
+				Screens.getButtons(screen).add(listButton);
 			}
 		});
 
@@ -60,7 +85,7 @@ public class IfutoReplayClient implements ClientModInitializer {
 				RecordingManager.INSTANCE.onJoin(client, handler));
 
 		// 抜けたら必ず保存して閉じる
-		ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> RecordingManager.INSTANCE.stop(client));
+		ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> RecordingManager.INSTANCE.onDisconnect(client));
 
 		// ゲーム終了時も同じ（再生中なら先に片付ける）
 		ClientLifecycleEvents.CLIENT_STOPPING.register(client -> {

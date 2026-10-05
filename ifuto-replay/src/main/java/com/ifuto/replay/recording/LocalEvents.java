@@ -18,6 +18,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.util.List;
 
 /**
  * **クライアントの内側でだけ** 起きた出来事を記録し、再生時に同じ物をもう一度起こす。
@@ -33,18 +34,42 @@ public final class LocalEvents {
 	/** パーティクル */
 	public static final int TYPE_PARTICLE = 0;
 
-	private static volatile boolean fromPacket;
+	/**
+	 * まとめたパーティクル（中身は「件数 + (長さ + パーティクル1件ぶん) の繰り返し」）。
+	 *
+	 * <p>件数が多いので1件ずつ枠を取ると書き込みが詰まる。まとめて1枠で書く。
+	 * 古い読み手はこの種類を知らないので読み飛ばす（パーティクルが出ないだけで壊れない）。
+	 */
+	public static final int TYPE_PARTICLE_BATCH = 1;
+
+	/** 壊れたファイルを読んで暴走しないための上限 */
+	private static final int MAX_BATCH_ENTRIES = 100_000;
+	private static final int MAX_BATCH_ENTRY_BYTES = 1 << 20;
+
+	/**
+	 * いまパケットを処理しているスレッドか（このあいだに湧いた物は記録しない）。
+	 *
+	 * <p>スレッドごとに持つ。マルチプレイではパケットの適用（Netty 側）と描画
+	 * （クライアント側）が別のスレッドなので、1個しかないと「描画で自然に湧いた物」まで
+	 * 捨ててしまう。シングルプレイでは同じスレッドなので従来どおり動く。
+	 *
+	 * <p>なおマルチプレイでは、パケット由来の処理がクライアント側で後から走るぶんは
+	 * この印では拾えない（別スレッドで印が消えたあとに湧くため）。サーバー発のパーティクルが
+	 * 二重に出る可能性として残っている。将来的にはクライアントのタスク実行を包んで
+	 * 印を付けるのが正しいが、動作確認ができる環境でやる（TODO）。
+	 */
+	private static final ThreadLocal<Boolean> FROM_PACKET = ThreadLocal.withInitial(() -> Boolean.FALSE);
 
 	private LocalEvents() {
 	}
 
 	/** いまパケットを処理しているか（このあいだに湧いた物は記録しない） */
 	public static void setFromPacket(boolean value) {
-		fromPacket = value;
+		FROM_PACKET.set(value);
 	}
 
 	public static boolean isFromPacket() {
-		return fromPacket;
+		return FROM_PACKET.get();
 	}
 
 	// --- 記録 ---
@@ -73,6 +98,44 @@ public final class LocalEvents {
 			out.writeFloat((float) velocityX);
 			out.writeFloat((float) velocityY);
 			out.writeFloat((float) velocityZ);
+		} catch (IOException e) {
+			return null;
+		}
+
+		return bytes.toByteArray();
+	}
+
+	/** パーティクルを何件かまとめて、1枠ぶんのバイト列にする（空なら null） */
+	public static @Nullable byte[] encodeBatch(List<byte[]> entries) {
+		if (entries == null || entries.isEmpty()) {
+			return null;
+		}
+
+		int valid = 0;
+
+		for (byte[] entry : entries) {
+			if (entry != null && entry.length > 0) {
+				valid++;
+			}
+		}
+
+		if (valid <= 0) {
+			return null;
+		}
+
+		ByteArrayOutputStream bytes = new ByteArrayOutputStream(256 * valid);
+
+		try (DataOutputStream out = new DataOutputStream(bytes)) {
+			out.writeInt(valid);
+
+			for (byte[] entry : entries) {
+				if (entry == null || entry.length == 0) {
+					continue;
+				}
+
+				out.writeInt(entry.length);
+				out.write(entry);
+			}
 		} catch (IOException e) {
 			return null;
 		}
@@ -126,6 +189,35 @@ public final class LocalEvents {
 			}
 		} catch (IOException e) {
 			// 1件読めなくても再生は続ける（パーティクルは飾りなので）
+		}
+	}
+
+	/** まとめたパーティクルを、同じ場所へ同じように出す（壊れていれば分かるぶんだけ） */
+	public static void playBatch(MinecraftClient client, byte[] data) {
+		if (client == null || client.world == null || data == null || data.length < 4) {
+			return;
+		}
+
+		try (DataInputStream in = new DataInputStream(new ByteArrayInputStream(data))) {
+			int count = in.readInt();
+
+			if (count < 0 || count > MAX_BATCH_ENTRIES) {
+				return;
+			}
+
+			for (int i = 0; i < count; i++) {
+				int length = in.readInt();
+
+				if (length < 0 || length > MAX_BATCH_ENTRY_BYTES || length > in.available()) {
+					return;
+				}
+
+				byte[] entry = new byte[length];
+				in.readFully(entry);
+				playParticle(client, entry);
+			}
+		} catch (IOException e) {
+			// 1枠読めなくても再生は続ける（パーティクルは飾りなので）
 		}
 	}
 

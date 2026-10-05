@@ -20,6 +20,7 @@ import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
 
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
 
@@ -81,6 +82,7 @@ public class ReplayPreviewScreen extends Screen {
 
 		controls.add(Text.literal("⚑ ▶"), 52, button -> this.jumpMarker(true), ModernButton.Style.NORMAL)
 				.setTooltip(Tooltip.of(Text.translatable("ifuto-replay.preview.marker_next")));
+		controls.fit();
 
 		Row tools = new Row(left, toolsY, left + barWidth);
 
@@ -108,8 +110,12 @@ public class ReplayPreviewScreen extends Screen {
 			this.addressButton.setMessage(this.addressText());
 		}, ModernButton.Style.NORMAL);
 
+		tools.add(Text.translatable("ifuto-replay.preview.edit"), 72, button -> this.openEditor(),
+				ModernButton.Style.NORMAL);
+
 		tools.add(Text.literal("✕"), 26, button -> this.close(), ModernButton.Style.DANGER)
 				.setTooltip(Tooltip.of(Text.translatable("ifuto-replay.preview.close")));
+		tools.fit();
 	}
 
 	/** 世界を見せたいので背景を暗くしない */
@@ -156,19 +162,19 @@ public class ReplayPreviewScreen extends Screen {
 
 		// 1行目: 時刻 / 長さ、サーバー名
 		String time = timeText(this.playback.timeMs()) + " / " + timeText(this.playback.durationMs());
-		context.drawText(this.textRenderer, time, left, top, 0xFFFFFF, true);
+		context.drawText(this.textRenderer, time, left, top, 0xFFFFFF, false);
 
 		int timeWidth = this.textRenderer.getWidth(time);
 		Text state = this.stateText();
 		int stateWidth = this.textRenderer.getWidth(state);
 
 		if (left + timeWidth + 8 + stateWidth < left + barWidth) {
-			context.drawText(this.textRenderer, state, left + timeWidth + 8, top, 0xAAAAAA, true);
+			context.drawText(this.textRenderer, state, left + timeWidth + 8, top, 0xAAAAAA, false);
 		}
 
 		String address = ReplayConfig.get().displayAddress(this.playback.header().serverName());
 		int addressWidth = this.textRenderer.getWidth(address);
-		context.drawText(this.textRenderer, address, left + barWidth - addressWidth, top, 0x888888, true);
+		context.drawText(this.textRenderer, address, left + barWidth - addressWidth, top, 0x888888, false);
 	}
 
 	/**
@@ -201,7 +207,7 @@ public class ReplayPreviewScreen extends Screen {
 		int left = this.width / 2 - width / 2;
 		ReplayTheme.fillRound(context, left - 5, y - 3, width + 10, 13, 6, 0xC00A0F14);
 		ReplayTheme.strokeRound(context, left - 5, y - 3, width + 10, 13, 6, ReplayTheme.BORDER);
-		context.drawTextWithShadow(this.textRenderer, text, left, y, color);
+		context.drawText(this.textRenderer, text, left, y, color, false);
 		return y + 15;
 	}
 
@@ -214,7 +220,9 @@ public class ReplayPreviewScreen extends Screen {
 			return Text.translatable("ifuto-replay.preview.finished").formatted(Formatting.GRAY);
 		}
 
-		if (!this.playback.header().hasC2S()) {
+		// v5 からは設定に関わらず移動パケットを残すので、カメラは必ず動く。
+		// 古いファイル（C2Sなし）だけ注意を出す。
+		if (!this.playback.header().hasC2S() && this.playback.header().version() < 5) {
 			return Text.translatable("ifuto-replay.preview.no_input").formatted(Formatting.GRAY);
 		}
 
@@ -292,6 +300,21 @@ public class ReplayPreviewScreen extends Screen {
 		}
 	}
 
+	/** 編集画面へ（いま見ている位置から始める） */
+	private void openEditor() {
+		MinecraftClient client = MinecraftClient.getInstance();
+
+		try {
+			long at = this.playback.timeMs();
+			Path file = this.playback.file();
+			this.playback.dispose();
+			ClipEditorScreen.openAt(client, file, at);
+		} catch (Exception e) {
+			IfutoReplayClient.LOGGER.error("[ifuto-replay] 編集を開けませんでした", e);
+			client.setScreen(new RecordingListScreen(new TitleScreen()));
+		}
+	}
+
 	// --- 表示する文字 ---
 
 	private Text playPauseText() {
@@ -328,6 +351,8 @@ public class ReplayPreviewScreen extends Screen {
 		private final int right;
 		private int x;
 		private int y;
+		private final List<ModernButton> buttons = new ArrayList<>();
+		private final List<Integer> widths = new ArrayList<>();
 
 		Row(int left, int y, int right) {
 			this.left = left;
@@ -346,7 +371,75 @@ public class ReplayPreviewScreen extends Screen {
 
 			addDrawableChild(button);
 			this.x += width + GAP;
+			this.buttons.add(button);
+			this.widths.add(width);
 			return button;
+		}
+
+		/**
+		 * 入り切らなければ全員少しずつ縮めて1行に収める。
+		 *
+		 * <p>上に折れると上の段と重なるので、文字が少し切れても1行に残すほうを選ぶ。
+		 */
+		void fit() {
+			int count = this.buttons.size();
+
+			if (count == 0) {
+				return;
+			}
+
+			int total = 0;
+
+			for (int width : this.widths) {
+				total += width;
+			}
+
+			int gaps = GAP * (count - 1);
+			int avail = this.right - this.left - gaps;
+
+			if (total <= avail) {
+				return;
+			}
+
+			// 比例配分（最低24）。最低幅のせいで溢れたら、大きい物から削る
+			int[] fitted = new int[count];
+			int used = 0;
+
+			for (int i = 0; i < count; i++) {
+				fitted[i] = Math.max(24, this.widths.get(i) * avail / total);
+				used += fitted[i];
+			}
+
+			int over = used - avail;
+
+			while (over > 0) {
+				int widest = 0;
+
+				for (int j = 1; j < count; j++) {
+					if (fitted[j] > fitted[widest]) {
+						widest = j;
+					}
+				}
+
+				if (fitted[widest] <= 24) {
+					break;
+				}
+
+				int cut = Math.min(over, fitted[widest] - 24);
+				fitted[widest] -= cut;
+				over -= cut;
+			}
+
+			int place = this.left;
+
+			for (int i = 0; i < count; i++) {
+				ModernButton button = this.buttons.get(i);
+				button.setX(place);
+				button.setWidth(fitted[i]);
+				place += fitted[i] + GAP;
+			}
+
+			this.x = place;
 		}
 	}
 
@@ -377,13 +470,26 @@ public class ReplayPreviewScreen extends Screen {
 
 		try {
 			ReplayPlayback playback = ReplayPlayback.start(client, file);
+
+			// 編集で先頭を落としたファイルは「ここから見せる」位置へ飛ぶ（前書きは見せない）
+			if (playback.trimStartMs() > 0L) {
+				playback.jumpTo(playback.trimStartMs());
+			}
+
 			client.setScreen(new ReplayPreviewScreen(playback));
-		} catch (Exception e) {
+		} catch (ReplayPlayback.NoWorldException e) {
 			IfutoReplayClient.LOGGER.error("[ifuto-replay] 再生を始められませんでした", e);
 			Screen back = parent == null ? new TitleScreen() : parent;
 			client.setScreen(new NoticeScreen(new RecordingListScreen(back),
 					Text.translatable("ifuto-replay.preview.error_title"),
 					Text.translatable("ifuto-replay.preview.error_no_join")));
+		} catch (Exception e) {
+			IfutoReplayClient.LOGGER.error("[ifuto-replay] 再生を始められませんでした", e);
+			Screen back = parent == null ? new TitleScreen() : parent;
+			String detail = e.getMessage() == null ? e.toString() : e.getMessage();
+			client.setScreen(new NoticeScreen(new RecordingListScreen(back),
+					Text.translatable("ifuto-replay.preview.error_title"),
+					Text.translatable("ifuto-replay.preview.error_unknown", Text.literal(detail))));
 		}
 	}
 }

@@ -48,13 +48,14 @@ public class ExportProgressScreen extends Screen {
 		DirectionalLayoutWidget body = this.layout.addBody(DirectionalLayoutWidget.vertical().spacing(8));
 		this.statusText = new TextWidget(Text.translatable("ifuto-replay.export.preparing"), this.textRenderer);
 		this.detailText = new TextWidget(Text.empty(), this.textRenderer);
-		this.statusText.setMaxWidth(MAX_TEXT_WIDTH);
-		this.detailText.setMaxWidth(MAX_TEXT_WIDTH);
+		int textWidth = Math.min(MAX_TEXT_WIDTH, this.width - 40);
+		this.statusText.setMaxWidth(textWidth);
+		this.detailText.setMaxWidth(textWidth);
 		body.add(this.statusText);
 		body.add(this.detailText);
 
-		this.layout.addFooter(new ModernButton(0, 0, 200, 20, Text.translatable("gui.cancel"),
-				button -> this.cancel(), ModernButton.Style.DANGER));
+		this.layout.addFooter(new ModernButton(0, 0, Math.min(200, this.width - 40), 20,
+				Text.translatable("gui.cancel"), button -> this.cancel(), ModernButton.Style.DANGER));
 
 		this.layout.forEachChild(this::addDrawableChild);
 		this.refreshWidgetPositions();
@@ -94,6 +95,7 @@ public class ExportProgressScreen extends Screen {
 
 		switch (this.exporter.state()) {
 			case RUNNING -> this.updateProgress();
+			case FINISHING -> this.updateFinishing();
 			case DONE -> this.finish();
 			case FAILED -> this.fail();
 			case CANCELLED -> this.handled = true;
@@ -116,6 +118,20 @@ public class ExportProgressScreen extends Screen {
 			this.detailText.setMessage(Text.translatable("ifuto-replay.export.progress_detail",
 					Text.literal(formatElapsed(this.exporter.elapsedMs())),
 					Text.literal(formatElapsed(estimatedRemaining(frames, total))),
+					Text.literal(this.exporter.output().toString())));
+		}
+	}
+
+	/** 絵は出し切った。ffmpeg がまとめ終わるのを待っているあいだの表示 */
+	private void updateFinishing() {
+		if (this.statusText != null) {
+			this.statusText.setMessage(Text.translatable("ifuto-replay.export.finishing"));
+		}
+
+		if (this.detailText != null) {
+			this.detailText.setMessage(Text.translatable("ifuto-replay.export.progress_detail",
+					Text.literal(formatElapsed(this.exporter.elapsedMs())),
+					Text.literal(formatElapsed(0L)),
 					Text.literal(this.exporter.output().toString())));
 		}
 	}

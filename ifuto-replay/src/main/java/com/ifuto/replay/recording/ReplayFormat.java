@@ -10,8 +10,8 @@ public final class ReplayFormat {
 	/** ファイルの先頭に置くマジック "IFRP" */
 	public static final byte[] MAGIC = {'I', 'F', 'R', 'P'};
 
-	/** フォーマットバージョン */
-	public static final int VERSION = 4;
+	/** フォーマットバージョン（7 から LZ4 のかたまりが混ざる。読みは 5・6 も可） */
+	public static final int VERSION = 7;
 
 	/** 保存ファイルの拡張子 */
 	public static final String FILE_EXTENSION = ".ifreplay";
@@ -126,10 +126,29 @@ public final class ReplayFormat {
 	/** deflate（中身の先頭に展開後の長さが入る） */
 	public static final int METHOD_DEFLATE = 1;
 
+	/** zstd（deflate より速くて小さい。v6 から。長さの置き方は deflate と同じ） */
+	public static final int METHOD_ZSTD = 2;
+
 	// --- ヘッダのフラグ ---
 
 	/** C2S（自分の操作）も入っている */
 	public static final int FLAG_HAS_C2S = 1;
+
+	/**
+	 * 区間の先頭（世界の写しがある場所）を示すしおりの名前。
+	 *
+	 * <p>録画側が自動で付ける。編集で切り出すときの起点にする。
+	 * 再生の一覧には出さない（構造用なので）。
+	 */
+	public static final String SNAP_MARKER = "__snap__";
+
+	/**
+	 * トリミングした開始位置を示すしおりの名前。
+	 *
+	 * <p>編集で先頭を落としたファイルの「ここから見せる」位置。再生はここへ自動で飛ぶ。
+	 * 再生の一覧には出さない。
+	 */
+	public static final String TRIM_MARKER = "__start__";
 
 	private ReplayFormat() {
 	}

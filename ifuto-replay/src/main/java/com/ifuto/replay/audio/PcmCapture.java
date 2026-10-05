@@ -39,8 +39,16 @@ public final class PcmCapture {
 
 	/** ffmpeg を起動して、PCM を受け取る用意をする */
 	public static @Nullable PcmCapture start(String ffmpegPath, Path output, int sampleRate, int channels,
-											 int bitrateKbps, int framesPerWrite) {
-		List<String> command = List.of(ffmpegPath,
+													int bitrateKbps, int framesPerWrite) {
+		// 設定が "ffmpeg" のままでも、同梱のを拾ってくる
+		String resolved = com.ifuto.replay.export.FfmpegInstaller.resolve(ffmpegPath);
+
+		if (resolved == null) {
+			IfutoReplayClient.LOGGER.warn("[ifuto-replay] 音声（PCM）を録れませんでした（ffmpeg がありません）");
+			return null;
+		}
+
+		List<String> command = List.of(resolved,
 				"-y",
 				"-hide_banner",
 				"-loglevel", "warning",

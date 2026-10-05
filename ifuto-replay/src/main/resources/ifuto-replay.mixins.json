@@ -10,6 +10,7 @@
 		"GameRendererMixin",
 		"MinecraftClientAccessor",
 		"MouseAccessor",
+		"NativeImageAccessor",
 		"ParticleManagerMixin",
 		"RenderTickCounterMixin",
 		"SoundEngineMixin"

@@ -3,13 +3,14 @@ package com.ifuto.replay.recording;
 import com.ifuto.replay.IfutoReplayClient;
 import com.ifuto.replay.config.ReplayConfig;
 import io.netty.buffer.ByteBuf;
-import io.netty.buffer.ByteBufAllocator;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayNetworkHandler;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.network.packet.Packet;
 import net.minecraft.network.packet.PacketType;
+import net.minecraft.network.packet.c2s.play.PlayerMoveC2SPacket;
 import net.minecraft.util.Identifier;
+import org.jspecify.annotations.Nullable;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -28,7 +29,13 @@ import java.util.concurrent.atomic.AtomicLong;
  * その場でやる。パケットはあとから中身が変わる可能性があるので、後回しにできない。
  */
 public final class RecordingSession {
-	private static final int INITIAL_BUFFER_SIZE = 64;
+	/**
+	 * 種類番号ごとの「前回の大きさ」（入れ物の目安）。
+	 *
+	 * <p>伸ばすのは登録のときだけ（ロックの中）。読む・書くはただの目安なので
+	 * ロックしない（古い配列を見ても、入れ物が合わないだけで壊れない）。
+	 */
+	private volatile int[] sizeHints = new int[128];
 
 	private final Path file;
 	private final long startedAtEpoch;
@@ -50,8 +57,21 @@ public final class RecordingSession {
 	/** クライアント内で起きた出来事の上限（1秒あたり） */
 	private static final int MAX_LOCAL_PER_SECOND = 160;
 
+	/** まとめて1枠で書くパーティクルの上限（件数と大きさ。超えたらすぐ書く） */
+	private static final int LOCAL_BATCH_MAX_ENTRIES = 32;
+	private static final int LOCAL_BATCH_MAX_BYTES = 16 * 1024;
+
 	private long localWindowStartMs;
 	private int localWindowCount;
+
+	/** ためているパーティクル（まとめて1枠で書く。クライアントスレッドからだけ触る） */
+	private final List<byte[]> localBatch = new ArrayList<>();
+
+	/** ため始めた時刻（まとめた枠の時刻にする） */
+	private long localBatchFirstMs;
+
+	/** ためている中身の合計バイト数 */
+	private int localBatchBytes;
 	private final AtomicLong errorCount = new AtomicLong();
 	private final AtomicLong queuedBytes = new AtomicLong();
 	private final AtomicInteger markerCount = new AtomicInteger();
@@ -84,7 +104,7 @@ public final class RecordingSession {
 					config.recordClientPackets, this.queuedBytes);
 		} else {
 			this.writer = new ReplayFileWriter(file, mcVersion, serverName, playerName, startedAt,
-					config.recordClientPackets, config.compression, config.indexIntervalMs, maxBytes,
+					config.recordClientPackets, config.effectiveCompression(), config.indexIntervalMs, maxBytes,
 							config.flushIntervalMs, config.queuePackets, this.queuedBytes);
 			this.clip = null;
 		}
@@ -189,7 +209,10 @@ public final class RecordingSession {
 			return;
 		}
 
-		if (outbound && !this.config.recordClientPackets) {
+		// 自分の移動だけは設定に関わらず残す。再生時のカメラ（POV）はここからしか
+		// 復元できないので、捨てると視点がまったく動かなくなる。他の C2S は再生で
+		// 使わないので、設定どおり捨てて容量を節約する。
+		if (outbound && !this.config.recordClientPackets && !(packet instanceof PlayerMoveC2SPacket)) {
 			return;
 		}
 
@@ -217,7 +240,8 @@ public final class RecordingSession {
 			return;
 		}
 
-		ByteBuf buffer = ByteBufAllocator.DEFAULT.buffer(INITIAL_BUFFER_SIZE);
+		// 前回と同じくらいの入れ物を先に取る（育て直しのコピーをなくす）
+		ByteBuf buffer = PacketTask.sizedBuffer(this.sizeHints, info.index());
 
 		try {
 			enc.encode(buffer, packet, outbound);
@@ -228,6 +252,7 @@ public final class RecordingSession {
 		}
 
 		int size = buffer.readableBytes();
+		PacketTask.noteSize(this.sizeHints, info.index(), size);
 		int direction = outbound ? ReplayFormat.DIRECTION_C2S : ReplayFormat.DIRECTION_S2C;
 		PacketTask task = PacketTask.packet(timeMs, info.index(), direction, buffer);
 
@@ -251,37 +276,108 @@ public final class RecordingSession {
 	 * @return 作れたら true（作れないときは「最初から」録れていないのと同じ扱いになる）
 	 */
 	public boolean captureSnapshot(MinecraftClient client) {
-		if (this.stopping || client == null || this.config.snapshotRadius <= 0) {
+		WorldSnapshot.Snapshot snapshot = this.buildSnapshot(client);
+
+		if (snapshot == null) {
+			return false;
+		}
+
+		return this.offerSnapshot(snapshot);
+	}
+
+	/**
+	 * 世界の写しを組み立てる（まだファイルには書かない）。
+	 *
+	 * <p>区間の切り替えでは「組み立て → 新区間を開く → 書く」の順にする。
+	 * 開いてから組み立てると、そのあいだのパケットが写しより先に入って欠けるため。
+	 *
+	 * @return 写し。作れなかったら null
+	 */
+	public WorldSnapshot.@Nullable Snapshot buildSnapshot(MinecraftClient client) {
+		if (this.stopping || client == null) {
+			return null;
+		}
+
+		// 半径 0 でも最低 1 として写しは必ず作る（無いと再生不能になるため。設定の 0 は無視する）
+		int radius = Math.max(1, this.config.snapshotRadius);
+
+		try {
+			return WorldSnapshot.build(client, radius);
+		} catch (Throwable t) {
+			IfutoReplayClient.LOGGER.warn("[ifuto-replay] 世界の写しを作れませんでした", t);
+			return null;
+		}
+	}
+
+	/**
+	 * 組み立てた写しをファイルに書く。
+	 *
+	 * <p>写しの直前に「ここに写しがある」のしおり（{@code __snap__}）を置く。
+	 * 編集で切り出すときの起点に使う。再生の一覧には出さない。
+	 *
+	 * @return 書けたら true
+	 */
+	public boolean offerSnapshot(WorldSnapshot.Snapshot snapshot) {
+		if (this.stopping || snapshot == null) {
+			return false;
+		}
+
+		// 写しの直列化は重い（チャンク169個で数百ms）ので、クライアントスレッドでは
+		// 「種類の登録」だけ済ませて、本体は書き込みスレッドに回す。種類の定義を
+		// 関門より先に積むので、書き込み側は番号だけ見れば書ける。順番はキューが守る。
+		PacketEncoder enc = this.encoder;
+		List<Packet<?>> packets = snapshot.packets();
+
+		if (enc == null) {
+			this.errorCount.addAndGet(packets.size());
 			return false;
 		}
 
 		try {
 			long startedAt = System.nanoTime();
-			WorldSnapshot.Snapshot snapshot = WorldSnapshot.build(client, this.config.snapshotRadius);
+			this.addMarker(ReplayFormat.SNAP_MARKER);
 
-			if (snapshot == null) {
+			int[] indices = new int[packets.size()];
+			int dropped = 0;
+
+			for (int i = 0; i < packets.size(); i++) {
+				Packet<?> packet = packets.get(i);
+				TypeInfo info = packet == null ? null : this.types.get(packet.getPacketType());
+
+				if (info == null && packet != null) {
+					info = this.register(packet.getPacketType(), false);
+				}
+
+				if (info == null) {
+					indices[i] = -1;
+					dropped++;
+				} else {
+					indices[i] = info.index();
+				}
+			}
+
+			long timeMs = System.currentTimeMillis() - this.startedAt;
+
+			if (!this.offer(PacketTask.snapshot(timeMs, snapshot, enc, indices, this.sizeHints))) {
+				this.droppedCount.addAndGet(packets.size());
+				IfutoReplayClient.LOGGER.warn("[ifuto-replay] 世界の写しを書ききれませんでした"
+						+ "（書き出しが追いついていません。地形が一部欠けます）");
 				return false;
 			}
 
-			long droppedBefore = this.droppedCount.get();
-
-			for (Packet<?> packet : snapshot.packets()) {
-				this.capture(packet, false, this.boundHandler);
-			}
-
-			long dropped = this.droppedCount.get() - droppedBefore;
-
-			if (dropped > 0L) {
+			if (dropped > 0) {
+				this.droppedCount.addAndGet(dropped);
 				IfutoReplayClient.LOGGER.warn("[ifuto-replay] 世界の写しのうち {} パケットを書ききれませんでした"
 						+ "（書き出しが追いついていません。地形が一部欠けます）", dropped);
 			}
 
+			this.packetCount.addAndGet(packets.size() - dropped);
 			IfutoReplayClient.LOGGER.info("[ifuto-replay] 世界の写しを保存しました (チャンク {}, エンティティ {}, {} パケット, {} ms)",
-					snapshot.chunks(), snapshot.entities(), snapshot.packets().size(),
+					snapshot.chunks(), snapshot.entities(), packets.size(),
 					(System.nanoTime() - startedAt) / 1_000_000L);
 			return true;
 		} catch (Throwable t) {
-			IfutoReplayClient.LOGGER.warn("[ifuto-replay] 世界の写しを作れませんでした", t);
+			IfutoReplayClient.LOGGER.warn("[ifuto-replay] 世界の写しを書けませんでした", t);
 			return false;
 		}
 	}
@@ -313,11 +409,35 @@ public final class RecordingSession {
 	}
 
 	/**
+	 * パーティクルを記録できる状態か（重い変換の前に見る安いゲート）。
+	 *
+	 * <p>パーティクルのバイト列化はそれなりに重いので、上限を超えているときは
+	 * 変換する前に帰る。ここも {@link #recordLocal} もクライアントスレッドからだけ呼ばれる。
+	 */
+	public boolean allowsLocal() {
+		if (this.stopping) {
+			return false;
+		}
+
+		long now = System.currentTimeMillis();
+
+		if (now - this.localWindowStartMs >= 1000L) {
+			this.localWindowStartMs = now;
+			this.localWindowCount = 0;
+		}
+
+		return this.localWindowCount < MAX_LOCAL_PER_SECOND;
+	}
+
+	/**
 	 * クライアントの内側でだけ起きた出来事を記録する（パーティクルなど）。
 	 *
 	 * <p>パーティクルは Minecraft が一番よく出す物なので、**1秒あたりの上限** を決めて
 	 * いる（崩しているブロックの破片などで膨らまないように）。超えた分は捨てるだけで、
 	 * 録画そのものには影響しない。
+	 *
+	 * <p>パーティクルは少しだけためて **まとめて1枠** で書く。1件ずつ書くとそのたびに
+	 * パケットのかたまりが切れて、圧縮が効かなくなる＋書き込みが詰まるため。
 	 */
 	public void recordLocal(int subtype, byte[] data) {
 		if (this.stopping || data == null || data.length == 0) {
@@ -339,14 +459,61 @@ public final class RecordingSession {
 			return;
 		}
 
-		long timeMs = System.currentTimeMillis() - this.startedAt;
+		this.localWindowCount++;
+
+		if (subtype == LocalEvents.TYPE_PARTICLE) {
+			if (this.localBatch.isEmpty()) {
+				this.localBatchFirstMs = now - this.startedAt;
+			}
+
+			this.localBatch.add(data);
+			this.localBatchBytes += data.length;
+
+			if (this.localBatch.size() >= LOCAL_BATCH_MAX_ENTRIES
+					|| this.localBatchBytes >= LOCAL_BATCH_MAX_BYTES) {
+				this.flushLocalBatch();
+			}
+
+			return;
+		}
+
+		long timeMs = now - this.startedAt;
 
 		if (!this.offer(PacketTask.local(timeMs, subtype, data))) {
 			return;
 		}
 
-		this.localWindowCount++;
 		this.queuedBytes.addAndGet(data.length);
+	}
+
+	/**
+	 * ためているパーティクルをまとめて1枠で書く（クライアントスレッドから呼ぶ）。
+	 *
+	 * <p>ためているあいだに後続のパケットが先に書かれることがあるが、ずれは高々
+	 * ティック1回ぶん（数十ミリ秒）で、パーティクルは飾りなので見えない。
+	 * 時刻の差分も 0 に丸められて自然に追いつく（壊れはしない）。
+	 */
+	public void flushLocalBatch() {
+		if (this.localBatch.isEmpty()) {
+			return;
+		}
+
+		List<byte[]> entries = new ArrayList<>(this.localBatch);
+		this.localBatch.clear();
+		this.localBatchBytes = 0;
+
+		byte[] batched = LocalEvents.encodeBatch(entries);
+
+		if (batched == null || batched.length == 0) {
+			return;
+		}
+
+		if (!this.offer(PacketTask.local(this.localBatchFirstMs, LocalEvents.TYPE_PARTICLE_BATCH, batched))) {
+			this.droppedCount.addAndGet(entries.size());
+			return;
+		}
+
+		this.queuedBytes.addAndGet(batched.length);
 	}
 
 	/** しおりを付ける */
@@ -368,6 +535,8 @@ public final class RecordingSession {
 	/** 録画を終えてファイルを閉じる（スレッドの終了を待つので、書き込みスレッドからは呼ばない） */
 	public Stats finish() {
 		this.stopping = true;
+		// ためているパーティクルを先に書き切る（残すと最後の数十ミリ秒ぶんが消える）
+		this.flushLocalBatch();
 		long durationMs = System.currentTimeMillis() - this.startedAt;
 
 		if (this.clip != null) {
@@ -481,6 +650,13 @@ public final class RecordingSession {
 			int index = this.nextTypeIndex.getAndIncrement();
 			int direction = outbound ? ReplayFormat.DIRECTION_C2S : ReplayFormat.DIRECTION_S2C;
 			this.types.put(type, new TypeInfo(index, isNoisy(identifier), direction, identifier));
+
+			// 目安の置き場も番号に追従させる（ここはロックの中なので安全）
+			if (index >= this.sizeHints.length) {
+				int[] grown = new int[Math.max(index + 1, this.sizeHints.length * 2)];
+				System.arraycopy(this.sizeHints, 0, grown, 0, this.sizeHints.length);
+				this.sizeHints = grown;
+			}
 
 			// 本体より先に定義が書かれるように、同じキューに順番で積む
 			if (!this.offer(PacketTask.type(index, direction, identifier))) {

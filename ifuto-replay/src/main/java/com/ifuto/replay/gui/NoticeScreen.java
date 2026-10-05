@@ -37,8 +37,8 @@ public class NoticeScreen extends Screen {
 		text.setMaxWidth(Math.min(MAX_TEXT_WIDTH, this.width - 40));
 		body.add(text);
 
-		this.layout.addFooter(new ModernButton(0, 0, 200, 20, ScreenTexts.OK, button -> this.close(),
-				ModernButton.Style.PRIMARY));
+		this.layout.addFooter(new ModernButton(0, 0, Math.min(200, this.width - 32), 20, ScreenTexts.OK,
+				button -> this.close(), ModernButton.Style.PRIMARY));
 
 		this.layout.forEachChild(this::addDrawableChild);
 		this.refreshWidgetPositions();

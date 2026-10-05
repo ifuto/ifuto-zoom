@@ -1,12 +1,14 @@
 package com.ifuto.replay.export;
 
 import com.ifuto.replay.IfutoReplayClient;
+import com.ifuto.replay.mixin.NativeImageAccessor;
 import com.ifuto.replay.playback.ReplayPlayback;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.texture.NativeImage;
 import net.minecraft.client.util.ScreenshotRecorder;
 import net.minecraft.text.Text;
 import org.jspecify.annotations.Nullable;
+import org.lwjgl.system.MemoryUtil;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -18,6 +20,9 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.TimeUnit;
 
 /**
  * 再生している世界を、好きな FPS / 解像度 / ビットレートで動画にする。
@@ -34,6 +39,8 @@ import java.util.Locale;
 public final class ReplayExporter {
 	public enum State {
 		RUNNING,
+		/** 絵は出し切った。ffmpeg がまとめ終わるのを別スレッドで待っている */
+		FINISHING,
 		DONE,
 		CANCELLED,
 		FAILED
@@ -52,14 +59,16 @@ public final class ReplayExporter {
 
 	private Process process;
 	private OutputStream ffmpegInput;
+	private String encoderName = "libx264";
 	private byte[] frameBytes;
 	private int frameIndex;
 	private boolean captureRequested;
 
 	/** 「いまの時刻の絵」を取り込むのを待っている（取り込むまでは時刻を進めない） */
 	private boolean awaitingCapture;
-	private State state = State.RUNNING;
-	private String failureMessage = "";
+	// 終了待ちは別スレッドから変えるので volatile
+	private volatile State state = State.RUNNING;
+	private volatile String failureMessage = "";
 	private long startedAtMs;
 	private volatile long lastProgressMs;
 
@@ -182,6 +191,9 @@ public final class ReplayExporter {
 		List<String> command = new ArrayList<>();
 		command.add(this.options.ffmpegPath());
 		command.add("-y");
+		// パイプ入力の受け口を広げる（4K60 などで詰まらせない。入力ごとに付ける物）
+		command.add("-thread_queue_size");
+		command.add("512");
 		command.add("-f");
 		command.add("rawvideo");
 		command.add("-pix_fmt");
@@ -208,10 +220,32 @@ public final class ReplayExporter {
 			command.add(track.toAbsolutePath().toString());
 		}
 
+		// GPU が使えれば GPU で（x264 medium とほぼ同じ画質で数倍速い）。無ければ CPU
+		String encoder = "libx264";
+		boolean hardware = false;
+
+		if (this.options.hardwareAccel()) {
+			String found = EncoderProbe.select(this.options.ffmpegPath());
+
+			if (found != null) {
+				encoder = found;
+				hardware = true;
+			}
+		}
+
+		this.encoderName = encoder;
+
+		IfutoReplayClient.LOGGER.info("[ifuto-replay] 書き出しのエンコーダー: {}（{}）",
+				encoder, hardware ? "GPU" : "CPU");
+
 		command.add("-c:v");
-		command.add("libx264");
-		command.add("-preset");
-		command.add("medium");
+		command.add(encoder);
+
+		if (!hardware) {
+			command.add("-preset");
+			command.add("medium");
+		}
+
 		command.add("-pix_fmt");
 		command.add("yuv420p");
 		command.add("-b:v");
@@ -246,6 +280,10 @@ public final class ReplayExporter {
 			// 絵が先に終わったらそこで切る（音だけ長く残さない）
 			command.add("-shortest");
 		}
+
+		// 目次を先頭に置く（ブラウザ等ですぐ再生・シークできる。画質・速度は変わらない）
+		command.add("-movflags");
+		command.add("+faststart");
 
 		command.add(this.options.output().toString());
 
@@ -394,6 +432,13 @@ public final class ReplayExporter {
 		}
 	}
 
+	/**
+	 * 取り込めた絵を、書き込み係へ渡す。
+	 *
+	 * <p>画素は中身の番地から使い回しの置き場へそのまま流す（RGBA の並びで
+	 * 入っているので変換は要らない）。1枚ごとの int 配列の作り直しは無い。
+	 * ふだん通らない形の絵が来たときだけ、古い経路（複写あり）に逃がす。
+	 */
 	private void writeFrame(NativeImage image) throws IOException {
 		int width = image.getWidth();
 		int height = image.getHeight();
@@ -404,20 +449,113 @@ public final class ReplayExporter {
 					+ "書き出し中はウィンドウの大きさを変えないでください");
 		}
 
-		int[] pixels = image.copyPixelsAbgr();
-		byte[] bytes = this.frameBytes;
-
-		if (bytes == null || bytes.length != width * height * BYTES_PER_PIXEL) {
-			bytes = new byte[width * height * BYTES_PER_PIXEL];
-			this.frameBytes = bytes;
+		if (width * height * BYTES_PER_PIXEL != this.frameSize) {
+			throw new IOException("絵の大きさが合いません");
 		}
 
-		// int（ABGR）をそのままメモリに流すと RGBA の並びになる（リトルエンディアン前提）
-		ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN).asIntBuffer().put(pixels);
-		this.ffmpegInput.write(bytes);
+		byte[] stage;
+
+		try {
+			stage = this.emptyStages.take();
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+			throw new IOException("書き出しを中断しました", e);
+		}
+
+		if (!this.readPixelsFast(image, stage)) {
+			this.readPixelsSlow(image, stage);
+		}
+
+		try {
+			this.filledStages.put(stage);
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+			this.emptyStages.offer(stage);
+			throw new IOException("書き出しを中断しました", e);
+		}
 	}
 
-	/** 正常に終わらせる */
+	/**
+	 * 画素を番地から直接読む。読めたら {@code true}。
+	 *
+	 * <p>スクリーンショットの絵は RGBA（メモリの並びも R・G・B・A）なので、
+	 * そのまま流すだけで ffmpeg の {@code rgba} 入力になる。変換も確保も無い。
+	 */
+	private boolean readPixelsFast(NativeImage image, byte[] stage) {
+		try {
+			if (image.getFormat() != NativeImage.Format.RGBA) {
+				return false;
+			}
+
+			long pointer = ((NativeImageAccessor) image).ifutoReplay$getPointer();
+
+			if (pointer == 0L) {
+				return false;
+			}
+
+			MemoryUtil.memByteBuffer(pointer, stage.length).get(stage);
+			return true;
+		} catch (Throwable t) {
+			IfutoReplayClient.LOGGER.warn("[ifuto-replay] 画素の直読みに失敗したので複写に切り替えます", t);
+			return false;
+		}
+	}
+
+	/** ふだん通らない形の絵用の複写経路（1枚だけ int 配列を作る） */
+	private void readPixelsSlow(NativeImage image, byte[] stage) {
+		int[] pixels = image.copyPixelsAbgr();
+		// int（ABGR）をそのままメモリに流すと RGBA の並びになる（リトルエンディアン前提）
+		ByteBuffer.wrap(stage).order(ByteOrder.LITTLE_ENDIAN).asIntBuffer().put(pixels);
+	}
+
+	/**
+	 * 書き込み係（別スレッド）。描画側は絵ができたら置き場を渡すだけ。
+	 *
+	 * <p>パイプへの書き込みはエンコーダーの都合で止まることがある。
+	 * 描画側で待つとそのまま固まったように見えるので、待つのはここだけ。
+	 * 置き場は2枚しかないので、遅れてもため込まない。
+	 */
+	private void writeLoop() {
+		try {
+			while (true) {
+				byte[] stage = this.filledStages.take();
+
+				if (stage == END_OF_STREAM || stage.length == 0) {
+					return;
+				}
+
+				try {
+					this.ffmpegInput.write(stage);
+				} finally {
+					this.emptyStages.offer(stage);
+				}
+			}
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+		} catch (Throwable t) {
+			// ここで直接止めると描画に触ることになるので、理由だけ置いて描画側に任せる
+			this.writerError = t.getMessage() == null ? t.toString() : t.getMessage();
+			IfutoReplayClient.LOGGER.error("[ifuto-replay] 書き込み係が止まりました", t);
+		} finally {
+			try {
+				this.ffmpegInput.flush();
+				this.ffmpegInput.close();
+			} catch (IOException e) {
+				IfutoReplayClient.LOGGER.warn("[ifuto-replay] ffmpeg への書き込みを閉じられませんでした", e);
+			}
+		}
+	}
+
+	/** 書き込み係が詰まっていたら、描画側で止める（描画に触るのはここだけ） */
+	private void checkWriter() {
+		String error = this.writerError;
+
+		if (error != null && this.state == State.RUNNING) {
+			this.failWith(error);
+		}
+	}
+
+	/** 正常に終わらせる（ffmpeg の終了待ちは別スレッドで。描画を止めないため） */
 	public void finish() {
 		if (this.state != State.RUNNING) {
 			return;
@@ -432,18 +570,22 @@ public final class ReplayExporter {
 			IfutoReplayClient.LOGGER.warn("[ifuto-replay] ffmpeg への書き込みを閉じられませんでした", e);
 		}
 
-		this.waitForFfmpeg();
 		this.restore();
-		this.state = State.DONE;
+		this.state = State.FINISHING;
 		active = null;
+
+		Thread waiter = new Thread(this::waitForFfmpeg, "ifuto-replay-export-finish");
+		waiter.setDaemon(true);
+		waiter.start();
 	}
 
-	/** 中断する */
+	/** 中断する（仕上げ待ちのあいだも止められる） */
 	public void cancel() {
-		if (this.state != State.RUNNING) {
+		if (this.state != State.RUNNING && this.state != State.FINISHING) {
 			return;
 		}
 
+		boolean running = this.state == State.RUNNING;
 		this.state = State.CANCELLED;
 		active = null;
 
@@ -459,7 +601,9 @@ public final class ReplayExporter {
 			this.process.destroy();
 		}
 
-		this.restore();
+		if (running) {
+			this.restore();
+		}
 	}
 
 	private void failWith(String message) {
@@ -488,21 +632,58 @@ public final class ReplayExporter {
 		this.restore();
 	}
 
+	/**
+	 * ffmpeg が書き終わるのを待って、終わり方を見て DONE / FAILED を決める（別スレッド）。
+	 *
+	 * <p>ここでは描画に触れない（解像度は {@link #finish()} ですでに戻してある）。
+	 * 中断されていたら何もしない（画面はすでに閉じている）。
+	 */
 	private void waitForFfmpeg() {
-		if (this.process == null) {
+		Process process = this.process;
+
+		if (this.state != State.FINISHING) {
+			return;
+		}
+
+		if (process == null) {
+			this.state = State.DONE;
 			return;
 		}
 
 		try {
-			boolean ended = this.process.waitFor(30, java.util.concurrent.TimeUnit.SECONDS);
+			boolean ended = process.waitFor(30, java.util.concurrent.TimeUnit.SECONDS);
+
+			if (this.state != State.FINISHING) {
+				return;
+			}
 
 			if (!ended) {
 				IfutoReplayClient.LOGGER.warn("[ifuto-replay] ffmpeg が終わらないので強制終了します");
-				this.process.destroy();
+				process.destroy();
+				this.failureMessage = Text.translatable("ifuto-replay.export.error_stalled").getString();
+				this.state = State.FAILED;
+				return;
+			}
+
+			int exit = process.exitValue();
+
+			if (exit != 0) {
+				// 終了コードを見ないと、壊れた動画を「できた」と言ってしまう
+				IfutoReplayClient.LOGGER.error("[ifuto-replay] ffmpeg が異常終了しました (exit {}, encoder {})",
+						exit, this.encoderName);
+				this.failureMessage = Text.translatable("ifuto-replay.export.error_ffmpeg", exit).getString()
+						+ Text.translatable("ifuto-replay.export.error_encoder", this.encoderName).getString();
+				this.state = State.FAILED;
+				return;
 			}
 		} catch (InterruptedException e) {
 			Thread.currentThread().interrupt();
+			this.failureMessage = Text.translatable("ifuto-replay.export.error_unknown").getString();
+			this.state = State.FAILED;
+			return;
 		}
+
+		this.state = State.DONE;
 	}
 
 	/** 解像度を元に戻す */
@@ -510,5 +691,8 @@ public final class ReplayExporter {
 		this.client.getWindow().setFramebufferWidth(this.originalFramebufferWidth);
 		this.client.getWindow().setFramebufferHeight(this.originalFramebufferHeight);
 		this.client.onResolutionChanged();
+	}
+}
+t.onResolutionChanged();
 	}
 }

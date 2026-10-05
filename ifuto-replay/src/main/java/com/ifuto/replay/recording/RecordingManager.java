@@ -8,6 +8,7 @@ import com.ifuto.replay.audio.MinecraftAudioCapture;
 import com.ifuto.replay.audio.AudioTracks;
 import com.ifuto.replay.audio.VoiceChatBridge;
 import com.ifuto.replay.config.ReplayConfig;
+import com.ifuto.replay.export.FfmpegInstaller;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.particle.ParticleEffect;
 import net.minecraft.client.MinecraftClient;
@@ -207,6 +208,9 @@ public final class RecordingManager {
 							+ "設定の「自動録画」を ON にしてください）");
 					notify(client, "ifuto-replay.message.partial_start");
 				}
+			} else {
+				// 入った直後なのでパケットが最初から揃っている。「ここから完全」の印だけ置く
+				created.addMarker(ReplayFormat.SNAP_MARKER);
 			}
 		} catch (IOException e) {
 			IfutoReplayClient.LOGGER.error("[ifuto-replay] {} を開けませんでした", file, e);
@@ -221,7 +225,9 @@ public final class RecordingManager {
 	}
 
 	public synchronized void stop(MinecraftClient client) {
-		forgetWorldPackets();
+		// 世界のパケットは覚えたままにする。同じワールドで録り直すときに要る
+		// （ここで忘れると、2回目以降の録画が「途中から」扱いで再生不能になる）。
+		// 忘れるのは切断したときだけ（onDisconnect）。
 		RecordingSession current = this.session;
 
 		if (current == null) {
@@ -251,6 +257,12 @@ public final class RecordingManager {
 				Text.literal(String.valueOf(stats.packets())));
 	}
 
+	/** 切断したとき。保存して閉じて、別のワールドの写しに混ざらないよう忘れる */
+	public void onDisconnect(MinecraftClient client) {
+		this.stop(client);
+		forgetWorldPackets();
+	}
+
 	public void toggle(MinecraftClient client) {
 		if (this.isRecording()) {
 			this.stop(client);
@@ -269,6 +281,19 @@ public final class RecordingManager {
 		ReplayConfig config = ReplayConfig.get();
 
 		if (config.audioMode == null || !config.audioMode.records()) {
+			return;
+		}
+
+		// ffmpeg が無ければ裏で落としてきて、今回は音声なしで続ける（録画は止めない）
+		if (FfmpegInstaller.resolve(config.ffmpegPath) == null) {
+			if (!FfmpegInstaller.canInstall()) {
+				notify(client, "ifuto-replay.message.audio_ffmpeg_linux");
+				return;
+			}
+
+			notify(client, "ifuto-replay.message.audio_ffmpeg_downloading");
+			FfmpegInstaller.ensureInBackground(config.ffmpegPath, path -> client.execute(() ->
+					notify(client, "ifuto-replay.message.audio_ffmpeg_ready")));
 			return;
 		}
 
@@ -349,6 +374,19 @@ public final class RecordingManager {
 		ReplayConfig config = ReplayConfig.get();
 
 		if (config.audioMode == null || !config.audioMode.records()) {
+			return false;
+		}
+
+		// ふつうの録画と同じく、無ければ裏で落として今回は音声なし
+		if (FfmpegInstaller.resolve(config.ffmpegPath) == null) {
+			if (!FfmpegInstaller.canInstall()) {
+				notify(client, "ifuto-replay.message.audio_ffmpeg_linux");
+				return false;
+			}
+
+			notify(client, "ifuto-replay.message.audio_ffmpeg_downloading");
+			FfmpegInstaller.ensureInBackground(config.ffmpegPath, path -> client.execute(() ->
+					notify(client, "ifuto-replay.message.audio_ffmpeg_ready")));
 			return false;
 		}
 
@@ -493,12 +531,18 @@ public final class RecordingManager {
 
 		RecordingSession current = this.session;
 
-		if (current == null) {
+		if (current == null || !current.allowsLocal()) {
+			// 上限を超えているときは変換する前に帰る（バイト列化はそれなりに重い）
 			return;
 		}
 
-		current.recordLocal(LocalEvents.TYPE_PARTICLE,
-				LocalEvents.encodeParticle(effect, x, y, z, velocityX, velocityY, velocityZ));
+		byte[] data = LocalEvents.encodeParticle(effect, x, y, z, velocityX, velocityY, velocityZ);
+
+		if (data == null || data.length == 0) {
+			return;
+		}
+
+		current.recordLocal(LocalEvents.TYPE_PARTICLE, data);
 	}
 
 	/** しおりを付ける（あとで再生・書き出しの起点にする） */
@@ -529,7 +573,10 @@ public final class RecordingManager {
 
 		this.inputTracker.tick(client, current);
 
-		// クリップ方式: 区間の長さを過ぎたら次へ移る（古い区間は捨てる）
+		// ためているパーティクルをまとめて書く（ティック1回ぶんの遅れは見えない）
+		current.flushLocalBatch();
+
+		// クリップ方式: 区間の長さを過ぎていたら次へ移る（古い区間は捨てる）
 		current.tickClip(client);
 
 		// Minecraft の音はゲーム側のスレッドで取り出す（溜まっている分だけ）
