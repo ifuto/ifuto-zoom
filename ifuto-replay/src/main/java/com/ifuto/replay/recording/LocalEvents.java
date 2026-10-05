@@ -60,6 +60,28 @@ public final class LocalEvents {
 	 */
 	private static final ThreadLocal<Boolean> FROM_PACKET = ThreadLocal.withInitial(() -> Boolean.FALSE);
 
+	/**
+	 * 種類 → 識別名の覚え書き（registry 引きは毎回やると高いので）。
+	 *
+	 * <p>種類の実体は1個しかないので、写像が増えることはない
+	 * （ため込まない）。空っぽの環境では null が返るので、そのときは覚えない。
+	 */
+	private static final java.util.concurrent.ConcurrentHashMap<ParticleType<?>, Identifier> TYPE_IDS =
+			new java.util.concurrent.ConcurrentHashMap<>();
+
+	/**
+	 * 直前の1件の使い回し（時間的なまとまりに期待するやり方）。
+	 *
+	 * <p>パーティクルは同じ物が続けて湧く（爆発・雨・たいまつ）。
+	 * Codec の変換は高いので、直前と同じ物なら結果を使い回す。
+	 * 外れてもただ変換し直すだけ。NBT は不変なので分け合って安全。
+	 */
+	private static volatile LastParams lastParams;
+
+	/** 直前の変換結果（不変なので、そのまま置き換えて安全） */
+	private record LastParams(ParticleEffect effect, Identifier id, NbtElement parameters) {
+	}
+
 	private LocalEvents() {
 	}
 
@@ -76,14 +98,37 @@ public final class LocalEvents {
 
 	/** パーティクル1件を記録用のバイト列にする（種類が残せなければ null） */
 	public static @Nullable byte[] encodeParticle(ParticleEffect effect, double x, double y, double z,
-												  double velocityX, double velocityY, double velocityZ) {
-		Identifier id = Registries.PARTICLE_TYPE.getId(effect.getType());
+													  double velocityX, double velocityY, double velocityZ) {
+		LastParams last = lastParams;
+
+		// 直前と同じ物なら変換を省く（いちばんよく通る道）
+		if (last != null && last.effect.equals(effect)) {
+			return writeParticle(last.id, last.parameters, x, y, z, velocityX, velocityY, velocityZ);
+		}
+
+		Identifier id = TYPE_IDS.get(effect.getType());
+
+		if (id == null) {
+			id = Registries.PARTICLE_TYPE.getId(effect.getType());
+
+			if (id != null) {
+				TYPE_IDS.put(effect.getType(), id);
+			}
+		}
+
 		NbtElement parameters = encodeParameters(effect);
 
 		if (id == null || parameters == null) {
 			return null;
 		}
 
+		lastParams = new LastParams(effect, id, parameters);
+		return writeParticle(id, parameters, x, y, z, velocityX, velocityY, velocityZ);
+	}
+
+	/** 変換できた材料をバイト列にする（形は前と同じ） */
+	private static @Nullable byte[] writeParticle(Identifier id, NbtElement parameters,
+			double x, double y, double z, double velocityX, double velocityY, double velocityZ) {
 		NbtCompound nbt = new NbtCompound();
 		nbt.putString("id", id.toString());
 		nbt.put("p", parameters);

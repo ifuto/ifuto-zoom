@@ -23,6 +23,8 @@ import net.minecraft.network.RegistryByteBuf;
 import net.minecraft.network.listener.ClientPlayPacketListener;
 import net.minecraft.network.listener.ServerPlayPacketListener;
 import net.minecraft.network.packet.Packet;
+import net.minecraft.network.packet.c2s.play.ClientCommandC2SPacket;
+import net.minecraft.network.packet.c2s.play.HandSwingC2SPacket;
 import net.minecraft.network.packet.c2s.play.PlayerMoveC2SPacket;
 import net.minecraft.network.state.NetworkState;
 import net.minecraft.network.state.PlayStateFactories;
@@ -70,12 +72,6 @@ public final class ReplayPlayback implements ReplayStream.Sink {
 
 	/** これ以上エラーが続いたら再生をあきらめる */
 	private static final int MAX_ERRORS = 30;
-
-	/** パケットの識別名のうち「自分の動き」を表すもの */
-	private static final String MOVE_POS = "move_player_pos";
-	private static final String MOVE_POS_ROT = "move_player_pos_rot";
-	private static final String MOVE_ROT = "move_player_rot";
-	private static final String MOVE_STATUS = "move_player_status_only";
 
 	/** いま動いている再生（画面を開いていないときは null） */
 	private static volatile ReplayPlayback active;
@@ -137,6 +133,10 @@ public final class ReplayPlayback implements ReplayStream.Sink {
 	private double camYaw;
 	private double camPitch;
 	private boolean camOnGround;
+
+	/** 録っていた本人の屈み・疾走（C2S の命令から復元。目の高さと視野角に効く） */
+	private boolean replaySneaking;
+	private boolean replaySprinting;
 
 	private ReplayPlayback(MinecraftClient client, Path file, ReplayStream.Metadata meta) throws IOException {
 		this.client = client;
@@ -381,7 +381,31 @@ public final class ReplayPlayback implements ReplayStream.Sink {
 		}
 
 		this.applyInputState();
+		this.applyStance();
 		this.updateCamera(this.timeMs);
+	}
+
+	/**
+	 * 録っていた本人の構え（屈み・疾走）を戻す。
+	 *
+	 * <p>バニラはキー入力から毎ティック書き換えるので、ここで毎回戻さないと
+	 * 見ている側のキーに負ける。描画の前に戻すので、目の高さ・姿勢・視野角は
+	 * 録っていた本人の物になる。
+	 */
+	private void applyStance() {
+		ClientPlayerEntity player = this.client.player;
+
+		if (player == null) {
+			return;
+		}
+
+		if (player.isSneaking() != this.replaySneaking) {
+			player.setSneaking(this.replaySneaking);
+		}
+
+		if (player.isSprinting() != this.replaySprinting) {
+			player.setSprinting(this.replaySprinting);
+		}
 	}
 
 	/**
@@ -570,11 +594,8 @@ public final class ReplayPlayback implements ReplayStream.Sink {
 		String name = this.typeNames.get(this.pendingTypeIndex);
 
 		if (direction == ReplayFormat.DIRECTION_C2S) {
-			// 自分の操作は「カメラの位置」だけ使う。あとは流さない（サーバーがいないので）
-			if (name != null && isPlayerMove(name)) {
-				this.applyCameraPacket(name, payload, this.pendingOffset, this.pendingLength);
-			}
-
+			// 自分の操作はカメラと構えに使う。あとは流さない（サーバーがいないので）
+			this.applyClientPacket(name, payload, this.pendingOffset, this.pendingLength);
 			return;
 		}
 
@@ -591,25 +612,31 @@ public final class ReplayPlayback implements ReplayStream.Sink {
 		}
 	}
 
-	private void applyCameraPacket(String name, byte[] payload, int offset, int length) {
+	/**
+	 * 自分の操作をカメラと構えに使う。
+	 *
+	 * <p>移動はカメラの位置、屈み・疾走の命令は目の高さと視野角、
+	 * 振りは一人称の手の動きになる。本番と同じ入口（Entity の印・
+	 * swingHand）に流すので、バニラの見え方がそのまま再現される。
+	 */
+	private void applyClientPacket(@Nullable String name, byte[] payload, int offset, int length) {
 		ByteBuf buf = Unpooled.wrappedBuffer(payload, offset, length);
 
 		try {
 			Packet<? super ServerPlayPacketListener> packet = this.clientToServer.codec().decode(buf);
 
-			if (!(packet instanceof PlayerMoveC2SPacket move)) {
-				return;
+			if (packet instanceof PlayerMoveC2SPacket move) {
+				this.applyCameraMove(move);
+			} else if (packet instanceof ClientCommandC2SPacket command) {
+				this.applyClientCommand(command.getMode());
+			} else if (packet instanceof HandSwingC2SPacket swing && !this.seeking) {
+				// 早送り中の振りは要らない（最後の1回だけ見えればいいので）
+				ClientPlayerEntity player = this.client.player;
+
+				if (player != null) {
+					player.swingHand(swing.getHand());
+				}
 			}
-
-			double x = move.getX(this.camX);
-			double y = move.getY(this.camY);
-			double z = move.getZ(this.camZ);
-			float yaw = move.getYaw((float) this.camYaw);
-			float pitch = move.getPitch((float) this.camPitch);
-
-			this.camFrom = new CamSample(this.timeMs, this.camX, this.camY, this.camZ, this.camYaw, this.camPitch);
-			this.camTo = new CamSample(this.pendingTimeMs, x, y, z, yaw, pitch);
-			this.camOnGround = move.isOnGround();
 		} catch (Throwable t) {
 			this.onError(name, t);
 		} finally {
@@ -617,9 +644,28 @@ public final class ReplayPlayback implements ReplayStream.Sink {
 		}
 	}
 
-	private static boolean isPlayerMove(String name) {
-		String id = name.contains(":") ? name.substring(name.indexOf(':') + 1) : name;
-		return id.equals(MOVE_POS) || id.equals(MOVE_POS_ROT) || id.equals(MOVE_ROT) || id.equals(MOVE_STATUS);
+	private void applyCameraMove(PlayerMoveC2SPacket move) {
+		double x = move.getX(this.camX);
+		double y = move.getY(this.camY);
+		double z = move.getZ(this.camZ);
+		float yaw = move.getYaw((float) this.camYaw);
+		float pitch = move.getPitch((float) this.camPitch);
+
+		this.camFrom = new CamSample(this.timeMs, this.camX, this.camY, this.camZ, this.camYaw, this.camPitch);
+		this.camTo = new CamSample(this.pendingTimeMs, x, y, z, yaw, pitch);
+		this.camOnGround = move.isOnGround();
+	}
+
+	private void applyClientCommand(ClientCommandC2SPacket.Mode mode) {
+		switch (mode) {
+			case START_SNEAKING -> this.replaySneaking = true;
+			case STOP_SNEAKING -> this.replaySneaking = false;
+			case START_SPRINTING -> this.replaySprinting = true;
+			case STOP_SPRINTING -> this.replaySprinting = false;
+			default -> {
+				// 睡眠・落下などはカメラに効かないので無視
+			}
+		}
 	}
 
 	private void onError(@Nullable String name, Throwable t) {

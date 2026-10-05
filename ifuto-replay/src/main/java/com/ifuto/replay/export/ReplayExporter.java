@@ -66,9 +66,19 @@ public final class ReplayExporter {
 	 * 描画側が少し待つ（= ため込まない。2枚ぶんより遅れない）。
 	 */
 	private final BlockingQueue<byte[]> emptyStages = new ArrayBlockingQueue<>(2);
-	private final BlockingQueue<byte[]> filledStages = new ArrayBlockingQueue<>(2);
-	/** 書き込み係への「おしまい」の合図（中身は空） */
-	private static final byte[] END_OF_STREAM = new byte[0];
+	private final BlockingQueue<Frame> filledStages = new ArrayBlockingQueue<>(2);
+	/** 書き込み係への「おしまい」の合図（絵なし） */
+	private static final Frame END_OF_STREAM = new Frame(null, new byte[0]);
+
+	/**
+	 * 書き込み係への受け渡し1枚（絵 + 置き場）。
+	 *
+	 * <p>画素の複写も書き込み係がやる。描画側は「置き場を取って絵と一緒に渡す」
+	 * だけなので、数十MBの複写で描画が止まらない。絵は最大2枚しか
+	 * ためない（置き場がなければ描画側が待つため）。
+	 */
+	private record Frame(@Nullable NativeImage image, byte[] stage) {
+	}
 	private Thread writerThread;
 	/** 書き込み係が詰まった理由（なければ null。描画側が拾って止める） */
 	private volatile String writerError;
@@ -441,21 +451,20 @@ public final class ReplayExporter {
 			return;
 		}
 
+		// 絵の始末は writeFrame の先（渡せたら書き込み係、渡せなければ writeFrame）
 		try {
 			this.writeFrame(image);
 		} catch (Throwable t) {
 			this.fail(t);
-		} finally {
-			image.close();
 		}
 	}
 
 	/**
 	 * 取り込めた絵を、書き込み係へ渡す。
 	 *
-	 * <p>画素は中身の番地から使い回しの置き場へそのまま流す（RGBA の並びで
-	 * 入っているので変換は要らない）。1枚ごとの int 配列の作り直しは無い。
-	 * ふだん通らない形の絵が来たときだけ、古い経路（複写あり）に逃がす。
+	 * <p>ここでは置き場を取って絵と一緒に渡すだけ。画素の複写は
+	 * 書き込み係がやる（数十MBの複写で描画を止めないため）。
+	 * 絵の始末は、渡せたら書き込み係、渡せなければここ。
 	 */
 	private void writeFrame(NativeImage image) throws IOException {
 		int width = image.getWidth();
@@ -463,11 +472,13 @@ public final class ReplayExporter {
 
 		// 書き出し中にウィンドウを動かすとフレームバッファの大きさが勝手に戻ってしまう
 		if (width != this.options.width() || height != this.options.height()) {
+			image.close();
 			throw new IOException("解像度が変わってしまいました（" + width + "x" + height + "）"
 					+ "書き出し中はウィンドウの大きさを変えないでください");
 		}
 
 		if (width * height * BYTES_PER_PIXEL != this.frameSize) {
+			image.close();
 			throw new IOException("絵の大きさが合いません");
 		}
 
@@ -477,17 +488,15 @@ public final class ReplayExporter {
 			stage = this.emptyStages.take();
 		} catch (InterruptedException e) {
 			Thread.currentThread().interrupt();
+			image.close();
 			throw new IOException("書き出しを中断しました", e);
 		}
 
-		if (!this.readPixelsFast(image, stage)) {
-			this.readPixelsSlow(image, stage);
-		}
-
 		try {
-			this.filledStages.put(stage);
+			this.filledStages.put(new Frame(image, stage));
 		} catch (InterruptedException e) {
 			Thread.currentThread().interrupt();
+			image.close();
 			this.emptyStages.offer(stage);
 			throw new IOException("書き出しを中断しました", e);
 		}
@@ -528,24 +537,33 @@ public final class ReplayExporter {
 	}
 
 	/**
-	 * 書き込み係（別スレッド）。描画側は絵ができたら置き場を渡すだけ。
+	 * 書き込み係（別スレッド）。描画側は絵ができたら置き場と一緒に渡すだけ。
 	 *
-	 * <p>パイプへの書き込みはエンコーダーの都合で止まることがある。
-	 * 描画側で待つとそのまま固まったように見えるので、待つのはここだけ。
-	 * 置き場は2枚しかないので、遅れてもため込まない。
+	 * <p>画素の複写とパイプへの書き込みはここでやる。どちらも止まることがある
+	 * （数十MBの複写・エンコーダーの都合）。描画側で待つとそのまま固まった
+	 * ように見えるので、待つのはここだけ。置き場は2枚しかないので、
+	 * 遅れてもため込まない。
 	 */
 	private void writeLoop() {
 		try {
 			while (true) {
-				byte[] stage = this.filledStages.take();
+				Frame frame = this.filledStages.take();
 
-				if (stage == END_OF_STREAM || stage.length == 0) {
+				if (frame.image() == null) {
 					return;
 				}
 
+				NativeImage image = frame.image();
+				byte[] stage = frame.stage();
+
 				try {
+					if (!this.readPixelsFast(image, stage)) {
+						this.readPixelsSlow(image, stage);
+					}
+
 					this.ffmpegInput.write(stage);
 				} finally {
+					image.close();
 					this.emptyStages.offer(stage);
 				}
 			}
