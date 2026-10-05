@@ -25,6 +25,7 @@ import net.minecraft.network.listener.ServerPlayPacketListener;
 import net.minecraft.network.packet.Packet;
 import net.minecraft.network.packet.c2s.play.ClientCommandC2SPacket;
 import net.minecraft.network.packet.c2s.play.HandSwingC2SPacket;
+import net.minecraft.network.packet.c2s.play.PlayerInputC2SPacket;
 import net.minecraft.network.packet.c2s.play.PlayerMoveC2SPacket;
 import net.minecraft.network.state.NetworkState;
 import net.minecraft.network.state.PlayStateFactories;
@@ -629,6 +630,8 @@ public final class ReplayPlayback implements ReplayStream.Sink {
 				this.applyCameraMove(move);
 			} else if (packet instanceof ClientCommandC2SPacket command) {
 				this.applyClientCommand(command.getMode());
+			} else if (packet instanceof PlayerInputC2SPacket input) {
+				this.applyPlayerInput(input.input().sneak(), input.input().sprint());
 			} else if (packet instanceof HandSwingC2SPacket swing && !this.seeking) {
 				// 早送り中の振りは要らない（最後の1回だけ見えればいいので）
 				ClientPlayerEntity player = this.client.player;
@@ -658,14 +661,24 @@ public final class ReplayPlayback implements ReplayStream.Sink {
 
 	private void applyClientCommand(ClientCommandC2SPacket.Mode mode) {
 		switch (mode) {
-			case START_SNEAKING -> this.replaySneaking = true;
-			case STOP_SNEAKING -> this.replaySneaking = false;
 			case START_SPRINTING -> this.replaySprinting = true;
 			case STOP_SPRINTING -> this.replaySprinting = false;
 			default -> {
-				// 睡眠・落下などはカメラに効かないので無視
+				// 睡眠・落下・騎乗などはカメラに効かないので無視
 			}
 		}
+	}
+
+	/**
+	 * 毎tick送られてくる入力の状態（屈み・疾走）を構えに写す。
+	 *
+	 * <p>屈みの開始/終了はこのパケットにしか無い（ClientCommand には疾走だけ）。
+	 * 疾走は ClientCommand と二重に来るが、どちらも本番の順番どおりに
+	 * 適用されるので、最後に来たものが勝つ（本番と同じ）。
+	 */
+	private void applyPlayerInput(boolean sneak, boolean sprint) {
+		this.replaySneaking = sneak;
+		this.replaySprinting = sprint;
 	}
 
 	private void onError(@Nullable String name, Throwable t) {
