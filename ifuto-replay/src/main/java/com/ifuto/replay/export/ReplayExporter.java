@@ -114,6 +114,7 @@ public final class ReplayExporter {
 	private long blockNs;
 	private long lastAdvanceEndNs;
 	private int capturedFrames;
+	private boolean encodeWarned;
 
 	/** いま動いている書き出し（なければ null） */
 	private static volatile ReplayExporter active;
@@ -234,9 +235,12 @@ public final class ReplayExporter {
 		List<String> command = new ArrayList<>();
 		command.add(this.options.ffmpegPath());
 		command.add("-y");
-		// パイプ入力の受け口を広げる（4K60 などで詰まらせない。入力ごとに付ける物）
+		// パイプ入力の受け口は 512MB ぶんまで（1080pなら約61枚、4Kなら約15枚）。
+		// 広げすぎると溜め込むだけなので抑える（追いつかなければ描画側が待つ）
+		int queueSize = (int) Math.min(256L,
+				Math.max(16L, (512L << 20) / Math.max(1, width * height * BYTES_PER_PIXEL)));
 		command.add("-thread_queue_size");
-		command.add("512");
+		command.add(String.valueOf(queueSize));
 		command.add("-f");
 		command.add("rawvideo");
 		command.add("-pix_fmt");
@@ -444,6 +448,12 @@ public final class ReplayExporter {
 		long t1 = System.nanoTime();
 		// 世界も1コマ進める（実体・パーティクル・時刻。1コマ1tickは普段と同じ比率）
 		this.client.tick();
+
+		// 黙らせている間は鳴った端から止める（溜めて tick・mix しない）
+		if (this.soundMuted) {
+			this.client.getSoundManager().stopAll();
+		}
+
 		long t2 = System.nanoTime();
 		this.pumpNs += t1 - t0;
 		this.tickNs += t2 - t1;
@@ -562,6 +572,15 @@ public final class ReplayExporter {
 						this.renderNs / 1_000_000.0 / done,
 						this.captureNs / 1_000_000.0 / done,
 						this.blockNs / 1_000_000.0 / done));
+
+		// 書き込み待ちが嵩んでいたら、上げられる所を教える（1回だけ）
+		double waitMs = this.blockNs / 1_000_000.0 / done;
+
+		if (!this.encodeWarned && done >= 600 && waitMs > 2.0) {
+			this.encodeWarned = true;
+			IfutoReplayClient.LOGGER.warn("[ifuto-replay] エンコードが追いついていません（待ち {}ms/枚）。GPUエンコードか速いプリセット（veryfast等）にすると速くなります",
+					String.format(Locale.ROOT, "%.1f", waitMs));
+		}
 	}
 
 	/**
