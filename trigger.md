@@ -14,3 +14,4 @@ artifact_path: ifuto-replay/build/libs/*.jar
 # 2026-10-05-replay-perf
 # 2026-10-05-fix-exporter-tail
 # 2026-10-05-restore
+# 2026-10-05-cast
