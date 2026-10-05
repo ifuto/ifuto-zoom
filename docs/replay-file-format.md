@@ -128,8 +128,8 @@ NBT の中身は「レジストリの識別名 → エントリの配列」で�
 | 順番 | 名前 | 型 | 説明 |
 | --- | --- | --- | --- |
 | 1 | rawLength | `varint` | 展開後のバイト数 |
-| 2 | method | `byte` | `0` = そのまま / `1` = deflate / `2` = zstd（v6〜） |
-| 3 | packedLength | `varint` | `method = 1・2` のときだけ。圧縮後のバイト数 |
+| 2 | method | `byte` | `0` = そのまま / `1` = deflate / `2` = zstd（v6〜） / `3` = LZ4（v7〜。「速い」が使う） |
+| 3 | packedLength | `varint` | `method = 1・2・3` のときだけ。圧縮後のバイト数 |
 | 4 | data | `packedLength`（`method = 0` なら `rawLength`）バイト | 中身 |
 
 展開した中身には、パケットが入っている数だけ次が並ぶ:

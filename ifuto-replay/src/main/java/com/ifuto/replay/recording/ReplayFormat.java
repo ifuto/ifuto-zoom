@@ -129,6 +129,9 @@ public final class ReplayFormat {
 	/** zstd（deflate より速くて小さい。v6 から。長さの置き方は deflate と同じ） */
 	public static final int METHOD_ZSTD = 2;
 
+	/** LZ4（deflate 1 と同じくらい縮んで十倍速い。v7 から。「速い」が使う） */
+	public static final int METHOD_LZ4 = 3;
+
 	// --- ヘッダのフラグ ---
 
 	/** C2S（自分の操作）も入っている */

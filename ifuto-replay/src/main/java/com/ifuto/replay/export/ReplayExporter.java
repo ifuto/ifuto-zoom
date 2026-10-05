@@ -60,7 +60,18 @@ public final class ReplayExporter {
 	private Process process;
 	private OutputStream ffmpegInput;
 	private String encoderName = "libx264";
-	private byte[] frameBytes;
+	private int frameSize;
+	/**
+	 * 使い回す置き場2枚（描画側と書き込み側で受け渡す）。無くなったら
+	 * 描画側が少し待つ（= ため込まない。2枚ぶんより遅れない）。
+	 */
+	private final BlockingQueue<byte[]> emptyStages = new ArrayBlockingQueue<>(2);
+	private final BlockingQueue<byte[]> filledStages = new ArrayBlockingQueue<>(2);
+	/** 書き込み係への「おしまい」の合図（中身は空） */
+	private static final byte[] END_OF_STREAM = new byte[0];
+	private Thread writerThread;
+	/** 書き込み係が詰まった理由（なければ null。描画側が拾って止める） */
+	private volatile String writerError;
 	private int frameIndex;
 	private boolean captureRequested;
 
@@ -289,7 +300,14 @@ public final class ReplayExporter {
 
 		this.process = new ProcessBuilder(command).start();
 		this.ffmpegInput = this.process.getOutputStream();
-		this.frameBytes = new byte[width * height * BYTES_PER_PIXEL];
+		this.frameSize = width * height * BYTES_PER_PIXEL;
+		this.emptyStages.clear();
+		this.filledStages.clear();
+		this.emptyStages.offer(new byte[this.frameSize]);
+		this.emptyStages.offer(new byte[this.frameSize]);
+		this.writerThread = new Thread(this::writeLoop, "ifuto-replay-export-writer");
+		this.writerThread.setDaemon(true);
+		this.writerThread.start();
 
 		// 解像度を切り替える（ウィンドウの大きさは変えない）
 		this.client.getWindow().setFramebufferWidth(width);

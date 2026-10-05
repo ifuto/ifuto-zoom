@@ -17,8 +17,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.BlockingQueue;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
@@ -89,7 +87,7 @@ final class ReplayFileWriter implements Runnable {
 	/** スレッドごとの作業用の入れ物（かたまりが大きくなったので広げる。JNI を叩く回数が減る） */
 	private static final ThreadLocal<byte[]> SCRATCHES = ThreadLocal.withInitial(() -> new byte[32768]);
 
-	private final BlockingQueue<PacketTask> queue;
+	private final MpscPacketQueue queue;
 	private final ReplayDataOutput out;
 	private final CompressionMode compression;
 	private final AtomicLong queuedBytes;

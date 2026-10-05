@@ -28,6 +28,10 @@ public final class BlockCodec {
 			ThreadLocal.withInitial(ZstdCompressor::new);
 	private static final ThreadLocal<ZstdDecompressor> ZSTD_IN =
 			ThreadLocal.withInitial(ZstdDecompressor::new);
+	private static final ThreadLocal<Lz4Compressor> LZ4_OUT =
+			ThreadLocal.withInitial(Lz4Compressor::new);
+	private static final ThreadLocal<Lz4Decompressor> LZ4_IN =
+			ThreadLocal.withInitial(Lz4Decompressor::new);
 	private static final ThreadLocal<Deflater> DEFLATE_OUT =
 			ThreadLocal.withInitial(Deflater::new);
 	private static final ThreadLocal<byte[]> SCRATCH =
@@ -38,7 +42,8 @@ public final class BlockCodec {
 
 	/** 圧縮されている格納方法か（長さがもう1個付いてくる物） */
 	public static boolean isPacked(int method) {
-		return method == ReplayFormat.METHOD_DEFLATE || method == ReplayFormat.METHOD_ZSTD;
+		return method == ReplayFormat.METHOD_DEFLATE || method == ReplayFormat.METHOD_ZSTD
+				|| method == ReplayFormat.METHOD_LZ4;
 	}
 
 	/**
@@ -87,6 +92,10 @@ public final class BlockCodec {
 
 		if (method == ReplayFormat.METHOD_ZSTD) {
 			return zstdUnpack(packed, rawLength);
+		}
+
+		if (method == ReplayFormat.METHOD_LZ4) {
+			return lz4Unpack(packed, rawLength);
 		}
 
 		if (method == ReplayFormat.METHOD_DEFLATE) {
