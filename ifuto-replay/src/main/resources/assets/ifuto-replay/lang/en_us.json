@@ -264,6 +264,8 @@
 	"ifuto-replay.export.hwaccel.tooltip": "Encode with the GPU (fast; falls back to CPU if unavailable)",
 	"ifuto-replay.export.preset": "CPU speed",
 	"ifuto-replay.export.preset.tooltip": "How hard libx264 works when the GPU encoder is unavailable (fastest first: ultrafast ... slow). Faster = quicker export but worse quality at the same bitrate",
+	"ifuto-replay.export.fastest": "Use fastest settings",
+	"ifuto-replay.export.fastest.tooltip": "Sets speed to fastest, hardware encoding on, and CPU preset to ultrafast in one click",
 	"ifuto-replay.export.error_encoder": " (encoder: %s)",
 	"ifuto-replay.preview.error_unknown": "Couldn't start playback (%s)",
 	"ifuto-replay.ffmpeg.title": "Setting up ffmpeg",

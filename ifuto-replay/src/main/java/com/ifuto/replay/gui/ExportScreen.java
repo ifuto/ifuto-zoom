@@ -79,6 +79,9 @@ public class ExportScreen extends Screen implements PopupHost {
 	private boolean useHardware;
 	private int speedPercent;
 	private String x264Preset;
+	private ModernDropdown<Integer> speedCycling;
+	private ModernToggle hardwareToggle;
+	private ModernDropdown<String> presetCycling;
 	private int startSec;
 	private int endSec;
 	private int fps;
@@ -205,31 +208,38 @@ public class ExportScreen extends Screen implements PopupHost {
 		}
 
 		// 7行目: 書き出しの速さ（時間に依存する演出のため、等倍速も選べる）
-		ModernDropdown<Integer> speedCycling = new ModernDropdown<>(this, 0, 0, this.widgetWidth, WIDGET_HEIGHT,
+		this.speedCycling = new ModernDropdown<>(this, 0, 0, this.widgetWidth, WIDGET_HEIGHT,
 				Text.translatable("ifuto-replay.export.speed"), List.of(SPEED_VALUES), this.speedPercent,
 				value -> value <= 0
 						? Text.translatable("ifuto-replay.export.speed.fastest")
 						: Text.translatable("ifuto-replay.export.speed.value", value),
 				value -> this.speedPercent = value);
-		speedCycling.setTooltip(Tooltip.of(Text.translatable("ifuto-replay.export.speed.tooltip")));
+		this.speedCycling.setTooltip(Tooltip.of(Text.translatable("ifuto-replay.export.speed.tooltip")));
 
-		ModernToggle hardwareToggle = new ModernToggle(0, 0, this.widgetWidth, WIDGET_HEIGHT,
+		this.hardwareToggle = new ModernToggle(0, 0, this.widgetWidth, WIDGET_HEIGHT,
 				Text.translatable("ifuto-replay.export.hwaccel"), this.useHardware,
 				value -> {
 					this.useHardware = value;
 					this.updateSummary();
 				});
-		hardwareToggle.setTooltip(Tooltip.of(Text.translatable("ifuto-replay.export.hwaccel.tooltip")));
-		content.add(row(speedCycling, hardwareToggle));
+		this.hardwareToggle.setTooltip(Tooltip.of(Text.translatable("ifuto-replay.export.hwaccel.tooltip")));
+		content.add(row(this.speedCycling, this.hardwareToggle));
 
 		// 8行目: CPU エンコードの速さ（GPU が使えるときは出番なし）
-		ModernDropdown<String> presetCycling = new ModernDropdown<>(this, 0, 0,
+		this.presetCycling = new ModernDropdown<>(this, 0, 0,
 				this.widgetWidth * 2 + COLUMN_GAP, WIDGET_HEIGHT,
 				Text.translatable("ifuto-replay.export.preset"), List.of(PRESET_VALUES), this.x264Preset,
 				Text::literal,
 				value -> this.x264Preset = value);
-		presetCycling.setTooltip(Tooltip.of(Text.translatable("ifuto-replay.export.preset.tooltip")));
-		content.add(presetCycling);
+		this.presetCycling.setTooltip(Tooltip.of(Text.translatable("ifuto-replay.export.preset.tooltip")));
+		content.add(this.presetCycling);
+
+		// 9行目: 最速にする（速さ0＋GPU＋ultrafastをまとめて入れる）
+		ModernButton fastestButton = new ModernButton(0, 0, this.widgetWidth * 2 + COLUMN_GAP, WIDGET_HEIGHT,
+				Text.translatable("ifuto-replay.export.fastest"), button -> this.applyFastest(),
+				ModernButton.Style.NORMAL);
+		fastestButton.setTooltip(Tooltip.of(Text.translatable("ifuto-replay.export.fastest.tooltip")));
+		content.add(fastestButton);
 
 		this.summaryText = new TextWidget(Text.empty(), this.textRenderer);
 		this.summaryText.setMaxWidth(this.widgetWidth * 2 + COLUMN_GAP);
@@ -372,6 +382,17 @@ public class ExportScreen extends Screen implements PopupHost {
 		}
 
 		return String.format("%d:%02d", minutes, seconds);
+	}
+
+	/** 速度0＋GPU＋ultrafastをまとめて入れる（setValue は通知しないので値も直す） */
+	private void applyFastest() {
+		this.speedPercent = 0;
+		this.useHardware = true;
+		this.x264Preset = "ultrafast";
+		this.speedCycling.setValue(0);
+		this.hardwareToggle.setValue(true);
+		this.presetCycling.setValue("ultrafast");
+		this.updateSummary();
 	}
 
 	private void beginExport() {

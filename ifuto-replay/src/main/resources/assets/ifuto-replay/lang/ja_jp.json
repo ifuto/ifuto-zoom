@@ -264,6 +264,8 @@
 	"ifuto-replay.export.hwaccel.tooltip": "GPUでmp4を作る（速い。使えなければCPUに切り替わる）",
 	"ifuto-replay.export.preset": "CPUの速さ",
 	"ifuto-replay.export.preset.tooltip": "GPUが使えないときのlibx264の頑張り具合（速い順: ultrafast … slow。速いほど早く終わるが同じビットレートなら画質が落ちる）",
+	"ifuto-replay.export.fastest": "最速にする",
+	"ifuto-replay.export.fastest.tooltip": "速さを最速・GPUエンコードON・CPUプリセットultrafastにまとめて設定する",
 	"ifuto-replay.export.error_encoder": "（エンコーダー: %s）",
 	"ifuto-replay.preview.error_unknown": "再生を始められませんでした（%s）",
 	"ifuto-replay.ffmpeg.title": "ffmpeg の用意",
