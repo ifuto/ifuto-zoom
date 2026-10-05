@@ -18,3 +18,4 @@ artifact_path: ifuto-replay/build/libs/*.jar
 # 2026-10-05-diag
 # 2026-10-05-notice
 # 2026-10-05-r2
+- tput r100: 0.16.0 export display-uncap + x264 preset
