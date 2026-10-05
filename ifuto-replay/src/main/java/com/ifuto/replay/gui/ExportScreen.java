@@ -54,6 +54,9 @@ public class ExportScreen extends Screen implements PopupHost {
 	/** 書き出しの速さ（100 = 等倍速、0 = 最速） */
 	private static final Integer[] SPEED_VALUES = {100, 200, 400, 0};
 
+	/** CPU エンコードの速さ（速い順。GPU エンコードのときは使わない） */
+	private static final String[] PRESET_VALUES = {"ultrafast", "superfast", "veryfast", "faster", "fast", "medium", "slow"};
+
 	private final Screen parent;
 	private final ReplayFileReader.Info info;
 	private final long durationMs;
@@ -75,6 +78,7 @@ public class ExportScreen extends Screen implements PopupHost {
 	private boolean includeVoiceChat = true;
 	private boolean useHardware;
 	private int speedPercent;
+	private String x264Preset;
 	private int startSec;
 	private int endSec;
 	private int fps;
@@ -94,6 +98,7 @@ public class ExportScreen extends Screen implements PopupHost {
 		this.includeAudio = AudioTracks.hasAny(info.file());
 		this.useHardware = config.exportHardwareAccel;
 		this.speedPercent = config.exportSpeedPercent;
+		this.x264Preset = config.exportX264Preset;
 	}
 
 	@Override
@@ -216,6 +221,15 @@ public class ExportScreen extends Screen implements PopupHost {
 				});
 		hardwareToggle.setTooltip(Tooltip.of(Text.translatable("ifuto-replay.export.hwaccel.tooltip")));
 		content.add(row(speedCycling, hardwareToggle));
+
+		// 8行目: CPU エンコードの速さ（GPU が使えるときは出番なし）
+		ModernDropdown<String> presetCycling = new ModernDropdown<>(this, 0, 0,
+				this.widgetWidth * 2 + COLUMN_GAP, WIDGET_HEIGHT,
+				Text.translatable("ifuto-replay.export.preset"), List.of(PRESET_VALUES), this.x264Preset,
+				Text::literal,
+				value -> this.x264Preset = value);
+		presetCycling.setTooltip(Tooltip.of(Text.translatable("ifuto-replay.export.preset.tooltip")));
+		content.add(presetCycling);
 
 		this.summaryText = new TextWidget(Text.empty(), this.textRenderer);
 		this.summaryText.setMaxWidth(this.widgetWidth * 2 + COLUMN_GAP);
@@ -371,6 +385,7 @@ public class ExportScreen extends Screen implements PopupHost {
 				? "ffmpeg" : this.ffmpegField.getText().trim();
 		config.exportSpeedPercent = this.speedPercent;
 		config.exportHardwareAccel = this.useHardware;
+		config.exportX264Preset = this.x264Preset;
 		config.save();
 
 		// ffmpeg が無ければ落としてきて、終わったらここへ戻って続きを始める
@@ -395,7 +410,7 @@ public class ExportScreen extends Screen implements PopupHost {
 		List<Path> audio = this.includeAudio ? AudioTracks.select(this.info.file(), this.includeVoiceChat) : null;
 		ExportOptions options = new ExportOptions(config.exportFps, config.exportWidth, config.exportHeight,
 				config.exportBitrateKbps, ffmpeg, startMs, endMs, output, audio, this.speedPercent,
-				config.exportHardwareAccel);
+				config.exportHardwareAccel, config.exportX264Preset);
 
 		startExport(this.client, this.info.file(), options, this.parent);
 	}

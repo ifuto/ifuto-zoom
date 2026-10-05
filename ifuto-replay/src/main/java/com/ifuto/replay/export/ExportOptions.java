@@ -26,7 +26,8 @@ public record ExportOptions(
 		Path output,
 		@Nullable List<Path> audio,
 		int speedPercent,
-		boolean hardwareAccel
+		boolean hardwareAccel,
+		String x264Preset
 ) {
 	/** 録画1本ぶんの既定の設定を作る */
 	public static ExportOptions defaultFor(ReplayConfig config, Path recording, long durationMs) {
@@ -47,9 +48,10 @@ public record ExportOptions(
 				0L,
 				Math.max(0L, durationMs),
 				output,
-				AudioTracks.select(recording, true),
-				config.exportSpeedPercent,
-				config.exportHardwareAccel
+			AudioTracks.select(recording, true),
+			config.exportSpeedPercent,
+			config.exportHardwareAccel,
+			config.exportX264Preset
 		);
 	}
 

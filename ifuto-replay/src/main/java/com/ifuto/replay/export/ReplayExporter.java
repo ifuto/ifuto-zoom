@@ -4,10 +4,12 @@ import com.ifuto.replay.IfutoReplayClient;
 import com.ifuto.replay.mixin.NativeImageAccessor;
 import com.ifuto.replay.playback.ReplayPlayback;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.option.GameOptions;
 import net.minecraft.client.texture.NativeImage;
 import net.minecraft.client.util.ScreenshotRecorder;
 import net.minecraft.text.Text;
 import org.jspecify.annotations.Nullable;
+import org.lwjgl.glfw.GLFW;
 import org.lwjgl.system.MemoryUtil;
 
 import java.io.IOException;
@@ -47,6 +49,14 @@ public final class ReplayExporter {
 	}
 
 	private static final int BYTES_PER_PIXEL = 4;
+
+	/** バニラの FPS 上限スライダーの最大値（260）。書き出し中はここまで上げる */
+	private static final int MAX_FPS_CAP = 260;
+
+	/** 書き出し前の表示設定（終わったら必ず戻す） */
+	private int savedMaxFps;
+	private boolean savedVsync;
+	private boolean displayUncapped;
 
 	private final MinecraftClient client;
 	private final ReplayPlayback playback;
@@ -264,7 +274,7 @@ public final class ReplayExporter {
 
 		if (!hardware) {
 			command.add("-preset");
-			command.add("medium");
+			command.add(this.options.x264Preset());
 		}
 
 		command.add("-pix_fmt");
@@ -327,7 +337,30 @@ public final class ReplayExporter {
 		this.startedAtMs = System.currentTimeMillis();
 		this.lastProgressMs = this.startedAtMs;
 		this.playback.setPaused(false);
+		this.uncapDisplay();
 		active = this;
+	}
+
+	/**
+	 * 書き出し中だけ、描画の足かせを外す（終わったら {@link #restore()} で戻す）。
+	 *
+	 * <p>書き出しは「描画1回 = 動画1枚」で進むので、描画が速いほど速く終わる。
+	 * ふだんの FPS 上限や垂直同期はここでは足かせにしかならないので、書き出し中だけ
+	 * 上限いっぱい（260）・垂直同期なしにする。swap interval も直接切る
+	 * （ドライバ側の強制 vsync まではどうにもならない）。
+	 */
+	private void uncapDisplay() {
+		try {
+			GameOptions options = this.client.options;
+			this.savedMaxFps = options.getMaxFps().getValue();
+			this.savedVsync = options.getEnableVsync().getValue();
+			options.getMaxFps().setValue(MAX_FPS_CAP);
+			options.getEnableVsync().setValue(false);
+			GLFW.glfwSwapInterval(0);
+			this.displayUncapped = true;
+		} catch (Throwable t) {
+			IfutoReplayClient.LOGGER.warn("[ifuto-replay] 表示設定の一時変更に失敗しました（書き出しは続けます）", t);
+		}
 	}
 
 	/** 一緒に詰める音声（1本または2本。無ければ空） */
@@ -723,10 +756,23 @@ public final class ReplayExporter {
 		this.state = State.DONE;
 	}
 
-	/** 解像度を元に戻す */
+	/** 解像度と表示設定を元に戻す */
 	private void restore() {
 		this.client.getWindow().setFramebufferWidth(this.originalFramebufferWidth);
 		this.client.getWindow().setFramebufferHeight(this.originalFramebufferHeight);
 		this.client.onResolutionChanged();
+
+		if (this.displayUncapped) {
+			this.displayUncapped = false;
+
+			try {
+				GameOptions options = this.client.options;
+				options.getMaxFps().setValue(this.savedMaxFps);
+				options.getEnableVsync().setValue(this.savedVsync);
+				GLFW.glfwSwapInterval(this.savedVsync ? 1 : 0);
+			} catch (Throwable t) {
+				IfutoReplayClient.LOGGER.warn("[ifuto-replay] 表示設定を元に戻せませんでした", t);
+			}
+		}
 	}
 }

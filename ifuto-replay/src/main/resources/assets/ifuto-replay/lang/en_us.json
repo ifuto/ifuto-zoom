@@ -262,6 +262,8 @@
 	"ifuto-replay.editor.nospace_message": "Cutting needs as much free space as the source file",
 	"ifuto-replay.export.hwaccel": "Hardware encoding",
 	"ifuto-replay.export.hwaccel.tooltip": "Encode with the GPU (fast; falls back to CPU if unavailable)",
+	"ifuto-replay.export.preset": "CPU speed",
+	"ifuto-replay.export.preset.tooltip": "How hard libx264 works when the GPU encoder is unavailable (fastest first: ultrafast ... slow). Faster = quicker export but worse quality at the same bitrate",
 	"ifuto-replay.export.error_encoder": " (encoder: %s)",
 	"ifuto-replay.preview.error_unknown": "Couldn't start playback (%s)",
 	"ifuto-replay.ffmpeg.title": "Setting up ffmpeg",

@@ -177,6 +177,13 @@ public class ReplayConfig {
 	public boolean exportHardwareAccel = true;
 
 	/**
+	 * CPU エンコード（libx264）の速さ。速い順に ultrafast / superfast / veryfast /
+	 * faster / fast / medium / slow。速くすると画質が落ちる（同じビットレートなら）。
+	 * GPU エンコードのときは使わない。
+	 */
+	public String exportX264Preset = "medium";
+
+	/**
 	 * 途中から録り始めたとき、一緒に保存する地形の半径（チャンク）。
 	 * 0 にしても 1 として扱う（写しが無いと再生不能になるため、必ず作る）
 	 */
@@ -364,6 +371,7 @@ public class ReplayConfig {
 		this.exportHeight = defaults.exportHeight;
 		this.exportBitrateKbps = defaults.exportBitrateKbps;
 		this.exportHardwareAccel = defaults.exportHardwareAccel;
+		this.exportX264Preset = defaults.exportX264Preset;
 		this.ffmpegPath = defaults.ffmpegPath;
 		this.snapshotRadius = defaults.snapshotRadius;
 		this.audioMode = defaults.audioMode;
@@ -403,6 +411,12 @@ public class ReplayConfig {
 		this.exportHeight = clampStrict(this.exportHeight, 16, 16384, 1080);
 		this.exportBitrateKbps = clampStrict(this.exportBitrateKbps, 100, 2_000_000, 20000);
 		this.exportSpeedPercent = clamp(this.exportSpeedPercent, 0, 4000, 100);
+
+		switch (this.exportX264Preset == null ? "" : this.exportX264Preset) {
+			case "ultrafast", "superfast", "veryfast", "faster", "fast", "medium", "slow" -> {
+			}
+			case null, default -> this.exportX264Preset = "medium";
+		}
 		this.snapshotRadius = clampStrict(this.snapshotRadius, 0, 32, 6);
 
 		if (this.saveFolder == null || this.saveFolder.isBlank()) {
