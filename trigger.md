@@ -20,3 +20,4 @@ artifact_path: ifuto-replay/build/libs/*.jar
 # 2026-10-05-r2
 - tput r100: 0.16.0 export display-uncap + x264 preset
 - tput r101: PlayerInput stance fix
+- tput r102: 0.17.0 cuda pixel convert
