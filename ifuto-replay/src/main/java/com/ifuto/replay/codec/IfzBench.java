@@ -39,6 +39,7 @@ public final class IfzBench {
 	}
 
 	private static void run() throws Exception {
+		System.out.println("::notice::IFZBENCH started");
 		List<byte[]> blocks = generate(20260917L);
 		long rawTotal = 0;
 

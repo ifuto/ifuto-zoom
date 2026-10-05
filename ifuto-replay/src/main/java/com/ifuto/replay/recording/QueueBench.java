@@ -1,5 +1,6 @@
 package com.ifuto.replay.recording;
 
+import java.util.Map;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
@@ -12,13 +13,20 @@ import java.util.concurrent.TimeUnit;
  * （{@link ArrayBlockingQueue}）と比べる。
  *
  * <p>結果は {@code ::notice::} でも出す（Checks から読めるように）。
+ * 途中の段階も出す（どこで止まったか分かるように）。番犬つき
+ * （5分で終わらなければ積み上げを出して落とす。無限には待たない）。
  */
 public final class QueueBench {
 	private QueueBench() {
 	}
 
 	public static void main(String[] args) throws Exception {
+		Thread watchdog = new Thread(QueueBench::bark);
+		watchdog.setDaemon(true);
+		watchdog.start();
+
 		try {
+			report("started");
 			run();
 		} catch (Throwable t) {
 			System.out.println("::error::QFAIL " + t);
@@ -31,16 +39,54 @@ public final class QueueBench {
 		}
 	}
 
+	/** 5分で終わらなければ積み上げを出して落とす */
+	private static void bark() {
+		try {
+			Thread.sleep(TimeUnit.MINUTES.toMillis(5));
+		} catch (InterruptedException e) {
+			return;
+		}
+
+		System.out.println("::error::QBENCH-TIMEOUT 5分で終わりません");
+		int lines = 0;
+
+		for (Map.Entry<Thread, StackTraceElement[]> entry : Thread.getAllStackTraces().entrySet()) {
+			if (lines++ > 40) {
+				break;
+			}
+
+			System.out.println("::error::QBENCH-TIMEOUT at " + entry.getKey().getName());
+
+			for (StackTraceElement e : entry.getValue()) {
+				if (lines++ > 40) {
+					break;
+				}
+
+				System.out.println("::error::QBENCH-TIMEOUT   " + e);
+			}
+		}
+
+		Runtime.getRuntime().halt(1);
+	}
+
 	private static void run() throws Exception {
 		checkEmptyFull();
+		report("phase emptyFull done");
 		checkWakeup();
+		report("phase wakeup done");
 		checkExactlyOnce(1, 200_000);
+		report("phase once-1P done");
 		checkExactlyOnce(4, 100_000);
+		report("phase once-4P done");
 
 		double mpsc1 = perf(true, 1);
+		report("phase perf-mpsc-1P done");
 		double abq1 = perf(false, 1);
+		report("phase perf-abq-1P done");
 		double mpsc4 = perf(true, 4);
+		report("phase perf-mpsc-4P done");
 		double abq4 = perf(false, 4);
+		report("phase perf-abq-4P done");
 
 		report("correctness OK (exactly-once 1P/4P, full/empty, wakeup)");
 		report(String.format("1P1C mpsc=%.2fM/s abq=%.2fM/s speedup=%.2fx",
@@ -114,7 +160,11 @@ public final class QueueBench {
 		long start = System.nanoTime();
 		PacketTask task = queue.poll(5L, TimeUnit.SECONDS);
 		long waitedMs = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start);
-		producer.join();
+		producer.join(10_000L);
+
+		if (producer.isAlive()) {
+			throw new AssertionError("起こす側が終わらない");
+		}
 
 		if (task == null || task.timeMs != 7L) {
 			throw new AssertionError("起こされて取れなかった");
@@ -164,19 +214,8 @@ public final class QueueBench {
 			threads[p].start();
 		}
 
-		for (Thread thread : threads) {
-			thread.join(60_000L);
-
-			if (thread.isAlive()) {
-				throw new AssertionError("入れる側が終わらない");
-			}
-		}
-
-		consumer.join(60_000L);
-
-		if (consumer.isAlive()) {
-			throw new AssertionError("取り出し側が終わらない");
-		}
+		joinBounded(threads, "入れる側");
+		joinBounded(consumer, "取り出し側");
 
 		long wantSum = total * (total - 1L) / 2L;
 		long wantXor = xorTo(total - 1L);
@@ -184,6 +223,24 @@ public final class QueueBench {
 		if (count[0] != total || sum[0] != wantSum || xor[0] != wantXor) {
 			throw new AssertionError("抜け・重複あり: count=" + count[0] + "/" + total
 					+ " sum=" + sum[0] + "/" + wantSum + " xor=" + xor[0] + "/" + wantXor);
+		}
+	}
+
+	private static void joinBounded(Thread[] threads, String who) throws Exception {
+		for (Thread thread : threads) {
+			thread.join(60_000L);
+
+			if (thread.isAlive()) {
+				throw new AssertionError(who + "が60秒で終わらない");
+			}
+		}
+	}
+
+	private static void joinBounded(Thread thread, String who) throws Exception {
+		thread.join(60_000L);
+
+		if (thread.isAlive()) {
+			throw new AssertionError(who + "が60秒で終わらない");
 		}
 	}
 
@@ -197,12 +254,12 @@ public final class QueueBench {
 		};
 	}
 
-	/** 速さ比べ（100万件・件数/秒を100万単位で返す） */
+	/** 速さ比べ（25万件・件数/秒を100万単位で返す） */
 	private static double perf(boolean mpsc, int producers) throws Exception {
 		int capacity = 2048;
 		MpscPacketQueue mpscQueue = mpsc ? new MpscPacketQueue(capacity) : null;
 		ArrayBlockingQueue<PacketTask> abq = mpsc ? null : new ArrayBlockingQueue<>(capacity);
-		int perProducer = 1_000_000 / producers;
+		int perProducer = 250_000 / producers;
 		long total = (long) producers * perProducer;
 		long[] count = new long[1];
 
@@ -245,8 +302,12 @@ public final class QueueBench {
 		});
 		warmConsumer.setDaemon(true);
 		warmConsumer.start();
-		produce.run();
-		warmConsumer.join();
+
+		for (int w = 0; w < producers; w++) {
+			produce.run();
+		}
+
+		joinBounded(warmConsumer, "温めの取り出し");
 
 		consumer.start();
 		Thread[] threads = new Thread[producers];
@@ -258,11 +319,8 @@ public final class QueueBench {
 			threads[p].start();
 		}
 
-		for (Thread thread : threads) {
-			thread.join();
-		}
-
-		consumer.join();
+		joinBounded(threads, "速さ比べの入れ物");
+		joinBounded(consumer, "速さ比べの取り出し");
 		double seconds = (System.nanoTime() - start) / 1_000_000_000.0;
 		return total / seconds / 1_000_000.0;
 	}
