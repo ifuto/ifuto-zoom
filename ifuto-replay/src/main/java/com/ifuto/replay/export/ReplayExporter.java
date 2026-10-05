@@ -693,6 +693,3 @@ public final class ReplayExporter {
 		this.client.onResolutionChanged();
 	}
 }
-t.onResolutionChanged();
-	}
-}
