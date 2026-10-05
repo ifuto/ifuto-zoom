@@ -27,6 +27,8 @@ public final class EncoderProbe {
 	private static final Object LOCK = new Object();
 	private static String cachedFfmpeg;
 	private static String cachedEncoder;
+	private static String cachedCudaFfmpeg;
+	private static boolean cachedCudaScale;
 
 	private EncoderProbe() {
 	}
@@ -59,6 +61,59 @@ public final class EncoderProbe {
 			}
 
 			return found;
+		}
+	}
+
+	/**
+	 * rgba→yuv420p の変換を GPU 側でやれるか（NVENC のときだけ意味がある）。
+	 *
+	 * <p>CPU で変換すると1枚1〜3ms食うので、速い描画の足を引っ張る。
+	 * 実際にフィルタを通して符号化してみて、動くときだけ使う。
+	 */
+	public static boolean supportsCudaScale(String ffmpegPath, String encoder) {
+		if (!"h264_nvenc".equals(encoder)) {
+			return false;
+		}
+
+		synchronized (LOCK) {
+			if (ffmpegPath != null && ffmpegPath.equals(cachedCudaFfmpeg)) {
+				return cachedCudaScale;
+			}
+
+			boolean ok = availableCudaScale(ffmpegPath);
+			cachedCudaFfmpeg = ffmpegPath;
+			cachedCudaScale = ok;
+
+			IfutoReplayClient.LOGGER.info("[ifuto-replay] GPU 側のピクセル変換: {}",
+					ok ? "使う" : "使えない（CPU で変換する）");
+
+			return ok;
+		}
+	}
+
+	private static boolean availableCudaScale(String ffmpegPath) {
+		try {
+			ProcessBuilder builder = new ProcessBuilder(ffmpegPath,
+					"-hide_banner", "-loglevel", "error",
+					"-f", "lavfi", "-i", "testsrc=duration=0.5:size=320x240:rate=10",
+					"-vf", "hwupload_cuda,scale_cuda=format=yuv420p",
+					"-c:v", "h264_nvenc",
+					"-f", "null", "-");
+			builder.redirectErrorStream(true);
+			Process process = builder.start();
+			drain(process);
+
+			if (!process.waitFor(PROBE_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
+				process.destroyForcibly();
+				return false;
+			}
+
+			return process.exitValue() == 0;
+		} catch (IOException | RuntimeException e) {
+			return false;
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+			return false;
 		}
 	}
 

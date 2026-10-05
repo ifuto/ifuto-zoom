@@ -269,6 +269,14 @@ public final class ReplayExporter {
 		IfutoReplayClient.LOGGER.info("[ifuto-replay] 書き出しのエンコーダー: {}（{}）",
 				encoder, hardware ? "GPU" : "CPU");
 
+		// NVENC + 対応 ffmpeg なら、ピクセル変換も GPU 側でやる（CPU の swscale 1〜3ms/枚を消す）
+		boolean cudaScale = hardware && EncoderProbe.supportsCudaScale(this.options.ffmpegPath(), encoder);
+
+		if (cudaScale) {
+			command.add("-vf");
+			command.add("hwupload_cuda,scale_cuda=format=yuv420p");
+		}
+
 		command.add("-c:v");
 		command.add(encoder);
 
@@ -277,8 +285,10 @@ public final class ReplayExporter {
 			command.add(this.options.x264Preset());
 		}
 
-		command.add("-pix_fmt");
-		command.add("yuv420p");
+		if (!cudaScale) {
+			command.add("-pix_fmt");
+			command.add("yuv420p");
+		}
 		command.add("-b:v");
 		command.add(this.options.bitrateKbps() + "k");
 
