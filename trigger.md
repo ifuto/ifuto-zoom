@@ -28,3 +28,4 @@ artifact_path: ifuto-replay/build/libs/*.jar
 - tput r106: 0.21.0 hardware auto-tune
 - tput r107: 0.22.0 heavy-mod detection
 - tput r108: 0.23.0 reader caps + no manual tick
+- tput r109: 0.24.0 text-field clip
