@@ -33,6 +33,11 @@ public class ExportProgressScreen extends Screen {
 	private TextWidget statusText;
 	private TextWidget detailText;
 	private boolean handled;
+	/** 残り時間の推定に使う窓（20Hz tick で100件 = 5秒ぶん。固定長で溜めない） */
+	private static final int SAMPLE_WINDOW = 100;
+	private final long[] sampleTimes = new long[SAMPLE_WINDOW];
+	private final int[] sampleFrames = new int[SAMPLE_WINDOW];
+	private int sampleCount;
 
 	public ExportProgressScreen(ReplayExporter exporter, ReplayPlayback playback, Screen parent) {
 		super(Text.translatable("ifuto-replay.export.progress_title"));
@@ -106,6 +111,7 @@ public class ExportProgressScreen extends Screen {
 		int frames = Math.max(0, this.exporter.frameIndex() - 1);
 		int total = this.exporter.totalFrames();
 		int percent = total <= 0 ? 0 : Math.min(100, frames * 100 / total);
+		this.sample(System.currentTimeMillis(), frames);
 
 		if (this.statusText != null) {
 			this.statusText.setMessage(Text.translatable("ifuto-replay.export.progress",
@@ -114,12 +120,27 @@ public class ExportProgressScreen extends Screen {
 					Text.literal(percent + "%")));
 		}
 
+		long remaining = estimatedRemaining(frames, total);
+
 		if (this.detailText != null) {
 			this.detailText.setMessage(Text.translatable("ifuto-replay.export.progress_detail",
 					Text.literal(formatElapsed(this.exporter.elapsedMs())),
-					Text.literal(formatElapsed(estimatedRemaining(frames, total))),
+					Text.literal(remaining < 0L ? "―" : formatElapsed(remaining)),
 					Text.literal(this.exporter.output().toString())));
 		}
+	}
+
+	/** 速さの標本を1件足す（古いのは捨てる） */
+	private void sample(long now, int frames) {
+		if (this.sampleCount >= SAMPLE_WINDOW) {
+			System.arraycopy(this.sampleTimes, 1, this.sampleTimes, 0, SAMPLE_WINDOW - 1);
+			System.arraycopy(this.sampleFrames, 1, this.sampleFrames, 0, SAMPLE_WINDOW - 1);
+			this.sampleCount = SAMPLE_WINDOW - 1;
+		}
+
+		this.sampleTimes[this.sampleCount] = now;
+		this.sampleFrames[this.sampleCount] = frames;
+		this.sampleCount++;
 	}
 
 	/** 絵は出し切った。ffmpeg がまとめ終わるのを待っているあいだの表示 */
@@ -136,14 +157,37 @@ public class ExportProgressScreen extends Screen {
 		}
 	}
 
+	/**
+	 * あと何msか。まだ出せないときは -1（「―」と出す）。
+	 *
+	 * <p>直近5秒の速さで割る。最初からの平均だと、序盤の遅さ（シェーダーの
+	 * 組み直し等）をずっと引きずって「残り5時間」とか出てしまう。
+	 */
 	private long estimatedRemaining(int frames, int total) {
-		long elapsed = this.exporter.elapsedMs();
-
-		if (frames <= 0 || total <= frames) {
+		if (total <= frames) {
 			return 0L;
 		}
 
-		return (long) (elapsed / (double) frames * (total - frames));
+		// 序盤は速さが安定しないので出さない
+		if (frames < 30) {
+			return -1L;
+		}
+
+		long now = System.currentTimeMillis();
+		int first = 0;
+
+		while (first + 1 < this.sampleCount && now - this.sampleTimes[first] > 5000L) {
+			first++;
+		}
+
+		long dt = now - this.sampleTimes[first];
+		int df = frames - this.sampleFrames[first];
+
+		if (dt < 500L || df <= 0) {
+			return -1L;
+		}
+
+		return (long) ((total - frames) * (dt / (double) df));
 	}
 
 	private static String formatElapsed(long ms) {
