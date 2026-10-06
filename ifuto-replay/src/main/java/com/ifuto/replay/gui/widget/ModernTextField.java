@@ -12,11 +12,14 @@ import net.minecraft.text.Text;
  *
  * <p>バニラの入力欄は「背景の絵」を必ず描くので、`setDrawsBackground(false)` で
  * 背景だけ消し、文字・カーソル・選択範囲はバニラのままにしている（安全で崩れない）。
- * 背景なしだと文字が左端ぴったりに出て枠の角丸に食い込むので、文字だけ右にずらす。
+ * 背景なしだと文字が左上寄せで出て枠の角丸に食い込むので、
+ * 描く間だけ位置と幅をずらして背景ありと同じ見た目にする。
  */
 public class ModernTextField extends TextFieldWidget {
 	/** 文字を右にずらす量（バニラの背景ありと同じ4） */
 	private static final int TEXT_INSET = 4;
+	/** 文字の高さ（バニラ行高。中央寄せと高さ詰めに使う） */
+	private static final int TEXT_HEIGHT = 8;
 
 	public ModernTextField(TextRenderer textRenderer, int x, int y, int width, int height, Text text) {
 		super(textRenderer, x, y, width, height, text);
@@ -30,17 +33,24 @@ public class ModernTextField extends TextFieldWidget {
 				ReplayTheme.SURFACE_INPUT);
 		ReplayTheme.strokeRound(context, this.getX(), this.getY(), this.getWidth(), this.getHeight(), radius,
 				this.isFocused() ? ReplayTheme.ACCENT : ReplayTheme.BORDER);
-		// 枠はそのまま、文字だけ右にずらして描く（幅も詰めて右にはみ出さない。終わったら必ず戻す）
+		// 背景なしバニラは文字を左上寄せで描く。背景ありと同じ見た目にするため、
+		// 描く間だけずらして中央に寄せる（終わったら必ず戻す）
 		int x = this.getX();
+		int y = this.getY();
 		int width = this.getWidth();
+		int height = this.getHeight();
 		this.setX(x + TEXT_INSET);
-		this.setWidth(Math.max(1, width - TEXT_INSET));
+		this.setY(y + Math.max(0, (height - TEXT_HEIGHT) / 2));
+		this.setWidth(Math.max(1, width - TEXT_INSET * 2));
+		this.setHeight(Math.min(height, TEXT_HEIGHT));
 
 		try {
 			super.renderWidget(context, mouseX, mouseY, deltaTicks);
 		} finally {
 			this.setX(x);
+			this.setY(y);
 			this.setWidth(width);
+			this.setHeight(height);
 		}
 	}
 
