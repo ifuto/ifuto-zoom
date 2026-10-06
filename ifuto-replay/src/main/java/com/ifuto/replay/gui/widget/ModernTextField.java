@@ -30,13 +30,17 @@ public class ModernTextField extends TextFieldWidget {
 				ReplayTheme.SURFACE_INPUT);
 		ReplayTheme.strokeRound(context, this.getX(), this.getY(), this.getWidth(), this.getHeight(), radius,
 				this.isFocused() ? ReplayTheme.ACCENT : ReplayTheme.BORDER);
-		// 枠はそのまま、文字だけ右にずらして描く（終わったら必ず戻す）
-		this.setX(this.getX() + TEXT_INSET);
+		// 枠はそのまま、文字だけ右にずらして描く（幅も詰めて右にはみ出さない。終わったら必ず戻す）
+		int x = this.getX();
+		int width = this.getWidth();
+		this.setX(x + TEXT_INSET);
+		this.setWidth(Math.max(1, width - TEXT_INSET));
 
 		try {
 			super.renderWidget(context, mouseX, mouseY, deltaTicks);
 		} finally {
-			this.setX(this.getX() - TEXT_INSET);
+			this.setX(x);
+			this.setWidth(width);
 		}
 	}
 
