@@ -30,3 +30,4 @@ artifact_path: ifuto-replay/build/libs/*.jar
 - tput r108: 0.23.0 reader caps + no manual tick
 - tput r109: 0.24.0 text-field clip
 - tput r110: 0.25.0 text-field centering
+- tput r111: 0.26.0 fast export
