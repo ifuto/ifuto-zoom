@@ -32,3 +32,4 @@ artifact_path: ifuto-replay/build/libs/*.jar
 - tput r110: 0.25.0 text-field centering
 - tput r111: 0.26.0 fast export
 - tput r112: 0.26.0 no-PBO retry
+- tput r113: 0.27.0 background export
