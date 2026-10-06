@@ -199,6 +199,14 @@ public class ReplayConfig {
 	public boolean exportTickPerFrame = false;
 
 	/**
+	 * 高速出力（PBO 取り込み＋FPS 上限撤廃＋画面更新の間引き）。既定 ON。
+	 *
+	 * <p>切ると従来の速さ（スクショ経路・上限260・毎枚表示）に戻る。
+	 * 書き出した絵がおかしいときの切り分け用。
+	 */
+	public boolean exportFastOutput = true;
+
+	/**
 	 * 途中から録り始めたとき、一緒に保存する地形の半径（チャンク）。
 	 * 0 にしても 1 として扱う（写しが無いと再生不能になるため、必ず作る）
 	 */
@@ -404,6 +412,7 @@ public class ReplayConfig {
 		this.exportX264Preset = defaults.exportX264Preset;
 		this.exportX264Threads = defaults.exportX264Threads;
 		this.exportTickPerFrame = defaults.exportTickPerFrame;
+		this.exportFastOutput = defaults.exportFastOutput;
 		this.ffmpegPath = defaults.ffmpegPath;
 		this.snapshotRadius = defaults.snapshotRadius;
 		this.audioMode = defaults.audioMode;

@@ -13,7 +13,8 @@
 		"NativeImageAccessor",
 		"ParticleManagerMixin",
 		"RenderTickCounterMixin",
-		"SoundEngineMixin"
+		"SoundEngineMixin",
+		"WindowSwapMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

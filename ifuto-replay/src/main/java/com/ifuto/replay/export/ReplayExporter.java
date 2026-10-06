@@ -37,8 +37,9 @@ import java.util.concurrent.TimeUnit;
  * ・ウィンドウの大きさに関係なく 4K で出せる
  * ・倍速でもカクつかない（実時間と関係なく進めるので）
  *
- * <p>絵の取り込みはバニラのスクリーンショットの経路（{@link ScreenshotRecorder}）をそのまま借りる。
- * これなら GL の読み出し方が変わっても追随できるし、上下の反転もバニラがやってくれる。
+ * <p>絵の取り込みはふだん PBO 非同期読み出し（GPU を止めない）。使えない環境では
+ * バニラのスクリーンショット経路（{@link ScreenshotRecorder}）に落ちる。
+ * 上下の反転は ffmpeg 側でやる（別プロセスなので描画を止めない）。
  */
 public final class ReplayExporter {
 	public enum State {
@@ -52,8 +53,12 @@ public final class ReplayExporter {
 
 	private static final int BYTES_PER_PIXEL = 4;
 
-	/** バニラの FPS 上限スライダーの最大値（260）。書き出し中はここまで上げる */
+	/** ふつうの書き出しの FPS 上限（バニラのスライダー最大値） */
 	private static final int MAX_FPS_CAP = 260;
+	/** 高速出力の FPS 上限（実質なし。描けるだけ描く） */
+	private static final int FAST_FPS_CAP = 10_000;
+	/** 高速出力で画面を更新する間隔（何枚ごとに1回 swap を通すか） */
+	private static final int SWAP_EVERY_N_FRAMES = 60;
 
 	/** 書き出し前の表示設定（終わったら必ず戻す） */
 	private int savedMaxFps;
@@ -82,7 +87,7 @@ public final class ReplayExporter {
 	private final BlockingQueue<byte[]> emptyStages = new ArrayBlockingQueue<>(2);
 	private final BlockingQueue<Frame> filledStages = new ArrayBlockingQueue<>(2);
 	/** 書き込み係への「おしまい」の合図（絵なし） */
-	private static final Frame END_OF_STREAM = new Frame(null, new byte[0]);
+	private static final Frame END_OF_STREAM = new Frame(null, new byte[0], true);
 
 	/**
 	 * 書き込み係への受け渡し1枚（絵 + 置き場）。
@@ -91,13 +96,17 @@ public final class ReplayExporter {
 	 * だけなので、数十MBの複写で描画が止まらない。絵は最大2枚しか
 	 * ためない（置き場がなければ描画側が待つため）。
 	 */
-	private record Frame(@Nullable NativeImage image, byte[] stage) {
+	private record Frame(@Nullable NativeImage image, byte[] stage, boolean end) {
 	}
 	private Thread writerThread;
 	/** 書き込み係が詰まった理由（なければ null。描画側が拾って止める） */
 	private volatile String writerError;
 	private int frameIndex;
 	private boolean captureRequested;
+	/** 高速出力の取り込み口（使えない環境では null = スクショ経路） */
+	private PboCapture pboCapture;
+	/** swap を数えた回数（60ごとに1回だけ画面を更新する） */
+	private long swapCounter;
 
 	/** 「いまの時刻の絵」を取り込むのを待っている（取り込むまでは時刻を進めない） */
 	private boolean awaitingCapture;
@@ -181,6 +190,27 @@ public final class ReplayExporter {
 		return exporter.frameStepMs;
 	}
 
+	/**
+	 * 書き出し中に画面への表示を飛ばしていいか（swap の mixin から毎フレーム呼ばれる）。
+	 *
+	 * <p>飛ばすと present のコストとドライバ強制 vsync が消える。進捗が止まって
+	 * 見えないので、60枚ごとに1回だけ通す。書き出し中でなければ必ず false。
+	 */
+	public static boolean shouldSkipSwap() {
+		ReplayExporter exporter = active;
+
+		if (exporter == null || exporter.state != State.RUNNING) {
+			return false;
+		}
+
+		if (!ReplayConfig.get().exportFastOutput) {
+			return false;
+		}
+
+		exporter.swapCounter++;
+		return exporter.swapCounter % SWAP_EVERY_N_FRAMES != 0;
+	}
+
 	public State state() {
 		return this.state;
 	}
@@ -230,6 +260,20 @@ public final class ReplayExporter {
 	public void start() throws IOException {
 		int width = this.options.width();
 		int height = this.options.height();
+
+		// 高速出力：絵の取り込みを PBO 非同期化（だめなら従来のスクショ経路に落ちる）
+		boolean fastOutput = ReplayConfig.get().exportFastOutput;
+		PboCapture pbo = null;
+
+		if (fastOutput) {
+			try {
+				pbo = new PboCapture(width, height);
+			} catch (Throwable t) {
+				IfutoReplayClient.LOGGER.warn("[ifuto-replay] PBO を使えないのでスクリーンショット経路で書き出します", t);
+			}
+		}
+
+		this.pboCapture = pbo;
 
 		Files.createDirectories(this.options.output().getParent());
 
@@ -289,9 +333,19 @@ public final class ReplayExporter {
 		// NVENC + 対応 ffmpeg なら、ピクセル変換も GPU 側でやる（CPU の swscale 1〜3ms/枚を消す）
 		boolean cudaScale = hardware && EncoderProbe.supportsCudaScale(this.options.ffmpegPath(), encoder);
 
+		// PBO の絵は上下さかさま（GPU の並びのまま）なので ffmpeg 側で返す
+		// （返す仕事は別プロセスなので描画を止めない）
+		String videoFilter = this.pboCapture != null ? "vflip" : null;
+
 		if (cudaScale) {
+			videoFilter = videoFilter == null
+					? "hwupload_cuda,scale_cuda=format=yuv420p"
+					: "vflip,hwupload_cuda,scale_cuda=format=yuv420p";
+		}
+
+		if (videoFilter != null) {
 			command.add("-vf");
-			command.add("hwupload_cuda,scale_cuda=format=yuv420p");
+			command.add(videoFilter);
 		}
 
 		command.add("-c:v");
@@ -369,6 +423,10 @@ public final class ReplayExporter {
 		this.playback.setPaused(false);
 		this.uncapDisplay();
 		active = this;
+
+		IfutoReplayClient.LOGGER.info("[ifuto-replay] 書き出し開始: {}x{} {}fps 高速出力={}（PBO={} 上限={}）",
+				width, height, this.options.fps(), fastOutput, this.pboCapture != null,
+				fastOutput ? FAST_FPS_CAP : MAX_FPS_CAP);
 	}
 
 	/**
@@ -376,15 +434,15 @@ public final class ReplayExporter {
 	 *
 	 * <p>書き出しは「描画1回 = 動画1枚」で進むので、描画が速いほど速く終わる。
 	 * ふだんの FPS 上限や垂直同期はここでは足かせにしかならないので、書き出し中だけ
-	 * 上限いっぱい（260）・垂直同期なしにする。swap interval も直接切る
-	 * （ドライバ側の強制 vsync まではどうにもならない）。
+	 * 上限いっぱい（高速出力なら実質なし）・垂直同期なしにする。swap interval も直接切る
+	 * （ドライバ側の強制 vsync は swap を飛ばす方で消す）。
 	 */
 	private void uncapDisplay() {
 		try {
 			GameOptions options = this.client.options;
 			this.savedMaxFps = options.getMaxFps().getValue();
 			this.savedVsync = options.getEnableVsync().getValue();
-			options.getMaxFps().setValue(MAX_FPS_CAP);
+			options.getMaxFps().setValue(ReplayConfig.get().exportFastOutput ? FAST_FPS_CAP : MAX_FPS_CAP);
 			options.getEnableVsync().setValue(false);
 			GLFW.glfwSwapInterval(0);
 			this.displayUncapped = true;
@@ -521,7 +579,6 @@ public final class ReplayExporter {
 		}
 
 		this.awaitingCapture = false;
-		this.captureRequested = true;
 
 		long r0 = System.nanoTime();
 
@@ -531,12 +588,81 @@ public final class ReplayExporter {
 		}
 
 		try {
+			// 高速出力：その場で取り込む（1枚遅れのパイプライン）
+			if (this.pboCapture != null) {
+				this.capturePbo();
+				return;
+			}
+
+			this.captureRequested = true;
 			ScreenshotRecorder.takeScreenshot(this.client.getFramebuffer(), this::onCaptured);
 		} catch (Throwable t) {
 			this.captureRequested = false;
 			this.fail(t);
 		} finally {
 			this.captureNs += System.nanoTime() - r0;
+		}
+	}
+
+	/**
+	 * PBO で1枚取り込んで書き込み係へ渡す（描画スレッド）。
+	 *
+	 * <p>初回は仕掛けただけで絵は出ない（2枚目から1枚遅れで出る）。
+	 * 最後の1枚は {@link #finish()} で流す。
+	 */
+	private void capturePbo() throws IOException {
+		int width = this.client.getWindow().getFramebufferWidth();
+		int height = this.client.getWindow().getFramebufferHeight();
+
+		if (width != this.options.width() || height != this.options.height()) {
+			throw new IOException("解像度が変わってしまいました（" + width + "x" + height + "）"
+					+ "書き出し中はウィンドウの大きさを変えないでください");
+		}
+
+		byte[] stage;
+
+		try {
+			long w0 = System.nanoTime();
+			stage = this.emptyStages.take();
+			this.blockNs += System.nanoTime() - w0;
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+			throw new IOException("書き出しを中断しました", e);
+		}
+
+		int result;
+
+		try {
+			result = this.pboCapture.capture(this.client.getFramebuffer(), stage);
+		} catch (RuntimeException | Error e) {
+			this.emptyStages.offer(stage);
+			throw e;
+		}
+
+		// 初回は絵が出ないので置き場を返す
+		if (result == PboCapture.PRIMING) {
+			this.emptyStages.offer(stage);
+			return;
+		}
+
+		try {
+			this.filledStages.put(new Frame(null, stage, false));
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+			this.emptyStages.offer(stage);
+			throw new IOException("書き出しを中断しました", e);
+		}
+
+		this.noteCaptured();
+	}
+
+	/** 1枚渡せた（600枚ごとに進捗を出す） */
+	private void noteCaptured() {
+		this.lastProgressMs = System.currentTimeMillis();
+		this.capturedFrames++;
+
+		if (this.capturedFrames % 600 == 0) {
+			this.logProgress("書き出し中");
 		}
 	}
 
@@ -553,11 +679,7 @@ public final class ReplayExporter {
 		// 絵の始末は writeFrame の先（渡せたら書き込み係、渡せなければ writeFrame）
 		try {
 			this.writeFrame(image);
-			this.capturedFrames++;
-
-			if (this.capturedFrames % 600 == 0) {
-				this.logProgress("書き出し中");
-			}
+			this.noteCaptured();
 		} catch (Throwable t) {
 			this.fail(t);
 		}
@@ -626,7 +748,7 @@ public final class ReplayExporter {
 		}
 
 		try {
-			this.filledStages.put(new Frame(image, stage));
+			this.filledStages.put(new Frame(image, stage, false));
 		} catch (InterruptedException e) {
 			Thread.currentThread().interrupt();
 			image.close();
@@ -682,7 +804,7 @@ public final class ReplayExporter {
 			while (true) {
 				Frame frame = this.filledStages.take();
 
-				if (frame.image() == null) {
+				if (frame.end()) {
 					return;
 				}
 
@@ -690,13 +812,19 @@ public final class ReplayExporter {
 				byte[] stage = frame.stage();
 
 				try {
-					if (!this.readPixelsFast(image, stage)) {
-						this.readPixelsSlow(image, stage);
+					// PBO の絵は置き場に入り済み（複写いらず）。スクショの絵だけ読む
+					if (image != null) {
+						if (!this.readPixelsFast(image, stage)) {
+							this.readPixelsSlow(image, stage);
+						}
 					}
 
 					this.ffmpegInput.write(stage);
 				} finally {
-					image.close();
+					if (image != null) {
+						image.close();
+					}
+
 					this.emptyStages.offer(stage);
 				}
 			}
@@ -716,13 +844,57 @@ public final class ReplayExporter {
 		}
 	}
 
-	/** 書き込み係が詰まっていたら、描画側で止める（描画に触るのはここだけ） */
-	private void checkWriter() {
-		String error = this.writerError;
+	/**
+	 * 書き込み係を止める（残りは捨てて「おしまい」だけ渡す。置き場が埋まっていても詰まない）。
+	 */
+	private void releaseWriter() {
+		this.filledStages.clear();
+		this.filledStages.offer(END_OF_STREAM);
+	}
 
-		if (error != null && this.state == State.RUNNING) {
-			this.failWith(error);
+	/**
+	 * PBO に残っている最後の1枚を書き込み係へ渡す（{@link #finish()} から描画スレッドで）。
+	 */
+	private void flushPbo() throws IOException {
+		byte[] stage;
+
+		try {
+			stage = this.emptyStages.poll(10L, TimeUnit.SECONDS);
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+			throw new IOException("書き出しを中断しました", e);
 		}
+
+		if (stage == null) {
+			throw new IOException(Text.translatable("ifuto-replay.export.error_stalled").getString());
+		}
+
+		boolean hasFrame;
+
+		try {
+			hasFrame = this.pboCapture.flush(stage);
+		} catch (RuntimeException | Error e) {
+			this.emptyStages.offer(stage);
+			throw e;
+		}
+
+		if (!hasFrame) {
+			this.emptyStages.offer(stage);
+			return;
+		}
+
+		try {
+			if (!this.filledStages.offer(new Frame(null, stage, false), 10L, TimeUnit.SECONDS)) {
+				this.emptyStages.offer(stage);
+				throw new IOException(Text.translatable("ifuto-replay.export.error_stalled").getString());
+			}
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+			this.emptyStages.offer(stage);
+			throw new IOException("書き出しを中断しました", e);
+		}
+
+		this.noteCaptured();
 	}
 
 	/** 正常に終わらせる（ffmpeg の終了待ちは別スレッドで。描画を止めないため） */
@@ -731,13 +903,32 @@ public final class ReplayExporter {
 			return;
 		}
 
-		try {
-			if (this.ffmpegInput != null) {
-				this.ffmpegInput.flush();
-				this.ffmpegInput.close();
+		// 書き込み係が先に詰んでいたら、仕上げずに止める
+		if (this.writerError != null) {
+			this.failWith(this.writerError);
+			return;
+		}
+
+		// PBO の最後の1枚を流す（1枚遅れぶん。無ければ何もしない）
+		if (this.pboCapture != null) {
+			try {
+				this.flushPbo();
+			} catch (Throwable t) {
+				this.fail(t);
+				return;
 			}
-		} catch (IOException e) {
-			IfutoReplayClient.LOGGER.warn("[ifuto-replay] ffmpeg への書き込みを閉じられませんでした", e);
+		}
+
+		// 残りを全部書かせてから閉じさせる（閉じるのは書き込み係の役目）
+		try {
+			if (!this.filledStages.offer(END_OF_STREAM, 10L, TimeUnit.SECONDS)) {
+				this.failWith(Text.translatable("ifuto-replay.export.error_stalled").getString());
+				return;
+			}
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+			this.failWith(Text.translatable("ifuto-replay.export.error_unknown").getString());
+			return;
 		}
 
 		this.logProgress("書き出し完了");
@@ -759,6 +950,7 @@ public final class ReplayExporter {
 		boolean running = this.state == State.RUNNING;
 		this.state = State.CANCELLED;
 		active = null;
+		this.releaseWriter();
 
 		try {
 			if (this.ffmpegInput != null) {
@@ -782,6 +974,7 @@ public final class ReplayExporter {
 		this.failureMessage = message;
 		this.state = State.FAILED;
 		active = null;
+		this.releaseWriter();
 
 		if (this.process != null) {
 			this.process.destroy();
@@ -795,6 +988,7 @@ public final class ReplayExporter {
 		this.failureMessage = t.getMessage() == null ? t.toString() : t.getMessage();
 		this.state = State.FAILED;
 		active = null;
+		this.releaseWriter();
 
 		if (this.process != null) {
 			this.process.destroy();
@@ -859,6 +1053,17 @@ public final class ReplayExporter {
 
 	/** 解像度と表示設定を元に戻す */
 	private void restore() {
+		// PBO を畳む（描画スレッドでしか呼ばない。取れなくても無視する）
+		if (this.pboCapture != null) {
+			try {
+				this.pboCapture.close();
+			} catch (Throwable ignored) {
+				// 終わり際の掃除は黙ってやる
+			}
+
+			this.pboCapture = null;
+		}
+
 		this.client.getWindow().setFramebufferWidth(this.originalFramebufferWidth);
 		this.client.getWindow().setFramebufferHeight(this.originalFramebufferHeight);
 		this.client.onResolutionChanged();
