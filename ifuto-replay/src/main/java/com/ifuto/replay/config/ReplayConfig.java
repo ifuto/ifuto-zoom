@@ -207,6 +207,17 @@ public class ReplayConfig {
 	public boolean exportFastOutput = true;
 
 	/**
+	 * 裏でゆっくり出す。既定 OFF（推奨ではない）。
+	 *
+	 * <p>ON にすると描画を exportBackgroundFps に絞って PC を空ける。
+	 * 別のゲームで遊びながら待てるが、終わるまで何倍もかかる。
+	 */
+	public boolean exportBackground = false;
+
+	/** 裏で出すときの描画の速さ（fps。上限240） */
+	public int exportBackgroundFps = 30;
+
+	/**
 	 * 途中から録り始めたとき、一緒に保存する地形の半径（チャンク）。
 	 * 0 にしても 1 として扱う（写しが無いと再生不能になるため、必ず作る）
 	 */
@@ -413,6 +424,8 @@ public class ReplayConfig {
 		this.exportX264Threads = defaults.exportX264Threads;
 		this.exportTickPerFrame = defaults.exportTickPerFrame;
 		this.exportFastOutput = defaults.exportFastOutput;
+		this.exportBackground = defaults.exportBackground;
+		this.exportBackgroundFps = defaults.exportBackgroundFps;
 		this.ffmpegPath = defaults.ffmpegPath;
 		this.snapshotRadius = defaults.snapshotRadius;
 		this.audioMode = defaults.audioMode;
@@ -452,6 +465,7 @@ public class ReplayConfig {
 		this.exportHeight = clampStrict(this.exportHeight, 16, 16384, 1080);
 		this.exportBitrateKbps = clampStrict(this.exportBitrateKbps, 100, 2_000_000, 20000);
 		this.exportSpeedPercent = clamp(this.exportSpeedPercent, 0, 4000, 100);
+		this.exportBackgroundFps = clamp(this.exportBackgroundFps, 1, 240, 30);
 		this.exportX264Threads = clamp(this.exportX264Threads, 0, 64, 0);
 
 		switch (this.exportX264Preset == null ? "" : this.exportX264Preset) {

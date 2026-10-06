@@ -262,6 +262,8 @@
 	"ifuto-replay.editor.nospace_message": "切り出すには元ファイルぶんの空きが必要です",
 	"ifuto-replay.export.hwaccel": "GPUエンコード",
 	"ifuto-replay.export.hwaccel.tooltip": "GPUでmp4を作る（速い。使えなければCPUに切り替わる）",
+	"ifuto-replay.export.background": "裏で出す（非推奨）",
+	"ifuto-replay.export.background.tooltip": "ゆっくり裏で出す。PCは空くが何倍もかかる",
 	"ifuto-replay.export.preset": "CPUの速さ",
 	"ifuto-replay.export.preset.tooltip": "GPUが使えないときのlibx264の頑張り具合（速い順: ultrafast … slow。速いほど早く終わるが同じビットレートなら画質が落ちる）",
 	"ifuto-replay.export.fastest": "最速にする",

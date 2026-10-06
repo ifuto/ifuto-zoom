@@ -201,7 +201,8 @@ public final class ReplayExporter {
 			return false;
 		}
 
-		if (!ReplayConfig.get().exportFastOutput) {
+		// 裏で出すときは飛ばさない（進捗を見せる。ゆっくりなので安い）
+		if (!ReplayConfig.get().exportFastOutput || exporter.options.background()) {
 			return false;
 		}
 
@@ -330,9 +331,16 @@ public final class ReplayExporter {
 		if (!hardware) {
 			command.add("-preset");
 			command.add(this.options.x264Preset());
-			// 全部使うと描画が詰まるので2コア空ける（0=自動のとき）
+			// 全部使うと描画が詰まるので2コア空ける（0=自動のとき）。
+			// 裏で出すときは2本に絞る（PCを空ける）
+			int threads = ReplayConfig.get().x264Threads();
+
+			if (this.options.background()) {
+				threads = Math.min(threads, 2);
+			}
+
 			command.add("-threads");
-			command.add(String.valueOf(ReplayConfig.get().x264Threads()));
+			command.add(String.valueOf(threads));
 		}
 
 		if (!cudaScale) {
@@ -400,9 +408,8 @@ public final class ReplayExporter {
 		this.uncapDisplay();
 		active = this;
 
-		IfutoReplayClient.LOGGER.info("[ifuto-replay] 書き出し開始: {}x{} {}fps 高速出力={}（上限={}）",
-				width, height, this.options.fps(), fastOutput,
-				fastOutput ? FAST_FPS_CAP : MAX_FPS_CAP);
+		IfutoReplayClient.LOGGER.info("[ifuto-replay] 書き出し開始: {}x{} {}fps 高速出力={} 裏={}",
+				width, height, this.options.fps(), fastOutput, this.options.background());
 	}
 
 	/**
@@ -412,13 +419,23 @@ public final class ReplayExporter {
 	 * ふだんの FPS 上限や垂直同期はここでは足かせにしかならないので、書き出し中だけ
 	 * 上限いっぱい（高速出力なら実質なし）・垂直同期なしにする。swap interval も直接切る
 	 * （ドライバ側の強制 vsync は swap を飛ばす方で消す）。
+	 * 裏で出すときは低めの上限にして PC を空ける（終わるまで遅い）。
 	 */
 	private void uncapDisplay() {
 		try {
 			GameOptions options = this.client.options;
 			this.savedMaxFps = options.getMaxFps().getValue();
 			this.savedVsync = options.getEnableVsync().getValue();
-			options.getMaxFps().setValue(ReplayConfig.get().exportFastOutput ? FAST_FPS_CAP : MAX_FPS_CAP);
+
+			int cap = MAX_FPS_CAP;
+
+			if (ReplayConfig.get().exportFastOutput) {
+				cap = this.options.background()
+						? Math.max(1, ReplayConfig.get().exportBackgroundFps)
+						: FAST_FPS_CAP;
+			}
+
+			options.getMaxFps().setValue(cap);
 			options.getEnableVsync().setValue(false);
 			GLFW.glfwSwapInterval(0);
 			this.displayUncapped = true;

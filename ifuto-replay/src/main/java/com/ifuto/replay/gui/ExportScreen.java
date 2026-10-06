@@ -77,10 +77,12 @@ public class ExportScreen extends Screen implements PopupHost {
 	private boolean includeAudio;
 	private boolean includeVoiceChat = true;
 	private boolean useHardware;
+	private boolean background;
 	private int speedPercent;
 	private String x264Preset;
 	private ModernDropdown<Integer> speedCycling;
 	private ModernToggle hardwareToggle;
+	private ModernToggle backgroundToggle;
 	private ModernDropdown<String> presetCycling;
 	private int startSec;
 	private int endSec;
@@ -100,6 +102,7 @@ public class ExportScreen extends Screen implements PopupHost {
 		this.fps = config.exportFps;
 		this.includeAudio = AudioTracks.hasAny(info.file());
 		this.useHardware = config.exportHardwareAccel;
+		this.background = config.exportBackground;
 		this.speedPercent = config.exportSpeedPercent;
 		this.x264Preset = config.exportX264Preset;
 	}
@@ -240,6 +243,16 @@ public class ExportScreen extends Screen implements PopupHost {
 				ModernButton.Style.NORMAL);
 		fastestButton.setTooltip(Tooltip.of(Text.translatable("ifuto-replay.export.fastest.tooltip")));
 		content.add(fastestButton);
+
+		// 10行目: 裏でゆっくり出す（PCは空くが遅い。推奨ではない）
+		this.backgroundToggle = new ModernToggle(0, 0, this.widgetWidth * 2 + COLUMN_GAP, WIDGET_HEIGHT,
+				Text.translatable("ifuto-replay.export.background"), this.background,
+				value -> {
+					this.background = value;
+					this.updateSummary();
+				});
+		this.backgroundToggle.setTooltip(Tooltip.of(Text.translatable("ifuto-replay.export.background.tooltip")));
+		content.add(this.backgroundToggle);
 
 		this.summaryText = new TextWidget(Text.empty(), this.textRenderer);
 		this.summaryText.setMaxWidth(this.widgetWidth * 2 + COLUMN_GAP);
@@ -389,9 +402,11 @@ public class ExportScreen extends Screen implements PopupHost {
 		this.speedPercent = 0;
 		this.useHardware = true;
 		this.x264Preset = "ultrafast";
+		this.background = false;
 		this.speedCycling.setValue(0);
 		this.hardwareToggle.setValue(true);
 		this.presetCycling.setValue("ultrafast");
+		this.backgroundToggle.setValue(false);
 		this.updateSummary();
 	}
 
@@ -407,6 +422,7 @@ public class ExportScreen extends Screen implements PopupHost {
 		config.exportSpeedPercent = this.speedPercent;
 		config.exportHardwareAccel = this.useHardware;
 		config.exportX264Preset = this.x264Preset;
+		config.exportBackground = this.background;
 		config.save();
 
 		// ffmpeg が無ければ落としてきて、終わったらここへ戻って続きを始める
@@ -431,7 +447,7 @@ public class ExportScreen extends Screen implements PopupHost {
 		List<Path> audio = this.includeAudio ? AudioTracks.select(this.info.file(), this.includeVoiceChat) : null;
 		ExportOptions options = new ExportOptions(config.exportFps, config.exportWidth, config.exportHeight,
 				config.exportBitrateKbps, ffmpeg, startMs, endMs, output, audio, this.speedPercent,
-				config.exportHardwareAccel, config.exportX264Preset);
+				config.exportHardwareAccel, config.exportX264Preset, config.exportBackground);
 
 		startExport(this.client, this.info.file(), options, this.parent);
 	}
