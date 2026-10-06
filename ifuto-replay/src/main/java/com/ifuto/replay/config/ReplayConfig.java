@@ -184,6 +184,12 @@ public class ReplayConfig {
 	public String exportX264Preset = "medium";
 
 	/**
+	 * CPU エンコードに使わせるスレッド数。0 で自動（コア数−2、上限32）。
+	 * 全部使うと描画のぶんが無くなるので、自動では2コア空ける。
+	 */
+	public int exportX264Threads = 0;
+
+	/**
 	 * 途中から録り始めたとき、一緒に保存する地形の半径（チャンク）。
 	 * 0 にしても 1 として扱う（写しが無いと再生不能になるため、必ず作る）
 	 */
@@ -271,6 +277,15 @@ public class ReplayConfig {
 		return this.queuedMegaBytes > 0 ? this.queuedMegaBytes : autoQueueMegaBytes();
 	}
 
+	/** 実際に使うスレッド数（0 のときは自動。使うたびに今のコア数で決める） */
+	public int x264Threads() {
+		if (this.exportX264Threads > 0) {
+			return Math.min(64, this.exportX264Threads);
+		}
+
+		return HardwareProfile.recommendedThreads(HardwareProfile.cores());
+	}
+
 	public String displayAddress(@Nullable String address) {
 		if (address == null || address.isBlank()) {
 			return "-";
@@ -308,6 +323,7 @@ public class ReplayConfig {
 
 	public static ReplayConfig load() {
 		Path path = getPath();
+		boolean fresh = !Files.exists(path);
 		ReplayConfig config = new ReplayConfig();
 
 		if (Files.exists(path)) {
@@ -323,6 +339,11 @@ public class ReplayConfig {
 		}
 
 		config.validate();
+
+		if (fresh) {
+			HardwareProfile.applyRecommended(config);
+		}
+
 		instance = config;
 		config.save();
 		return config;
@@ -372,6 +393,7 @@ public class ReplayConfig {
 		this.exportBitrateKbps = defaults.exportBitrateKbps;
 		this.exportHardwareAccel = defaults.exportHardwareAccel;
 		this.exportX264Preset = defaults.exportX264Preset;
+		this.exportX264Threads = defaults.exportX264Threads;
 		this.ffmpegPath = defaults.ffmpegPath;
 		this.snapshotRadius = defaults.snapshotRadius;
 		this.audioMode = defaults.audioMode;
@@ -411,6 +433,7 @@ public class ReplayConfig {
 		this.exportHeight = clampStrict(this.exportHeight, 16, 16384, 1080);
 		this.exportBitrateKbps = clampStrict(this.exportBitrateKbps, 100, 2_000_000, 20000);
 		this.exportSpeedPercent = clamp(this.exportSpeedPercent, 0, 4000, 100);
+		this.exportX264Threads = clamp(this.exportX264Threads, 0, 64, 0);
 
 		switch (this.exportX264Preset == null ? "" : this.exportX264Preset) {
 			case "ultrafast", "superfast", "veryfast", "faster", "fast", "medium", "slow" -> {

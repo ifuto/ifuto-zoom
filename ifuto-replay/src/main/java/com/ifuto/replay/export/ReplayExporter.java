@@ -1,6 +1,7 @@
 package com.ifuto.replay.export;
 
 import com.ifuto.replay.IfutoReplayClient;
+import com.ifuto.replay.config.ReplayConfig;
 import com.ifuto.replay.mixin.NativeImageAccessor;
 import com.ifuto.replay.playback.ReplayPlayback;
 import net.minecraft.client.MinecraftClient;
@@ -299,6 +300,9 @@ public final class ReplayExporter {
 		if (!hardware) {
 			command.add("-preset");
 			command.add(this.options.x264Preset());
+			// 全部使うと描画が詰まるので2コア空ける（0=自動のとき）
+			command.add("-threads");
+			command.add(String.valueOf(ReplayConfig.get().x264Threads()));
 		}
 
 		if (!cudaScale) {

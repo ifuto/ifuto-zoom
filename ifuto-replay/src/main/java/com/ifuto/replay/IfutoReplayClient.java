@@ -1,6 +1,7 @@
 package com.ifuto.replay;
 
 import com.ifuto.replay.codec.BenchCommand;
+import com.ifuto.replay.config.HardwareProfile;
 import com.ifuto.replay.config.ReplayConfig;
 import com.ifuto.replay.export.ReplayExporter;
 import com.ifuto.replay.gui.PauseMenuButtons;
@@ -70,6 +71,9 @@ public class IfutoReplayClient implements ClientModInitializer {
 		});
 
 		ClientTickEvents.END_CLIENT_TICK.register(client -> {
+			// GPU 名を1回だけ出す（GL が無いうちは黙って次へ）
+			HardwareProfile.maybeLogGpu();
+
 			// サイズ・時間の上限に達していたら自動で止める
 			RecordingManager.INSTANCE.tick(client);
 
