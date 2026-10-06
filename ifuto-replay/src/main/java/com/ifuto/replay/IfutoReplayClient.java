@@ -46,6 +46,7 @@ public class IfutoReplayClient implements ClientModInitializer {
 	public void onInitializeClient() {
 		// 最初のフレームより前に設定ファイルを作って読み込んでおく
 		ReplayConfig.get();
+		HardwareProfile.logHeavyMods();
 
 		// 実機の録画で圧縮を比べる（/replaybench）
 		ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
@@ -73,6 +74,7 @@ public class IfutoReplayClient implements ClientModInitializer {
 		ClientTickEvents.END_CLIENT_TICK.register(client -> {
 			// GPU 名を1回だけ出す（GL が無いうちは黙って次へ）
 			HardwareProfile.maybeLogGpu();
+			HardwareProfile.maybeWarnShaders();
 
 			// サイズ・時間の上限に達していたら自動で止める
 			RecordingManager.INSTANCE.tick(client);
