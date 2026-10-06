@@ -26,3 +26,4 @@ artifact_path: ifuto-replay/build/libs/*.jar
 - tput r104: 0.19.0 sound/queue/encode-warn
 - tput r105: 0.20.0 fastest button
 - tput r106: 0.21.0 hardware auto-tune
+- tput r107: 0.22.0 heavy-mod detection
