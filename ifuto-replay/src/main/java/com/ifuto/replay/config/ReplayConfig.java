@@ -199,9 +199,9 @@ public class ReplayConfig {
 	public boolean exportTickPerFrame = false;
 
 	/**
-	 * 高速出力（PBO 取り込み＋FPS 上限撤廃＋画面更新の間引き）。既定 ON。
+	 * 高速出力（FPS 上限撤廃＋画面更新の間引き）。既定 ON。
 	 *
-	 * <p>切ると従来の速さ（スクショ経路・上限260・毎枚表示）に戻る。
+	 * <p>切ると従来の速さ（上限260・毎枚表示）に戻る。
 	 * 書き出した絵がおかしいときの切り分け用。
 	 */
 	public boolean exportFastOutput = true;
