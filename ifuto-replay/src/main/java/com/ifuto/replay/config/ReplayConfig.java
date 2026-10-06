@@ -190,6 +190,15 @@ public class ReplayConfig {
 	public int exportX264Threads = 0;
 
 	/**
+	 * 書き出し中に1コマごと手動で tick する。既定 OFF。
+	 *
+	 * <p>書き出し中はバニラの時計が録画の速さで回っているので、tick も録画の
+	 * 速さで来る。手動で回すと二重になる（速い撮れ高・速いパーティクル）うえ
+	 * 1ms/枚ほど食う。絵がおかしいときだけ ON にする保険。
+	 */
+	public boolean exportTickPerFrame = false;
+
+	/**
 	 * 途中から録り始めたとき、一緒に保存する地形の半径（チャンク）。
 	 * 0 にしても 1 として扱う（写しが無いと再生不能になるため、必ず作る）
 	 */
@@ -394,6 +403,7 @@ public class ReplayConfig {
 		this.exportHardwareAccel = defaults.exportHardwareAccel;
 		this.exportX264Preset = defaults.exportX264Preset;
 		this.exportX264Threads = defaults.exportX264Threads;
+		this.exportTickPerFrame = defaults.exportTickPerFrame;
 		this.ffmpegPath = defaults.ffmpegPath;
 		this.snapshotRadius = defaults.snapshotRadius;
 		this.audioMode = defaults.audioMode;

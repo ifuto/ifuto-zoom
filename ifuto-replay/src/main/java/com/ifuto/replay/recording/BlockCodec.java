@@ -24,6 +24,9 @@ import java.util.zip.Inflater;
  * <p>古い deflate のかたまりも読める（格納方法は1かたまりごとに見分ける）。
  */
 public final class BlockCodec {
+	/** 1かたまりの上限（ClipRemux と同じ256MB。壊れた長さでの確保を防ぐ） */
+	private static final int MAX_BLOCK = 256 << 20;
+
 	private static final ThreadLocal<ZstdCompressor> ZSTD_OUT =
 			ThreadLocal.withInitial(ZstdCompressor::new);
 	private static final ThreadLocal<ZstdDecompressor> ZSTD_IN =
@@ -82,6 +85,10 @@ public final class BlockCodec {
 	 * @param method 格納方法（RAW / DEFLATE / ZSTD）
 	 */
 	public static byte[] decompress(byte[] packed, int rawLength, int method) throws IOException {
+		if (rawLength < 0 || rawLength > MAX_BLOCK) {
+			throw new IOException("壊れています（不正な長さ: " + rawLength + "）");
+		}
+
 		if (method == ReplayFormat.METHOD_RAW) {
 			if (packed.length != rawLength) {
 				throw new IOException("かたまりの長さが合いません");

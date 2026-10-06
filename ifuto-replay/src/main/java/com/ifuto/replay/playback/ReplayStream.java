@@ -97,6 +97,24 @@ public final class ReplayStream implements Closeable {
 
 	private final byte[] scratch = new byte[512];
 
+	/** かたまり・中身の上限（ClipRemux と同じ256MB。壊れた長さでの確保を防ぐ） */
+	private static final int MAX_FRAME = 256 << 20;
+	/** 文字の上限（ReplayFileReader と同じ4KB） */
+	private static final int MAX_STRING = 4096;
+
+	/** ファイル由来の長さは確保する前に見る（切れたファイルで巨大確保しない） */
+	private static void checkLength(int length) throws IOException {
+		if (length < 0 || length > MAX_FRAME) {
+			throw new IOException("壊れています（不正な長さ: " + length + "）");
+		}
+	}
+
+	private static void checkStringLength(int length) throws IOException {
+		if (length < 0 || length > MAX_STRING) {
+			throw new IOException("壊れています（不正な文字数: " + length + "）");
+		}
+	}
+
 	private long timeMs;
 	private boolean ended;
 
@@ -179,6 +197,8 @@ public final class ReplayStream implements Closeable {
 						int rawLength = stream.readVarInt();
 						int method = stream.in.readByte();
 						int stored = BlockCodec.isPacked(method) ? stream.readVarInt() : rawLength;
+						checkLength(rawLength);
+						checkLength(stored);
 						byte[] packed = new byte[stored];
 						stream.in.readFully(packed);
 
@@ -245,6 +265,8 @@ public final class ReplayStream implements Closeable {
 		if (tag == ReplayFormat.TAG_REGISTRIES) {
 			int packedLength = this.readVarInt();
 			int rawLength = this.readVarInt();
+			checkLength(packedLength);
+			checkLength(rawLength);
 			byte[] packed = new byte[packedLength];
 			this.in.readFully(packed);
 			byte[] raw = inflate(packed, rawLength);
@@ -311,9 +333,11 @@ public final class ReplayStream implements Closeable {
 						int length = this.readVarInt();
 						int method = this.in.readByte();
 						byte[] payload;
+						checkLength(length);
 
 						if (BlockCodec.isPacked(method)) {
 							int rawLength = this.readVarInt();
+							checkLength(rawLength);
 							byte[] packed = new byte[length];
 							this.in.readFully(packed);
 
@@ -346,12 +370,14 @@ public final class ReplayStream implements Closeable {
 					if (this.header.version() < 5) {
 						// v4 以前は種類が中身の先頭にしかない（再生側とのずれをここで吸う）
 						int legacyLength = this.readVarInt();
+						checkLength(legacyLength);
 						byte[] legacy = new byte[legacyLength];
 						this.in.readFully(legacy);
 						sink.input(this.timeMs, legacyLength > 0 ? legacy[0] & 0xFF : 0, legacy, legacyLength);
 					} else {
 						int subtype = this.in.readByte();
 						int length = this.readVarInt();
+						checkLength(length);
 						byte[] data = new byte[length];
 						this.in.readFully(data);
 						sink.input(this.timeMs, subtype, data, length);
@@ -361,6 +387,7 @@ public final class ReplayStream implements Closeable {
 					this.timeMs += this.readVarInt();
 					int subtype = this.readVarInt();
 					int length = this.readVarInt();
+					checkLength(length);
 					byte[] data = new byte[length];
 					this.in.readFully(data);
 					sink.local(this.timeMs, subtype, data, length);
@@ -415,9 +442,11 @@ public final class ReplayStream implements Closeable {
 		int rawLength = this.readVarInt();
 		int method = this.in.readByte();
 		byte[] raw;
+		checkLength(rawLength);
 
 		if (BlockCodec.isPacked(method)) {
 			int packedLength = this.readVarInt();
+			checkLength(packedLength);
 			byte[] packed = new byte[packedLength];
 			this.in.readFully(packed);
 
@@ -577,7 +606,9 @@ public final class ReplayStream implements Closeable {
 	}
 
 	private String readString() throws IOException {
-		byte[] bytes = new byte[this.readVarInt()];
+		int length = this.readVarInt();
+		checkStringLength(length);
+		byte[] bytes = new byte[length];
 		this.in.readFully(bytes);
 		return new String(bytes, StandardCharsets.UTF_8);
 	}
@@ -614,6 +645,9 @@ public final class ReplayStream implements Closeable {
 
 	/** 中身は要らないが、**共有窓の状態を進める** ために展開する（読み飛ばすとずれる） */
 	void consumeDeflated(int packedLength, int rawLength) throws IOException {
+		checkLength(packedLength);
+		checkLength(rawLength);
+
 		if (!this.sharedWindow) {
 			this.skipExactly(packedLength);
 			return;
@@ -656,7 +690,8 @@ public final class ReplayStream implements Closeable {
 			}
 
 			if (n == 0) {
-				if (inflater.needsInput() || inflater.finished()) {
+				// 辞書待ちも止める（書く側は辞書を使わない。ここで止めないと無限に回る）
+				if (inflater.needsInput() || inflater.finished() || inflater.needsDictionary()) {
 					throw new IOException("圧縮が途中で終わっています");
 				}
 			}

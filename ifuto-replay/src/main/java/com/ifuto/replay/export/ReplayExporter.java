@@ -450,8 +450,11 @@ public final class ReplayExporter {
 		// その場で追いつく（tick 待ちだと1秒20枚しか進めない）
 		this.playback.advanceTo(target);
 		long t1 = System.nanoTime();
-		// 世界も1コマ進める（実体・パーティクル・時刻。1コマ1tickは普段と同じ比率）
-		this.client.tick();
+		// 世界の歩みはバニラの仮想時計に任せる（書き出し中は録画の速さで tick する）。
+		// 手動で回すと二重になるので既定で切る（絵がおかしいときだけ旗で戻せる）
+		if (ReplayConfig.get().exportTickPerFrame) {
+			this.client.tick();
+		}
 
 		// 黙らせている間は鳴った端から止める（溜めて tick・mix しない）
 		if (this.soundMuted) {
@@ -561,7 +564,7 @@ public final class ReplayExporter {
 	}
 
 	/**
-	 * 進み具合と内訳を出す（pump=追いつき tick=世界 render=描画 cap=取込
+	 * 進み具合と内訳を出す（pump=追いつき tick=手動tick render=描画 cap=取込
 	 * wait=書込待ち。wait が大きいときはエンコードが追いついていない）。
 	 */
 	private void logProgress(String prefix) {

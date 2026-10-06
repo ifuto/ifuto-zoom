@@ -329,8 +329,9 @@ public final class ReplayPlayback implements ReplayStream.Sink {
 	 * 離れていないので、その場で流し切っても一瞬で終わる。流したら構えと
 	 * カメラもその場で合わせる（1コマ1描画と対にするため）。
 	 *
-	 * <p>実体・パーティクル・時刻の歩みは呼び出し側が tick を回して進める
-	 * （1コマに1tick。普段の1描画1tickと同じ比率なので見え方は変わらない）。
+	 * <p>実体・パーティクル・時刻の歩みはバニラの仮想時計が録画の速さで
+	 * 回す（書き出し中は tick も録画の速さで来る）。呼び出し側で手動 tick
+	 * すると二重になるので回さない。
 	 */
 	public void advanceTo(long targetMs) {
 		this.jumpTo(targetMs);
