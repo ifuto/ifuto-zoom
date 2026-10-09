@@ -1,5 +1,5 @@
-workdir: ifuto-replay
-artifact_path: ifuto-replay/build/libs/*.jar
+workdir: ifuto-kb
+artifact_path: ifuto-kb/build/libs/*.jar
 # 2026-09-17-06:03:20
 # 2026-09-17-06:32:25
 # 2026-09-17-06:35:40
@@ -35,3 +35,4 @@ artifact_path: ifuto-replay/build/libs/*.jar
 - tput r113: 0.27.0 background export
 - tput r114: 0.28.0 smooth ETA
 - tput r115: 0.29.0 enterWorld
+- tput r116: kb 0.1.0 scaffold
