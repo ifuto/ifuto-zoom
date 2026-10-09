@@ -37,3 +37,4 @@ artifact_path: ifuto-kb/build/libs/*.jar
 - tput r115: 0.29.0 enterWorld
 - tput r116: kb 0.1.0 scaffold
 - tput r117: kb 0.2.0 measure+gui+selftest
+- tput r118: kb 0.2.0 armor-fix
