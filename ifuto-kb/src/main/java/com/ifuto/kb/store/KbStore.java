@@ -110,6 +110,12 @@ public final class KbStore {
 				try {
 					ServerRecord rec = GSON.fromJson(Files.readString(p), ServerRecord.class);
 					if (rec != null && rec.address != null && !records.containsKey(rec.address)) {
+						if (rec.samples == null) {
+							rec.samples = new ArrayList<>();
+						}
+						if (rec.excluded == null) {
+							rec.excluded = new LinkedHashMap<>();
+						}
 						records.put(rec.address, rec);
 					}
 				} catch (Exception ignored) {
@@ -192,6 +198,9 @@ public final class KbStore {
 				BaselineTable loaded = GSON.fromJson(Files.readString(file), BaselineTable.class);
 				if (loaded != null && loaded.cells != null) {
 					baselines = loaded;
+					if (baselines.excluded == null) {
+						baselines.excluded = new LinkedHashMap<>();
+					}
 				}
 			}
 		} catch (Exception ignored) {

@@ -94,6 +94,9 @@ public class KbDetailScreen extends Screen {
 		if (armed && now < armedUntil) {
 			armed = false;
 			KbStore.delete(address);
+			if (parent instanceof KbServerListScreen list) {
+				list.clearAndInit();
+			}
 			close();
 			return;
 		}
