@@ -3,6 +3,8 @@
 	"package": "com.ifuto.kb.mixin",
 	"compatibilityLevel": "JAVA_21",
 	"client": [
+		"ClientPlayNetworkHandlerMixin",
+		"ClientPlayerInteractionManagerMixin",
 		"GameMenuScreenMixin",
 		"TitleScreenMixin"
 	],

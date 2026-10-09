@@ -46,3 +46,11 @@ jar {
 		rename { "${it}_${projectName}" }
 	}
 }
+
+// KB 測定ロジックの自己テスト（CI で毎回。壊れていたら落とす）
+tasks.register('testKb', JavaExec) {
+	classpath = sourceSets.main.runtimeClasspath
+	mainClass = 'com.ifuto.kb.test.KbSelfTest'
+}
+
+check.dependsOn testKb
