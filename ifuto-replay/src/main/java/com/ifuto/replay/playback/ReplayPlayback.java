@@ -45,6 +45,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -109,6 +110,11 @@ public final class ReplayPlayback implements ReplayStream.Sink {
 	private long seekTargetMs;
 	private long lastRealMs;
 	private int errors;
+	/** 世界を作るパケットが来たか（来ないファイルと来て失敗したファイルを区別するため） */
+	private boolean joinSeen;
+	/** 最初の失敗（世界が作れなかったときに本当の理由を出すため） */
+	private @Nullable Throwable firstError;
+	private @Nullable String firstErrorName;
 	private boolean finished;
 	private boolean stopped;
 	private boolean hudWasHidden;
@@ -625,6 +631,10 @@ public final class ReplayPlayback implements ReplayStream.Sink {
 		int direction = this.typeDirections.getOrDefault(this.pendingTypeIndex, ReplayFormat.DIRECTION_S2C);
 		String name = this.typeNames.get(this.pendingTypeIndex);
 
+		if (name != null && name.toLowerCase(Locale.ROOT).contains("game_join")) {
+			this.joinSeen = true;
+		}
+
 		if (direction == ReplayFormat.DIRECTION_C2S) {
 			// 自分の操作はカメラと構えに使う。あとは流さない（サーバーがいないので）
 			this.applyClientPacket(name, payload, this.pendingOffset, this.pendingLength);
@@ -713,6 +723,11 @@ public final class ReplayPlayback implements ReplayStream.Sink {
 	}
 
 	private void onError(@Nullable String name, Throwable t) {
+		if (this.firstError == null) {
+			this.firstError = t;
+			this.firstErrorName = name;
+		}
+
 		if (++this.errors <= MAX_ERRORS) {
 			IfutoReplayClient.LOGGER.warn("[ifuto-replay] パケットを流し込めませんでした: {}", name, t);
 		}
@@ -756,15 +771,13 @@ public final class ReplayPlayback implements ReplayStream.Sink {
 
 	/** GameJoin を流し込んで、バニラに世界とプレイヤーを作らせる */
 	private void enterWorld() throws IOException {
-		long deadline = Util.getMeasuringTimeMs() + 10_000L;
+		// 時間切れは設けない（ファイルの読みは必ず終わる。以前は10秒で切っていたが、
+		// 大きい写しで誤って切っていた）
+		int applied = 0;
 
 		while (this.client.world == null || this.client.player == null) {
 			if (this.stream.isEnded()) {
 				break;
-			}
-
-			if (Util.getMeasuringTimeMs() > deadline) {
-				throw new NoWorldException("ワールドを開始できませんでした（GameJoin パケットが見つかりません）");
 			}
 
 			// 時刻を進めずに、世界ができるまで必要なパケットを流す
@@ -776,6 +789,10 @@ public final class ReplayPlayback implements ReplayStream.Sink {
 				this.timeMs = this.pendingTimeMs;
 				this.applyPending();
 				this.pending = false;
+
+				if (++applied % 5000 == 0) {
+					IfutoReplayClient.LOGGER.info("[ifuto-replay] 世界を組み立て中…（{}パケット）", applied);
+				}
 			}
 		}
 
@@ -784,6 +801,18 @@ public final class ReplayPlayback implements ReplayStream.Sink {
 			if (this.stream.corruptFrames() > 0) {
 				throw new IOException("圧縮が壊れています（" + this.stream.firstCorruptDetail()
 						+ " / 全" + this.stream.corruptFrames() + "か所）。録り直してください");
+			}
+
+			// 世界を作るパケットが来ていたのに世界が無い = 適用に失敗した。本当の理由を出す
+			if (this.joinSeen && this.firstError != null) {
+				String cause = this.firstError.getMessage();
+
+				if (cause == null || cause.isEmpty()) {
+					cause = this.firstError.toString();
+				}
+
+				throw new IOException("世界を作れませんでした（"
+						+ (this.firstErrorName == null ? "?" : this.firstErrorName) + ": " + cause + "）");
 			}
 
 			throw new NoWorldException("ワールドを開始できませんでした");
