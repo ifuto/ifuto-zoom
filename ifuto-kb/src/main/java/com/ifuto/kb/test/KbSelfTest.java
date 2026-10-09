@@ -59,6 +59,11 @@ public class KbSelfTest {
 		check(single.fallback() && single.v0() == 0.5, "fit-fallback-single");
 		SpikeFit.Fit growing = SpikeFit.fit(List.of(0.1, 0.2, 0.4, 0.8));
 		check(growing.fallback(), "fit-fallback-growing");
+		SpikeFit.Fit walking = SpikeFit.fit(List.of(0.23, 0.23, 0.23, 0.23, 0.23));
+		check(walking.constantMotion(), "fit-constant-motion");
+		check(!fit.constantMotion(), "fit-decay-not-constant");
+		check(Estimator.median(List.of(-1.0, -1.0)) == -1, "median-all-invalid");
+		check(Estimator.iqr(List.of(1.0, 2.0, 3.0, 4.0, 5.0)) == 3.0, "iqr-odd");
 	}
 
 	private static Sample mkSample(String dir, String atkKind, int kb, boolean sprint,

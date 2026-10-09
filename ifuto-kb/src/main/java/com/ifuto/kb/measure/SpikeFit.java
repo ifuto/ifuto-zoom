@@ -10,7 +10,7 @@ public final class SpikeFit {
 	private SpikeFit() {
 	}
 
-	public record Fit(double v0, double decay, int n, boolean fallback) {
+	public record Fit(double v0, double decay, int n, boolean fallback, boolean constantMotion) {
 	}
 
 	public static Fit fit(List<Double> speeds) {

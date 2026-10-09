@@ -39,7 +39,7 @@ public final class HitTracker {
 	private static final int HURT_CAP = 64;
 	private static final int PAIR_TICKS = 3;
 	private static final int STALE_TICKS = 8;
-	private static final double SPIKE_MIN = 0.12;
+	private static final double SPIKE_MIN = 0.08;
 	private static final long WEAK_MS = 550;
 
 	private record Swing(int targetId, long tick, long intervalMs, String weapon, int kb,
