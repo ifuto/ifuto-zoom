@@ -40,3 +40,4 @@ artifact_path: ifuto-kb/build/libs/*.jar
 - tput r118: kb 0.2.0 armor-fix
 - tput r119: kb 0.2.0 dup-tail-fix
 - tput r120: kb 0.2.0 equipment-restore
+- tput r121: kb 0.2.0 spike-fix+tests
