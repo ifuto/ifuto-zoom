@@ -34,3 +34,4 @@ artifact_path: ifuto-replay/build/libs/*.jar
 - tput r112: 0.26.0 no-PBO retry
 - tput r113: 0.27.0 background export
 - tput r114: 0.28.0 smooth ETA
+- tput r115: 0.29.0 enterWorld
