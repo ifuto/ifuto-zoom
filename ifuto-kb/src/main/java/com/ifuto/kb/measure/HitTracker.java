@@ -78,6 +78,13 @@ public final class HitTracker {
 			return size() > HURT_CAP;
 		}
 	};
+	/** 他人の装備（装備パケットから維持。entityId -> スロット名 -> ネザライトか）。 */
+	private static final LinkedHashMap<Integer, Map<String, Boolean>> equipment = new LinkedHashMap<>() {
+		@Override
+		protected boolean removeEldestEntry(Map.Entry<Integer, Map<String, Boolean>> e) {
+			return size() > 64;
+		}
+	};
 
 	private static double lastVital = -1;
 	private static long lastSwingMs = 0;
@@ -659,6 +666,44 @@ public final class HitTracker {
 		s.attacker.swingIntervalMs = sw.intervalMs();
 		s.attacker.weakSuspect = weak;
 		int neth = Conditions.netheriteCount(living);
+		s.victim.kind = living instanceof PlayerEntity ? "player" : Conditions.mobId(living);
+		s.victim.netherite = neth;
+		s.victim.resist = neth * 0.1;
+		s.victim.airborne = !grounded;
+		s.damageConfirmed = confirmed;
+		s.obsH = obsH;
+		s.obsV = obsV;
+		s.vValid = grounded && !saturated && spike.vyNew > 0.03;
+		if (!grounded) {
+			s.note = "airborne-vertical";
+		} else if (saturated) {
+			s.note = "vertical-saturated";
+		}
+		int score = 3;
+		if (!confirmed) {
+			score--;
+		}
+		if (weak) {
+			score--;
+		}
+		if (!spike.exact) {
+			score--;
+		}
+		if (spike.fallback) {
+			score--;
+		}
+		s.confidence = score >= 3 ? "high" : score == 2 ? "med" : "low";
+		KbStore.route(s);
+	}
+
+	private static void pruneStale(long tick) {
+		dmgEvt.removeIf(d -> tick - d.tick() > STALE_TICKS);
+		dmgSrc.removeIf(s -> tick - s.tick() > STALE_TICKS);
+		for (Deque<VelEvt> q : velHist.values()) {
+			q.removeIf(v -> tick - v.tick() > STALE_TICKS + 4);
+		}
+	}
+}
 		s.victim.kind = living instanceof PlayerEntity ? "player" : Conditions.mobId(living);
 		s.victim.netherite = neth;
 		s.victim.resist = neth * 0.1;

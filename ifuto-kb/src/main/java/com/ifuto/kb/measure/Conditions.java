@@ -42,20 +42,27 @@ public final class Conditions {
 		return 0;
 	}
 
-	/** ネザライト防具の数。KB耐性 = 個数 x 0.1（他プレイヤーの属性は見えないので全員この式で統一）。 */
+	/**
+	 * ネザライト防具の数。KB耐性 = 個数 x 0.1（他プレイヤーの属性は見えないので全員この式で統一）。
+	 * 自分はインベントリの防具枠（36-39）、他人は装備パケットの記録から。
+	 */
 	public static int netheriteCount(LivingEntity entity) {
-		int n = 0;
 		try {
-			for (ItemStack stack : entity.getArmorItems()) {
-				Item item = stack.getItem();
-				if (item == Items.NETHERITE_HELMET || item == Items.NETHERITE_CHESTPLATE
-					|| item == Items.NETHERITE_LEGGINGS || item == Items.NETHERITE_BOOTS) {
-					n++;
+			MinecraftClient client = MinecraftClient.getInstance();
+			if (client.player != null && entity.getId() == client.player.getId()
+				&& entity instanceof net.minecraft.entity.player.PlayerEntity player) {
+				int n = 0;
+				for (int i = 36; i <= 39; i++) {
+					if (HitTracker.isNetheriteArmor(player.getInventory().getStack(i))) {
+						n++;
+					}
 				}
+				return n;
 			}
+			return HitTracker.netheriteFor(entity.getId());
 		} catch (Exception ignored) {
+			return 0;
 		}
-		return n;
 	}
 
 	/** tab list の ping。取れなければ -1。 */
