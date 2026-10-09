@@ -36,19 +36,20 @@ public final class SpikeFit {
 			n++;
 		}
 		if (n < 2) {
-			return new Fit(max, -1, n, true);
+			return new Fit(max, -1, n, true, false);
 		}
 		double denom = n * sumTT - sumT * sumT;
 		if (Math.abs(denom) < 1e-9) {
-			return new Fit(max, -1, n, true);
+			return new Fit(max, -1, n, true, false);
 		}
 		double b = (n * sumTY - sumT * sumY) / denom;
 		double a = (sumY - b * sumT) / n;
 		double decay = Math.exp(b);
 		// 発散（加速）は物理的におかしいので最大値に倒す
 		if (decay > 1.0 || decay < 0.5) {
-			return new Fit(max, -1, n, true);
+			return new Fit(max, -1, n, true, false);
 		}
-		return new Fit(Math.exp(a), decay, n, false);
+		// 減衰しない等速運動はKBじゃない（歩行・疾走）
+		return new Fit(Math.exp(a), decay, n, false, decay >= 0.995);
 	}
 }
