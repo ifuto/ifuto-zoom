@@ -259,6 +259,20 @@ public final class HitTracker {
 			}
 			pushPos(p.getId(), tick, p.getX(), p.getY(), p.getZ());
 		}
+		// 近くのMOBも毎 tick 記録する（スイング前の速さが無いと歩行を誤検出する）
+		try {
+			var box = self.getBoundingBox().expand(8);
+			for (LivingEntity e : world.getEntitiesByClass(LivingEntity.class, box, e -> true)) {
+				if (e == self || e instanceof PlayerEntity) {
+					continue;
+				}
+				if (!posHist.containsKey(e.getId()) && posHist.size() >= MAX_ENTITIES) {
+					break;
+				}
+				pushPos(e.getId(), tick, e.getX(), e.getY(), e.getZ());
+			}
+		} catch (Exception ignored) {
+		}
 	}
 
 	private static void pushPos(int id, long tick, double x, double y, double z) {
@@ -609,6 +623,9 @@ public final class HitTracker {
 			}
 		}
 		var fit = SpikeFit.fit(speeds);
+		if (fit.constantMotion()) {
+			return null; // 等速運動：KBじゃないのでスパイク扱いしない
+		}
 		spike.vNewH = fit.v0();
 		spike.fitN = fit.n();
 		spike.fallback = fit.fallback();
