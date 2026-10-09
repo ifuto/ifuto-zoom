@@ -1,0 +1,34 @@
+{
+	"schemaVersion": 1,
+	"id": "ifuto-kb",
+	"version": "${version}",
+	"name": "KB Meter",
+	"description": "Measures per-server knockback multipliers from real PvP hits (vanilla = 1.0), with dealt/received split and JSON export.",
+	"authors": [
+		"ifuto"
+	],
+	"contact": {
+		"homepage": "https://github.com/ifuto/ifuto-zoom",
+		"sources": "https://github.com/ifuto/ifuto-zoom",
+		"issues": "https://github.com/ifuto/ifuto-zoom/issues"
+	},
+	"license": "MIT",
+	"environment": "client",
+	"entrypoints": {
+		"client": [
+			"com.ifuto.kb.IfutoKbClient"
+		]
+	},
+	"mixins": [
+		{
+			"config": "ifuto-kb.mixins.json",
+			"environment": "client"
+		}
+	],
+	"depends": {
+		"fabricloader": ">=0.16.0",
+		"minecraft": "~1.21.11",
+		"java": ">=21",
+		"fabric-api": "*"
+	}
+}
