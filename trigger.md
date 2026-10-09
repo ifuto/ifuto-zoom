@@ -38,3 +38,4 @@ artifact_path: ifuto-kb/build/libs/*.jar
 - tput r116: kb 0.1.0 scaffold
 - tput r117: kb 0.2.0 measure+gui+selftest
 - tput r118: kb 0.2.0 armor-fix
+- tput r119: kb 0.2.0 dup-tail-fix
