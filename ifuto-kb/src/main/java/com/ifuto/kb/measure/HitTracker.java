@@ -15,7 +15,11 @@ import net.minecraft.client.world.ClientWorld;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.entity.EquipmentSlot;
+import net.minecraft.item.ItemStack;
+import net.minecraft.item.Items;
 import net.minecraft.network.packet.s2c.play.EntityDamageS2CPacket;
+import net.minecraft.network.packet.s2c.play.EntityEquipmentUpdateS2CPacket;
 import net.minecraft.network.packet.s2c.play.EntityStatusS2CPacket;
 import net.minecraft.network.packet.s2c.play.EntityVelocityUpdateS2CPacket;
 import net.minecraft.util.math.Vec3d;
@@ -164,6 +168,46 @@ public final class HitTracker {
 			}
 		} catch (Exception ignored) {
 		}
+	}
+
+	/** 装備パケットで他人のネザライト数を維持する。差分更新なのでスロット単位で覚える。 */
+	@SuppressWarnings("unchecked")
+	public static void onEquipment(EntityEquipmentUpdateS2CPacket packet) {
+		try {
+			Map<String, Boolean> slots = equipment.computeIfAbsent(packet.getEntityId(),
+				k -> new LinkedHashMap<>());
+			for (Object o : packet.getEquipmentList()) {
+				com.mojang.datafixers.util.Pair<EquipmentSlot, ItemStack> pair =
+					(com.mojang.datafixers.util.Pair<EquipmentSlot, ItemStack>) o;
+				if (pair.getFirst() != null && pair.getFirst().isArmorSlot()) {
+					slots.put(pair.getFirst().getName(), isNetheriteArmor(pair.getSecond()));
+				}
+			}
+		} catch (Exception ignored) {
+		}
+	}
+
+	public static boolean isNetheriteArmor(ItemStack stack) {
+		if (stack == null || stack.isEmpty()) {
+			return false;
+		}
+		var item = stack.getItem();
+		return item == Items.NETHERITE_HELMET || item == Items.NETHERITE_CHESTPLATE
+			|| item == Items.NETHERITE_LEGGINGS || item == Items.NETHERITE_BOOTS;
+	}
+
+	public static int netheriteFor(int entityId) {
+		Map<String, Boolean> slots = equipment.get(entityId);
+		if (slots == null) {
+			return 0;
+		}
+		int n = 0;
+		for (boolean b : slots.values()) {
+			if (b) {
+				n++;
+			}
+		}
+		return n;
 	}
 
 	/** status 2 = ダメージのけぞり。殴り側のダメージ確認に使う。 */

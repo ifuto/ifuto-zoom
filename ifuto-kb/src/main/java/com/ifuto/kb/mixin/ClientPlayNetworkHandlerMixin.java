@@ -27,4 +27,9 @@ public abstract class ClientPlayNetworkHandlerMixin {
 	private void ifutoKb$onStatus(EntityStatusS2CPacket packet, CallbackInfo ci) {
 		HitTracker.onStatus(packet);
 	}
+
+	@Inject(method = "onEntityEquipmentUpdate", at = @At("TAIL"))
+	private void ifutoKb$onEquipment(EntityEquipmentUpdateS2CPacket packet, CallbackInfo ci) {
+		HitTracker.onEquipment(packet);
+	}
 }
