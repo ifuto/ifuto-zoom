@@ -44,3 +44,4 @@ artifact_path: ifuto-kb/build/libs/*.jar
 - tput r122: kb 0.2.0 spike-fix-reapply
 - tput r123: kb 0.2.0 spikefit-reapply
 - tput r124: kb 0.2.0 robustness
+- tput r125: kb 0.2.0 protected-fix
