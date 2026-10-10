@@ -102,6 +102,11 @@ public class KbServerListScreen extends Screen {
 		scrollable.setHeight(scrollable.getHeight() + extra);
 	}
 
+	/** 詳細画面で削除したあと一覧を作り直す用。 */
+	public void refreshList() {
+		clearAndInit();
+	}
+
 	@Override
 	public void close() {
 		MinecraftClient.getInstance().setScreen(parent);
