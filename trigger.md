@@ -46,3 +46,4 @@ artifact_path: ifuto-f3/build/libs/*.jar
 - tput r124: kb 0.2.0 robustness
 - tput r125: kb 0.2.0 protected-fix
 - tput r126: f3 0.1.0 scaffold
+- tput r127: f3 0.1.0 typo-fix

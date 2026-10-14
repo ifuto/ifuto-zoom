@@ -275,7 +275,7 @@ public final class F3ConfigScreen extends Screen {
 		row.add(ButtonWidget.builder(toggleText(state[0]), b -> {
 			state[0] = !state[0];
 			b.setMessage(toggleText(state[0]));
-			rule.enabled = state[0]);
+			rule.enabled = state[0];
 		}).width(52).build());
 		return row;
 	}
