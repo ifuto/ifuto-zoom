@@ -1,0 +1,41 @@
+{
+	"schemaVersion": 1,
+	"id": "ifuto-f3",
+	"version": "${version}",
+	"name": "F3 Faker",
+	"description": "Spoofs everything on the F3 debug screen: FPS, specs, coordinates and more. Fully editable from the Mod Menu config screen, with BetterF3 support.",
+	"authors": [
+		"ifuto"
+	],
+	"contact": {
+		"homepage": "https://github.com/ifuto/ifuto-zoom",
+		"sources": "https://github.com/ifuto/ifuto-zoom",
+		"issues": "https://github.com/ifuto/ifuto-zoom/issues"
+	},
+	"license": "MIT",
+	"environment": "client",
+	"entrypoints": {
+		"client": [
+			"com.ifuto.f3.IfutoF3Client"
+		],
+		"modmenu": [
+			"com.ifuto.f3.compat.ModMenuIntegration"
+		]
+	},
+	"mixins": [
+		{
+			"config": "ifuto-f3.mixins.json",
+			"environment": "client"
+		}
+	],
+	"depends": {
+		"fabricloader": ">=0.16.0",
+		"minecraft": "~1.21.11",
+		"java": ">=21",
+		"fabric-api": "*"
+	},
+	"suggests": {
+		"modmenu": "*",
+		"betterf3": "*"
+	}
+}

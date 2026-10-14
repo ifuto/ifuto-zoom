@@ -1,0 +1,13 @@
+{
+	"required": true,
+	"package": "com.ifuto.f3.mixin",
+	"compatibilityLevel": "JAVA_21",
+	"client": [
+		"DebugHudLinesMixin",
+		"MinecraftClientFpsMixin",
+		"BetterF3DebugLineMixin"
+	],
+	"injectors": {
+		"defaultRequire": 1
+	}
+}

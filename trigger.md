@@ -1,5 +1,5 @@
-workdir: ifuto-kb
-artifact_path: ifuto-kb/build/libs/*.jar
+workdir: ifuto-f3
+artifact_path: ifuto-f3/build/libs/*.jar
 # 2026-09-17-06:03:20
 # 2026-09-17-06:32:25
 # 2026-09-17-06:35:40
@@ -45,3 +45,4 @@ artifact_path: ifuto-kb/build/libs/*.jar
 - tput r123: kb 0.2.0 spikefit-reapply
 - tput r124: kb 0.2.0 robustness
 - tput r125: kb 0.2.0 protected-fix
+- tput r126: f3 0.1.0 scaffold
