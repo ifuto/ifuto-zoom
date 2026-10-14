@@ -151,7 +151,7 @@ public final class SpoofEngine {
 
 	// ================= バニラ行の書き換え =================
 
-	private static final Pattern VANILLA_FPS = Pattern.compile("(\\d+)\\s+fps", Pattern.CASE_INSENSITIVE);
+	private static final Pattern VANILLA_FPS = Pattern.compile("(\\d+)(\\s+fps)", Pattern.CASE_INSENSITIVE);
 	private static final Pattern COORD_TRIPLE = Pattern.compile("(-?\\d+\\.\\d+)\\s*/\\s*(-?\\d+\\.\\d+)\\s*/\\s*(-?\\d+\\.\\d+)");
 	private static final Pattern INT_TRIPLE = Pattern.compile("(-?\\d+)\\s+(-?\\d+)\\s+(-?\\d+)");
 	private static final Pattern MEM_SHAPE = Pattern.compile("(\\d+)%\\s*(\\d+)/(\\d+)\\s*MB");
@@ -168,7 +168,7 @@ public final class SpoofEngine {
 		// FPS ("120 fps ..." の数字)
 		Matcher fpsMatcher = VANILLA_FPS.matcher(out);
 		if (fpsMatcher.find()) {
-			out = fpsMatcher.replaceFirst(String.valueOf(fps(cfg, ctx)));
+			out = fpsMatcher.replaceFirst(Matcher.quoteReplacement(fps(cfg, ctx) + fpsMatcher.group(2)));
 		}
 
 		// 座標 ("XYZ: 1.2 / 3.4 / 5.6")
