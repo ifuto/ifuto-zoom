@@ -49,3 +49,4 @@ artifact_path: ifuto-replay/build/libs/*.jar
 - tput r127: f3 0.1.0 typo-fix
 - tput r128: f3 0.1.0 fps-word-fix
 - tput r129: replay 0.30.0 snapshot-async
+- tput r130: replay 0.30.0 nullable-fix

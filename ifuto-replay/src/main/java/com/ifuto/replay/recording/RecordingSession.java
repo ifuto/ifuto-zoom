@@ -21,6 +21,7 @@ import java.util.Locale;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Consumer;
 
 /**
  * 録画1回分。パケットの直列化（ここが唯一の“録画の仕事”）とファイル書き込みの管理をする。
@@ -287,7 +288,7 @@ public final class RecordingSession {
 	 *
 	 * @param done 終わったときに呼ばれる（クライアントスレッド。写しがあれば true）。要らなければ null
 	 */
-	public void beginAsyncSnapshot(MinecraftClient client, @Nullable java.util.function.Consumer<Boolean> done) {
+	public void beginAsyncSnapshot(MinecraftClient client, @Nullable Consumer<Boolean> done) {
 		synchronized (this.holdLock) {
 			if (this.holding) {
 				IfutoReplayClient.LOGGER.warn("[ifuto-replay] 写しの組み立てが重なりました（2回目は捨てます）");
