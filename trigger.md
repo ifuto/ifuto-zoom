@@ -1,5 +1,5 @@
-workdir: ifuto-f3
-artifact_path: ifuto-f3/build/libs/*.jar
+workdir: ifuto-replay
+artifact_path: ifuto-replay/build/libs/*.jar
 # 2026-09-17-06:03:20
 # 2026-09-17-06:32:25
 # 2026-09-17-06:35:40
@@ -48,3 +48,4 @@ artifact_path: ifuto-f3/build/libs/*.jar
 - tput r126: f3 0.1.0 scaffold
 - tput r127: f3 0.1.0 typo-fix
 - tput r128: f3 0.1.0 fps-word-fix
+- tput r129: replay 0.30.0 snapshot-async

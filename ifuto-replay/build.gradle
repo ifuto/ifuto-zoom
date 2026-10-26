@@ -99,3 +99,11 @@ tasks.register('benchQueue', JavaExec) {
 }
 
 check.dependsOn benchQueue
+
+// 写し待ちの待機列の自己テスト（CI で毎回。壊れていたら落とす）
+tasks.register('testSnapshot', JavaExec) {
+	classpath = sourceSets.main.runtimeClasspath
+	mainClass = 'com.ifuto.replay.recording.SnapshotHoldSelfTest'
+}
+
+check.dependsOn testSnapshot

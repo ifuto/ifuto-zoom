@@ -140,14 +140,9 @@ final class ClipBuffer {
 		if (RecordingManager.INSTANCE.startClipAudio(client, audio)) {
 			this.audioChunks.addLast(new AudioChunk(audio, System.currentTimeMillis()));
 		}
-		// 写しは開く前に組み立てる（開いてからだと、そのあいだのパケットが写しより先に入る）
-		WorldSnapshot.Snapshot snapshot = this.session.buildSnapshot(client);
+		// 写しは別スレッドで組み立てる。そのあいだ来たパケットは待機列にためて、写しのあとに流す
+		this.session.beginAsyncSnapshot(client, null);
 		this.openSegment();
-
-		// 先頭に世界の写しを置く（これがあるので、この区間から単独で再生できる）
-		if (snapshot != null) {
-			this.session.offerSnapshot(snapshot);
-		}
 	}
 
 	/** まとめている最中か（画面に出すよう） */
@@ -378,6 +373,9 @@ final class ClipBuffer {
 		this.assembling = true;
 		this.assemblingSegments.addAll(parts);
 
+		// 録り始めの写しがまだ組み立て中なら、先に片付ける（区間が混ざらないように）
+		this.session.cancelSnapshotHold();
+
 		// 写しは開く前に組み立てる（開いてからだと、そのあいだのパケットが写しより先に入る）
 		WorldSnapshot.Snapshot snapshot = this.session.buildSnapshot(client);
 		ReplayFileWriter previous = this.writer;
@@ -480,6 +478,9 @@ final class ClipBuffer {
 
 	/** 区間を次へ移す（古い区間は別スレッドで閉じ、残す数を超えた分は消す） */
 	private void rotate(MinecraftClient client) {
+		// 録り始めの写しがまだ組み立て中なら、先に片付ける（区間が混ざらないように）
+		this.session.cancelSnapshotHold();
+
 		// 写しは開く前に組み立てる（開いてからだと、そのあいだのパケットが写しより先に入る）
 		WorldSnapshot.Snapshot snapshot = this.session.buildSnapshot(client);
 		ReplayFileWriter previous = this.writer;

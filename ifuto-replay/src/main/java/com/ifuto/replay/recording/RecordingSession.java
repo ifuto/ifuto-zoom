@@ -84,6 +84,17 @@ public final class RecordingSession {
 	private volatile PacketEncoder encoder;
 	private volatile boolean stopping;
 
+	/**
+	 * 写し待ちの待機列とその錠。録り始めの1回だけ使う。
+	 *
+	 * <p>錠の取り順は registerLock → holdLock で統一する（逆にすると固まる）。
+	 */
+	private final Object holdLock = new Object();
+	private final SnapshotHold hold = new SnapshotHold();
+	private boolean holding;
+	private boolean holdDone;
+	private volatile boolean snapshotCancelled;
+
 	RecordingSession(Path file, ReplayConfig config, String mcVersion, String serverName, String playerName,
 					 long startedAt) throws IOException {
 		this.file = file;
@@ -267,22 +278,59 @@ public final class RecordingSession {
 	}
 
 	/**
-	 * いまの世界の写しを録画の先頭に置く（「途中から録り始めた」録画を再生できるようにするため）。
+	 * いまの世界の写しを別スレッドで組み立てて、録画の先頭に置く。
 	 *
 	 * <p>サーバーに取り直しを頼むことはしない（BAN を避けるため通信は一切増やさない）ので、
-	 * 手元にある世界から「サーバーが送ってきたのと同じパケット」を組み立てて書き込む。
-	 * 少し重い（数百チャンクで数十〜百ms）ので、録り始めの1回だけ。
+	 * 手元にある世界から「サーバーが送ってきたのと同じパケット」を組み立てる。
+	 * 組み立ては重い（地形が多いと数百ms）のでメインスレッドは止めない。
+	 * そのあいだに来たパケットは待機列にためて、写しのあとに順番どおり流す。
 	 *
-	 * @return 作れたら true（作れないときは「最初から」録れていないのと同じ扱いになる）
+	 * @param done 終わったときに呼ばれる（クライアントスレッド。写しがあれば true）。要らなければ null
 	 */
-	public boolean captureSnapshot(MinecraftClient client) {
-		WorldSnapshot.Snapshot snapshot = this.buildSnapshot(client);
+	public void beginAsyncSnapshot(MinecraftClient client, @Nullable java.util.function.Consumer<Boolean> done) {
+		synchronized (this.holdLock) {
+			if (this.holding) {
+				IfutoReplayClient.LOGGER.warn("[ifuto-replay] 写しの組み立てが重なりました（2回目は捨てます）");
+				return;
+			}
 
-		if (snapshot == null) {
-			return false;
+			this.holding = true;
+			this.holdDone = false;
+			this.snapshotCancelled = false;
 		}
 
-		return this.offerSnapshot(snapshot);
+		Thread worker = new Thread(() -> {
+			WorldSnapshot.Snapshot snapshot = null;
+
+			try {
+				snapshot = this.buildSnapshot(client, () -> this.stopping || this.snapshotCancelled);
+			} catch (Throwable t) {
+				IfutoReplayClient.LOGGER.warn("[ifuto-replay] 世界の写しを作れませんでした", t);
+			}
+
+			boolean ok;
+
+			try {
+				ok = this.completeSnapshotHold(snapshot);
+			} catch (Throwable t) {
+				// ここで落とすと待機列が詰まったままになるので、必ず流してから終える
+				IfutoReplayClient.LOGGER.warn("[ifuto-replay] 世界の写しを置けませんでした", t);
+				this.cancelSnapshotHold();
+				ok = false;
+			}
+
+			if (done != null) {
+				boolean result = ok;
+
+				if (client != null) {
+					client.execute(() -> done.accept(result));
+				} else {
+					done.accept(result);
+				}
+			}
+		}, "ifuto-replay-snapshot");
+		worker.setDaemon(true);
+		worker.start();
 	}
 
 	/**
@@ -294,6 +342,12 @@ public final class RecordingSession {
 	 * @return 写し。作れなかったら null
 	 */
 	public WorldSnapshot.@Nullable Snapshot buildSnapshot(MinecraftClient client) {
+		return this.buildSnapshot(client, () -> false);
+	}
+
+	/** 止められる版の組み立て。止められたらすぐ null で返す。 */
+	WorldSnapshot.@Nullable Snapshot buildSnapshot(MinecraftClient client,
+			java.util.function.BooleanSupplier cancelled) {
 		if (this.stopping || client == null) {
 			return null;
 		}
@@ -302,10 +356,85 @@ public final class RecordingSession {
 		int radius = Math.max(1, this.config.snapshotRadius);
 
 		try {
-			return WorldSnapshot.build(client, radius);
+			return WorldSnapshot.build(client, radius, cancelled);
 		} catch (Throwable t) {
 			IfutoReplayClient.LOGGER.warn("[ifuto-replay] 世界の写しを作れませんでした", t);
 			return null;
+		}
+	}
+
+	/** 写し待ちを始める（ためた分は {@link #completeSnapshotHold} か終了時に流す）。 */
+	void beginSnapshotHold() {
+		synchronized (this.holdLock) {
+			this.holding = true;
+			this.holdDone = false;
+			this.snapshotCancelled = false;
+		}
+	}
+
+	/**
+	 * 写しを積んで待機を流す（組み立てスレッドから呼ぶ）。
+	 *
+	 * <p>写しの種類の定義・しおり・本体は待機列の末尾に足してから流す。
+	 * こうすると「定義より本体が先」にならず、写しの前後どちらにも割り込まない。
+	 *
+	 * @return 写しを置けたら true
+	 */
+	boolean completeSnapshotHold(WorldSnapshot.@Nullable Snapshot snapshot) {
+		boolean ok = false;
+
+		if (snapshot != null && !this.stopping && !this.snapshotCancelled) {
+			ok = this.offerSnapshot(snapshot);
+		}
+
+		synchronized (this.holdLock) {
+			if (this.holdDone) {
+				return ok;
+			}
+
+			this.holdDone = true;
+			this.holding = false;
+			this.drainHoldLocked();
+		}
+
+		return ok;
+	}
+
+	/** 写し待ちをやめて、ためた分をそのまま流す。終了時と区間切替の安全弁。 */
+	void cancelSnapshotHold() {
+		this.snapshotCancelled = true;
+
+		synchronized (this.holdLock) {
+			if (this.holdDone || !this.holding) {
+				return;
+			}
+
+			this.holdDone = true;
+			this.holding = false;
+			this.drainHoldLocked();
+		}
+	}
+
+	/**
+	 * 待機列を空にして順番どおり流す。呼ぶ側が {@link #holdLock} を取っていること。
+	 *
+	 * <p>錠の中で流し切る（外すと、そのあいだに来た分が追い越して順番が壊れる）。
+	 * 積むだけなので一瞬で終わる。
+	 */
+	private void drainHoldLocked() {
+		for (PacketTask task : this.hold.drain()) {
+			int size = task == null ? 0 : task.size();
+			boolean routed = task != null
+					&& (this.clip != null ? this.clip.offer(task) : this.writer.offer(task));
+
+			if (!routed) {
+				if (task != null && task.payload != null) {
+					task.payload.release();
+				}
+
+				this.queuedBytes.addAndGet(-size);
+				this.droppedCount.incrementAndGet();
+			}
 		}
 	}
 
@@ -535,6 +664,8 @@ public final class RecordingSession {
 	/** 録画を終えてファイルを閉じる（スレッドの終了を待つので、書き込みスレッドからは呼ばない） */
 	public Stats finish() {
 		this.stopping = true;
+		// 写し待ちの最中なら、ためた分を先に流す（組立中のは捨てる）
+		this.cancelSnapshotHold();
 		// ためているパーティクルを先に書き切る（残すと最後の数十ミリ秒ぶんが消える）
 		this.flushLocalBatch();
 		long durationMs = System.currentTimeMillis() - this.startedAt;
@@ -697,8 +828,18 @@ public final class RecordingSession {
 		return result;
 	}
 
-	/** 積む先（クリップ方式なら区間、そうでなければファイル） */
-	private boolean offer(PacketTask task) {
+	/** 積む先（クリップ方式なら区間、そうでなければファイル。写し待ちなら待機列） */
+	boolean offer(PacketTask task) {
+		if (this.stopping) {
+			return false;
+		}
+
+		synchronized (this.holdLock) {
+			if (this.holding) {
+				return this.hold.add(task, this.maxQueuedBytes);
+			}
+		}
+
 		return this.clip != null ? this.clip.offer(task) : this.writer.offer(task);
 	}
 
@@ -707,5 +848,43 @@ public final class RecordingSession {
 	}
 
 	private record TypeInfo(int index, boolean noisy, int direction, String name) {
+	}
+
+	/**
+	 * 写し待ちのあいだに来たタスクの待機列。順番どおりためて、あとで流す。
+	 *
+	 * <p>上限つき（書き込み待ちと同じ）。超えた分はためずに捨てる。
+	 * 触るときは必ず {@link #holdLock} を取っていること。
+	 */
+	static final class SnapshotHold {
+		private final List<PacketTask> tasks = new ArrayList<>();
+		private long bytes;
+
+		boolean add(PacketTask task, long maxBytes) {
+			int size = task == null ? 0 : task.size();
+
+			if (task == null || this.bytes + size > maxBytes) {
+				return false;
+			}
+
+			this.tasks.add(task);
+			this.bytes += size;
+			return true;
+		}
+
+		List<PacketTask> drain() {
+			List<PacketTask> out = new ArrayList<>(this.tasks);
+			this.tasks.clear();
+			this.bytes = 0;
+			return out;
+		}
+
+		int count() {
+			return this.tasks.size();
+		}
+
+		long bytes() {
+			return this.bytes;
+		}
 	}
 }

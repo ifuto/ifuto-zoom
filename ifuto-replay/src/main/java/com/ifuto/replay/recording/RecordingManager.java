@@ -198,16 +198,20 @@ public final class RecordingManager {
 			}
 
 			if (System.currentTimeMillis() - this.lastJoinTimeMs > PARTIAL_START_MS) {
-				// 途中から録り始めたので、いまの世界の写しを先頭に置いて再生できるようにする
-				if (created.captureSnapshot(client)) {
-					notify(client, "ifuto-replay.message.snapshot");
-				} else {
-					// 写しが作れない（この Mod を入れる前から入っていた等）ので、このファイルは再生できない
-					IfutoReplayClient.LOGGER.warn("[ifuto-replay] 途中から録り始めました。世界の写しが作れないので"
-							+ "このファイルは再生できません（サーバーに入り直してから録るか、"
-							+ "設定の「自動録画」を ON にしてください）");
-					notify(client, "ifuto-replay.message.partial_start");
-				}
+				// 途中から録り始めたので、いまの世界の写しを先頭に置いて再生できるようにする。
+				// 組み立ては別スレッドで（地形が多いと数百msかかるのでメインは止めない）。
+				// そのあいだのパケットは待機列にためて、写しのあとに順番どおり流す
+				created.beginAsyncSnapshot(client, ok -> {
+					if (ok) {
+						notify(client, "ifuto-replay.message.snapshot");
+					} else {
+						// 写しが作れない（この Mod を入れる前から入っていた等）ので、このファイルは再生できない
+						IfutoReplayClient.LOGGER.warn("[ifuto-replay] 途中から録り始めました。世界の写しが作れないので"
+								+ "このファイルは再生できません（サーバーに入り直してから録るか、"
+								+ "設定の「自動録画」を ON にしてください）");
+						notify(client, "ifuto-replay.message.partial_start");
+					}
+				});
 			} else {
 				// 入った直後なのでパケットが最初から揃っている。「ここから完全」の印だけ置く
 				created.addMarker(ReplayFormat.SNAP_MARKER);

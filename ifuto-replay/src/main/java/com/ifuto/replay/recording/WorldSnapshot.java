@@ -88,6 +88,29 @@ public final class WorldSnapshot {
 	 * @return 作れたら内容、必要条件が足りなければ null
 	 */
 	public static @Nullable Snapshot build(MinecraftClient client, int radius) {
+		return build(client, radius, () -> false);
+	}
+
+	/**
+	 * いまの世界から「再生の開始に必要なパケット」を組み立てる。
+	 *
+	 * <p>別スレッドから呼ぶ。世界はメインスレッドが触っている最中なので、
+	 * 読むたびに壊れていても1個ずつ捨てて続ける。止められたらすぐ null で返す。
+	 *
+	 * @param radius 保存する地形の半径（チャンク）
+	 * @param cancelled 止めるかどうか。止めるとき true
+	 * @return 作れたら内容、必要条件が足りないか止められたら null
+	 */
+	public static @Nullable Snapshot build(MinecraftClient client, int radius,
+			java.util.function.BooleanSupplier cancelled) {
+		if (cancelled == null) {
+			cancelled = () -> false;
+		}
+
+		if (cancelled.getAsBoolean()) {
+			return null;
+		}
+
 		ClientWorld world = client.world;
 		ClientPlayerEntity player = client.player;
 		Packet<?> join = RecordingManager.getJoinPacket();
@@ -149,22 +172,25 @@ public final class WorldSnapshot {
 		int chunkCount = 0;
 
 		for (int dx = -radius; dx <= radius && chunkCount < MAX_CHUNKS; dx++) {
+			if (cancelled.getAsBoolean()) {
+				return null;
+			}
+
 			for (int dz = -radius; dz <= radius && chunkCount < MAX_CHUNKS; dz++) {
-				Chunk chunk = chunks.getChunk(center.x + dx, center.z + dz, ChunkStatus.FULL, false);
-
-				if (!(chunk instanceof WorldChunk worldChunk) || worldChunk.isEmpty()) {
-					continue;
-				}
-
 				try {
+					Chunk chunk = chunks.getChunk(center.x + dx, center.z + dz, ChunkStatus.FULL, false);
+
+					if (!(chunk instanceof WorldChunk worldChunk) || worldChunk.isEmpty()) {
+						continue;
+					}
+
 					packets.add(new ChunkDataS2CPacket(worldChunk, lighting,
 							lightMask(worldChunk, lighting, LightType.SKY),
 							lightMask(worldChunk, lighting, LightType.BLOCK)));
 					chunkCount++;
 				} catch (Throwable t) {
 					// 1個の地形で写し全体を捨てない（欠けた所はあとから届く）
-					IfutoReplayClient.LOGGER.warn("[ifuto-replay] 地形1個を写せませんでした ({}, {})",
-							worldChunk.getPos().x, worldChunk.getPos().z, t);
+					IfutoReplayClient.LOGGER.warn("[ifuto-replay] 地形1個を写せませんでした (dx={}, dz={})", dx, dz, t);
 				}
 			}
 		}
@@ -174,56 +200,67 @@ public final class WorldSnapshot {
 		double limitSq = limit * limit;
 		int entityCount = 0;
 
-		for (Object found : world.getEntities()) {
-			if (!(found instanceof Entity entity) || entity == player || !entity.isAlive() || entity.isRemoved()) {
-				continue;
-			}
+		try {
+			int scanned = 0;
 
-			if (entity.squaredDistanceTo(player.getSyncedPos()) > limitSq) {
-				continue;
-			}
-
-			try {
-				packets.add(new EntitySpawnS2CPacket(entity, 0, BlockPos.ofFloored(entity.getSyncedPos())));
-				packets.add(EntityPositionSyncS2CPacket.create(entity));
-				packets.add(new EntityVelocityUpdateS2CPacket(entity));
-				packets.add(new EntitySetHeadYawS2CPacket(entity,
-						(byte) MathHelper.floor(entity.getHeadYaw() * 256.0F / 360.0F)));
-
-				List<DataTracker.SerializedEntry<?>> tracked = entity.getDataTracker().getChangedEntries();
-
-				if (tracked != null && !tracked.isEmpty()) {
-					packets.add(new EntityTrackerUpdateS2CPacket(entity.getId(), tracked));
+			for (Object found : world.getEntities()) {
+				if ((scanned++ & 63) == 0 && cancelled.getAsBoolean()) {
+					return null;
 				}
 
-				if (entity instanceof LivingEntity living) {
-					AttributeContainer attributes = living.getAttributes();
-
-					if (attributes != null) {
-						packets.add(new EntityAttributesS2CPacket(entity.getId(), attributes.getAttributesToSend()));
-					}
-
-					List<Pair<EquipmentSlot, ItemStack>> equipment = equipment(living);
-
-					if (!equipment.isEmpty()) {
-						packets.add(new EntityEquipmentUpdateS2CPacket(entity.getId(), equipment));
-					}
-
-					for (StatusEffectInstance effect : living.getStatusEffects()) {
-						packets.add(new EntityStatusEffectS2CPacket(entity.getId(), effect, false));
-					}
+				if (!(found instanceof Entity entity) || entity == player || !entity.isAlive() || entity.isRemoved()) {
+					continue;
 				}
 
-				if (entity.hasPassengers()) {
-					packets.add(new EntityPassengersSetS2CPacket(entity));
+				if (entity.squaredDistanceTo(player.getSyncedPos()) > limitSq) {
+					continue;
 				}
 
-				entityCount++;
-			} catch (Throwable t) {
-				// 1匹の写しで全体を捨てない（欠けた分はあとから届く）
-				IfutoReplayClient.LOGGER.warn("[ifuto-replay] 实体1匹を写せませんでした ({})",
-						entity.getType().getTranslationKey(), t);
+				try {
+					packets.add(new EntitySpawnS2CPacket(entity, 0, BlockPos.ofFloored(entity.getSyncedPos())));
+					packets.add(EntityPositionSyncS2CPacket.create(entity));
+					packets.add(new EntityVelocityUpdateS2CPacket(entity));
+					packets.add(new EntitySetHeadYawS2CPacket(entity,
+							(byte) MathHelper.floor(entity.getHeadYaw() * 256.0F / 360.0F)));
+
+					List<DataTracker.SerializedEntry<?>> tracked = entity.getDataTracker().getChangedEntries();
+
+					if (tracked != null && !tracked.isEmpty()) {
+						packets.add(new EntityTrackerUpdateS2CPacket(entity.getId(), tracked));
+					}
+
+					if (entity instanceof LivingEntity living) {
+						AttributeContainer attributes = living.getAttributes();
+
+						if (attributes != null) {
+							packets.add(new EntityAttributesS2CPacket(entity.getId(), attributes.getAttributesToSend()));
+						}
+
+						List<Pair<EquipmentSlot, ItemStack>> equipment = equipment(living);
+
+						if (!equipment.isEmpty()) {
+							packets.add(new EntityEquipmentUpdateS2CPacket(entity.getId(), equipment));
+						}
+
+						for (StatusEffectInstance effect : living.getStatusEffects()) {
+							packets.add(new EntityStatusEffectS2CPacket(entity.getId(), effect, false));
+						}
+					}
+
+					if (entity.hasPassengers()) {
+						packets.add(new EntityPassengersSetS2CPacket(entity));
+					}
+
+					entityCount++;
+				} catch (Throwable t) {
+					// 1匹の写しで全体を捨てない（欠けた分はあとから届く）
+					IfutoReplayClient.LOGGER.warn("[ifuto-replay] 实体1匹を写せませんでした ({})",
+							entity.getType().getTranslationKey(), t);
+				}
 			}
+		} catch (Throwable t) {
+			// 別スレッドから読むので、一覧自体が壊れることがある。そのぶんは欠けたまま続ける
+			IfutoReplayClient.LOGGER.warn("[ifuto-replay] 实体の一覧が途中で壊れました（欠けた分はあとから届く）", t);
 		}
 
 		return new Snapshot(packets, chunkCount, entityCount);
