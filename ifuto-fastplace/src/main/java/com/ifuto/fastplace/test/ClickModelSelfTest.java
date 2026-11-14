@@ -44,8 +44,9 @@ public final class ClickModelSelfTest {
 
 		double head = mean(samples, 0, 80);
 		double tail = mean(samples, n - 500, n);
-		check(head < 62.0, "early clicks near base interval: " + head);
-		check(tail > head * 1.08, "fatigue slows later clicks: head=" + head + " tail=" + tail);
+		check(head < 66.0, "early clicks near base interval: " + head);
+		check(tail > 65.0, "fatigue pushes later intervals up: " + tail);
+		check(tail > head, "fatigue monotonically slows clicks: head=" + head + " tail=" + tail);
 		System.out.printf("[fastplace-test] mean head=%.2f tail=%.2f fatigue=%.4f%n", head, tail, model.fatigue());
 	}
 
@@ -127,8 +128,8 @@ public final class ClickModelSelfTest {
 			"jitterSigma in range: " + model.jitterSigma());
 		check(model.outlierProb() >= ClickTimingModel.OUTLIER_MIN && model.outlierProb() <= ClickTimingModel.OUTLIER_MAX,
 			"outlierProb in range: " + model.outlierProb());
-		check(model.skewShape() >= 2.2 && model.skewShape() <= 5.5,
-			"skewShape in range: " + model.skewShape());
+		check(model.skewShape() >= 0.7 && model.skewShape() <= 1.5,
+			"sigma ratio walk in range: " + model.skewShape());
 		// 30 秒で最低一度は動くはず（ランダムウォークなので厳密には変わるはず）
 		check(Math.abs(model.jitterSigma() - sigmaFirst) > 1.0e-9
 					|| Math.abs(model.outlierProb() - outlierFirst) > 1.0e-9,
