@@ -23,6 +23,9 @@ public final class F3Config {
 
 	public boolean masterEnabled = true;
 
+	// ---- モジュール ----
+	public boolean scaffoldEnabled = false;
+
 	// ---- FPS: FIXED / FOLLOW / RANGE ----
 	public String fpsMode = "RANGE";
 	public int fpsFixed = 240;

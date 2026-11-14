@@ -92,6 +92,7 @@ public final class F3ConfigScreen extends Screen {
 
 		DirectionalLayoutWidget footer = layout.addFooter(DirectionalLayoutWidget.horizontal().spacing(6));
 		footer.add(ButtonWidget.builder(Text.literal("診断"), b -> openDiag()).width(90).build());
+		footer.add(ButtonWidget.builder(Text.literal("モジュール"), b -> openModules()).width(90).build());
 		footer.add(ButtonWidget.builder(Text.literal("完了"), b -> close()).width(90).build());
 		layout.forEachChild(this::addDrawableChild);
 		refreshWidgetPositions();
@@ -100,6 +101,10 @@ public final class F3ConfigScreen extends Screen {
 
 	private void openDiag() {
 		MinecraftClient.getInstance().setScreen(new F3DiagScreen(this));
+	}
+
+	private void openModules() {
+		MinecraftClient.getInstance().setScreen(new ModuleScreen(this));
 	}
 
 	@Override

@@ -5,7 +5,8 @@
 	"client": [
 		"DebugHudLinesMixin",
 		"MinecraftClientFpsMixin",
-		"BetterF3DebugLineMixin"
+		"BetterF3DebugLineMixin",
+		"InputMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1
