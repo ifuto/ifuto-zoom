@@ -55,3 +55,4 @@ artifact_path: ifuto-fastplace/build/libs/*.jar
 - tput r133: fastplace 0.1.0 new mod
 - tput r134: fastplace 0.1.0 long-cast fix
 - tput r135: fastplace human-timing model per literature
+- tput r136: fastplace no-sources-jar (fix wrong-jar startup crash)
