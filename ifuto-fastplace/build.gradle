@@ -64,3 +64,33 @@ tasks.register('testFastplace', JavaExec) {
 }
 
 check.dependsOn testFastplace
+
+// mixins.json が参照するクラスが実際にビルドされているか検証する（起動時クラッシュ防止）
+tasks.register('verifyMixinConfigs') {
+	dependsOn tasks.named('classes')
+	doLast {
+		def classesDirs = sourceSets.main.output.classesDirs.files
+		def resourcesDir = sourceSets.main.output.resourcesDir
+		def failures = []
+		fileTree('src/main/resources').matching { include '**/*.mixins.json' }.each { f ->
+			def json = new groovy.json.JsonSlurper().parse(f)
+			def pkg = (json.package as String).replace('.', '/')
+			['mixins', 'client', 'server'].each { key ->
+				(json[key] ?: []).each { name ->
+					def rel = "${pkg}/${name}.class"
+					def found = classesDirs.any { new File(it, rel).exists() }
+							|| new File(resourcesDir, rel).exists()
+					if (!found) {
+						failures << "${f.name}: class not built: ${json.package}.${name}"
+					}
+				}
+			}
+		}
+		if (!failures.isEmpty()) {
+			throw new GradleException("mixin config entries without classes:\n" + failures.join('\n'))
+		}
+		println 'verifyMixinConfigs: all mixin classes present'
+	}
+}
+
+check.dependsOn verifyMixinConfigs

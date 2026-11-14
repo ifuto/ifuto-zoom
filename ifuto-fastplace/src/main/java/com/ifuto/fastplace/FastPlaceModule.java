@@ -1,5 +1,6 @@
 package com.ifuto.fastplace;
 
+import com.ifuto.fastplace.mixin.MinecraftClientAccessor;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.client.network.ClientPlayerInteractionManager;
