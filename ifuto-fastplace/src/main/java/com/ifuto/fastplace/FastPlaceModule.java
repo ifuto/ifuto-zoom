@@ -62,7 +62,7 @@ public final class FastPlaceModule {
 			((MinecraftClientAccessor) client).ifutoFastplace$setItemUseCooldown(0);
 			double base = FastPlaceConfig.get().intervalMs;
 			long delay = MODEL.fireClick(now, base);
-			nextClickDueAt = now + Math.max(ClickTimingModel.MIN_INTERVAL_MS, delay);
+			nextClickDueAt = now + Math.max((long) ClickTimingModel.MIN_INTERVAL_MS, delay);
 			lastPlacementAt = now;
 		}
 	}

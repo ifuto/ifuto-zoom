@@ -53,3 +53,4 @@ artifact_path: ifuto-fastplace/build/libs/*.jar
 - tput r131: f3 0.2.0 module screen + scaffold
 - tput r132: f3 0.2.0 build-check
 - tput r133: fastplace 0.1.0 new mod
+- tput r134: fastplace 0.1.0 long-cast fix
