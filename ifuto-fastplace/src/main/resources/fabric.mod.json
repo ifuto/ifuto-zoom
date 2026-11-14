@@ -1,0 +1,40 @@
+{
+	"schemaVersion": 1,
+	"id": "ifuto-fastplace",
+	"version": "${version}",
+	"name": "FastPlace",
+	"description": "Hold right-click to place blocks faster, with human-like timing: right-skewed distribution, cryptographic jitter every 20th click, accumulating fatigue that recovers while idle, jitter strength that shifts every 2 seconds, occasional outliers, and a per-tick CPS counter that never shows a round integer.",
+	"authors": [
+		"ifuto"
+	],
+	"contact": {
+		"homepage": "https://github.com/ifuto/ifuto-zoom",
+		"sources": "https://github.com/ifuto/ifuto-zoom",
+		"issues": "https://github.com/ifuto/ifuto-zoom/issues"
+	},
+	"license": "MIT",
+	"environment": "client",
+	"entrypoints": {
+		"client": [
+			"com.ifuto.fastplace.FastPlaceMod"
+		],
+		"modmenu": [
+			"com.ifuto.fastplace.compat.ModMenuIntegration"
+		]
+	},
+	"mixins": [
+		{
+			"config": "ifuto-fastplace.mixins.json",
+			"environment": "client"
+		}
+	],
+	"depends": {
+		"fabricloader": ">=0.16.0",
+		"minecraft": "~1.21.11",
+		"java": ">=21",
+		"fabric-api": "*"
+	},
+	"suggests": {
+		"modmenu": "*"
+	}
+}

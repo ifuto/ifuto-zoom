@@ -1,5 +1,5 @@
-workdir: ifuto-f3
-artifact_path: ifuto-f3/build/libs/*.jar
+workdir: ifuto-fastplace
+artifact_path: ifuto-fastplace/build/libs/*.jar
 # 2026-09-17-06:03:20
 # 2026-09-17-06:32:25
 # 2026-09-17-06:35:40
@@ -52,3 +52,4 @@ artifact_path: ifuto-f3/build/libs/*.jar
 - tput r130: replay 0.30.0 nullable-fix
 - tput r131: f3 0.2.0 module screen + scaffold
 - tput r132: f3 0.2.0 build-check
+- tput r133: fastplace 0.1.0 new mod
