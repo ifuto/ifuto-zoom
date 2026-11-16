@@ -103,9 +103,11 @@ public final class HumanAim {
 
 		if (Math.abs(error) >= BALLISTIC_MIN_DEG) {
 			// 新しい目標に変わった / まだ動いていない → 弾道運動を組み直す
+			// 目標そのものが変わった / 計画が古すぎる、のときだけ組み直す。
+			// （自分が動いたぶんの差で組み直すと、サッケードが間延びして
+			//   メインシーケンスの時間から外れる）
 			boolean needsPlan = !planning
 				|| Math.abs(planTo - target) > 3.0
-				|| Math.abs(planFrom - angle) > 8.0
 				|| nowMs - planStartMs > planDurationMs + 80.0;
 			if (needsPlan) {
 				planning = true;
