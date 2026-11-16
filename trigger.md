@@ -58,3 +58,5 @@ artifact_path: ifuto-fastplace/build/libs/*.jar
 - tput r136: fastplace no-sources-jar (fix wrong-jar startup crash)
 - tput r137: fastplace 0.1.1 version bump for unambiguous artifact
 - tput r138: fastplace mixin package fix + CI mixin-class verification
+# 2026-11-16-fastplace-scaffold
+- tput r139: fastplace 0.2.0 module screen + FastPlace keybind + god bridge scaffold

@@ -1,3 +1,6 @@
 {
-	"text.ifuto-fastplace.title": "FastPlace"
+	"text.ifuto-fastplace.title": "FastPlace",
+	"key.ifuto-fastplace.modules": "モジュール画面を開く",
+	"key.ifuto-fastplace.toggle_fastplace": "FastPlace の ON/OFF",
+	"key.category.ifuto-fastplace.modules": "Ifuto FastPlace"
 }

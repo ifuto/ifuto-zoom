@@ -3,7 +3,11 @@
 	"package": "com.ifuto.fastplace.mixin",
 	"compatibilityLevel": "JAVA_21",
 	"client": [
-		"MinecraftClientAccessor"
+		"MinecraftClientAccessor",
+		"CameraMixin",
+		"EntityLookMixin",
+		"InputMixin",
+		"KeyboardInputMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

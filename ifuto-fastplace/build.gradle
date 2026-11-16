@@ -63,7 +63,13 @@ tasks.register('testFastplace', JavaExec) {
 	mainClass = 'com.ifuto.fastplace.test.ClickModelSelfTest'
 }
 
-check.dependsOn testFastplace
+// Scaffold の人間モデル（視線・設置リズム・距離トリガの安全性）の自己テスト
+tasks.register('testScaffold', JavaExec) {
+	classpath = sourceSets.main.runtimeClasspath
+	mainClass = 'com.ifuto.fastplace.test.ScaffoldModelSelfTest'
+}
+
+check.dependsOn testFastplace, testScaffold
 
 // mixins.json が参照するクラスが実際にビルドされているか検証する（起動時クラッシュ防止）
 tasks.register('verifyMixinConfigs') {

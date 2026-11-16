@@ -11,7 +11,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 /**
- * FastPlace の設定。config/ifuto-fastplace.json に保存される。
+ * FastPlace / Scaffold の設定。config/ifuto-fastplace.json に保存される。
+ *
+ * <p>モジュールはすべてここに状態を持つ（GUI から直接いじる）。</p>
  */
 public final class FastPlaceConfig {
 	public static final int MIN_INTERVAL_MS = 20;
@@ -21,9 +23,24 @@ public final class FastPlaceConfig {
 	private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 	private static FastPlaceConfig instance;
 
+	// ---- FastPlace ----
 	public boolean enabled = true;
 	public int intervalMs = DEFAULT_INTERVAL_MS;
 	public boolean hudCps = true;
+
+	// ---- Scaffold (God Bridge) ----
+	/** モジュール ON/OFF。ブロックを持っていない / 画面を開いている間は自動で休む */
+	public boolean scaffoldEnabled = false;
+	/** ブリッジ中はジャンプ入力を落とす（God Bridge はジャンプしない） */
+	public boolean scaffoldBlockJump = true;
+	/** カメラだけ前を向いたままにする（OFF にすると視点も一緒に下を向く） */
+	public boolean scaffoldKeepView = true;
+	/** 人間モデル（サッケード・振戦・設置リズム・たまの外れ値）を使う */
+	public boolean scaffoldHumanize = true;
+	/** 設置時に腕を振る */
+	public boolean scaffoldSwing = true;
+	/** 設置ペースの倍率（0.6 = ゆっくり / 1.4 = 速め）。実際の間隔は距離で決まる */
+	public double scaffoldCadence = 1.0;
 
 	public static FastPlaceConfig get() {
 		if (instance == null) {
@@ -70,6 +87,12 @@ public final class FastPlaceConfig {
 		}
 		if (intervalMs > MAX_INTERVAL_MS) {
 			intervalMs = MAX_INTERVAL_MS;
+		}
+		if (Double.isNaN(scaffoldCadence) || scaffoldCadence < 0.6) {
+			scaffoldCadence = 0.6;
+		}
+		if (scaffoldCadence > 1.4) {
+			scaffoldCadence = 1.4;
 		}
 	}
 

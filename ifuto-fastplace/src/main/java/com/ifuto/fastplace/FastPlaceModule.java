@@ -1,6 +1,7 @@
 package com.ifuto.fastplace;
 
 import com.ifuto.fastplace.mixin.MinecraftClientAccessor;
+import com.ifuto.fastplace.scaffold.ScaffoldModule;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.client.network.ClientPlayerInteractionManager;
@@ -14,6 +15,9 @@ import net.minecraft.world.GameMode;
  *
  * <p>勝手に乗っかる場所（食べる・飲む・弓を引く等）には触らない。
  * 手にブロックを持っているときだけクールダウンを潰す。</p>
+ *
+ * <p>Scaffold（God Bridge）が動いている間は休む。同じブロックを 2 つの
+ * モジュールで取り合うと設置が二重になり、タイミングも人間から離れるため。</p>
  */
 public final class FastPlaceModule {
 	/** HUD に「いま投げてる」印を出す時間（ms）。これを過ぎたら表示しない */
@@ -28,6 +32,18 @@ public final class FastPlaceModule {
 
 	public static boolean enabled() {
 		return FastPlaceConfig.get().enabled;
+	}
+
+	public static void setEnabled(boolean on) {
+		FastPlaceConfig.get().enabled = on;
+		FastPlaceConfig.get().save();
+		if (!on) {
+			reset();
+		}
+	}
+
+	public static void toggle() {
+		setEnabled(!enabled());
 	}
 
 	public static void reset() {
@@ -46,6 +62,7 @@ public final class FastPlaceModule {
 
 		if (player == null || world == null || interaction == null || !enabled()
 				|| client.currentScreen != null
+				|| ScaffoldModule.isEngaged()
 				|| !client.options.useKey.isPressed()
 				|| interaction.getCurrentGameMode() == GameMode.SPECTATOR
 				|| !(player.getMainHandStack().getItem() instanceof BlockItem)) {
@@ -70,7 +87,7 @@ public final class FastPlaceModule {
 
 	/** HUD を出すべきか（いま投げている or 投げ終わり後しばらく） */
 	public static boolean hudVisible(long now) {
-		return enabled() && FastPlaceConfig.get().hudCps
+		return FastPlaceConfig.get().hudCps
 			&& lastPlacementAt >= 0 && now - lastPlacementAt < HUD_LINGER_MS;
 	}
 

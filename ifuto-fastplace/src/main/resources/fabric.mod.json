@@ -3,7 +3,7 @@
 	"id": "ifuto-fastplace",
 	"version": "${version}",
 	"name": "FastPlace",
-	"description": "Hold right-click to place blocks faster, with human-like timing: right-skewed distribution, cryptographic jitter every 20th click, accumulating fatigue that recovers while idle, jitter strength that shifts every 2 seconds, occasional outliers, and a per-tick CPS counter that never shows a round integer.",
+	"description": "FastPlace with human timing plus a Vape-style module screen and a God Bridge scaffold: bridges with no sneak and no jump while your own camera keeps looking forward (the body really aims, no packet spoofing), then eases back to your view like a player would when you turn it off or let go of the blocks.",
 	"authors": [
 		"ifuto"
 	],

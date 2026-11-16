@@ -1,3 +1,6 @@
 {
-	"text.ifuto-fastplace.title": "FastPlace"
+	"text.ifuto-fastplace.title": "FastPlace",
+	"key.ifuto-fastplace.modules": "Open module screen",
+	"key.ifuto-fastplace.toggle_fastplace": "Toggle FastPlace",
+	"key.category.ifuto-fastplace.modules": "Ifuto FastPlace"
 }
