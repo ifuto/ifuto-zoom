@@ -18,6 +18,7 @@ public final class ScaffoldModelSelfTest {
 		testBallisticReachAndOvershoot();
 		testMicroTremorAtRest();
 		testPursuitSmallCorrection();
+		testSmallSaccade();
 		testAngleBounds();
 		testRhythmDistribution();
 		testRhythmFatigue();
@@ -84,19 +85,37 @@ public final class ScaffoldModelSelfTest {
 	}
 
 	private static void testPursuitSmallCorrection() {
+		// 3 度未満はサッケードではなく追従（臨界減衰, tau = 70ms）
 		HumanAim aim = new HumanAim(new Random(3));
 		aim.reset(0.0);
 		long t = 3_000_000L;
 		long reachedAt = -1;
 		for (int i = 0; i < 20; i++) {
-			aim.step(6.0, t, 50.0);
-			if (reachedAt < 0 && Math.abs(aim.angle() - 6.0) < 0.1) {
+			aim.step(2.0, t, 50.0);
+			if (reachedAt < 0 && Math.abs(aim.angle() - 2.0) < 0.1) {
 				reachedAt = i * 50L;
 			}
 			t += 50;
 		}
-		check(reachedAt >= 0 && reachedAt < 350, "small correction converges quickly: " + reachedAt);
+		check(reachedAt >= 0 && reachedAt < 450, "small correction converges quickly: " + reachedAt);
 		System.out.println("[scaffold-test] small correction reached in " + reachedAt + "ms");
+	}
+
+	/** 6 度はサッケード（メインシーケンス）で 1-2 tick で着く */
+	private static void testSmallSaccade() {
+		HumanAim aim = new HumanAim(new Random(9));
+		aim.reset(0.0);
+		long t = 9_000_000L;
+		long reachedAt = -1;
+		for (int i = 0; i < 10; i++) {
+			aim.step(6.0, t, 50.0);
+			if (reachedAt < 0 && Math.abs(aim.angle() - 6.0) < 0.2) {
+				reachedAt = i * 50L;
+			}
+			t += 50;
+		}
+		check(reachedAt >= 0 && reachedAt <= 120, "small saccade is fast: " + reachedAt);
+		System.out.println("[scaffold-test] 6deg saccade reached in " + reachedAt + "ms");
 	}
 
 	private static void testAngleBounds() {
@@ -126,7 +145,7 @@ public final class ScaffoldModelSelfTest {
 		long sum = 0;
 		for (int i = 0; i < n; i++) {
 			rhythm.tick(t);
-			samples[i] = rhythm.nextGapMs(random, t, false);
+			samples[i] = rhythm.nextGapMs(random, t, i % 2 == 0);
 			sum += samples[i];
 			check(samples[i] >= PlacementRhythm.MIN_GAP_MS && samples[i] <= PlacementRhythm.MAX_GAP_MS,
 				"gap within bounds: " + samples[i]);
@@ -138,7 +157,16 @@ public final class ScaffoldModelSelfTest {
 		double median = sorted[n / 2];
 		check(mean > 80.0 && mean < 200.0, "mean gap plausible: " + mean);
 		check(median < mean, "right-skewed gaps (median < mean): median=" + median + " mean=" + mean);
-		System.out.printf("[scaffold-test] gaps mean=%.1fms median=%dms%n", mean, (long) median);
+		// 注意の途切れ（たまの長い間）が尾として出ていること
+		int slow = 0;
+		for (long sample : samples) {
+			if (sample > median * 1.8) {
+				slow++;
+			}
+		}
+		check(slow >= 20 && slow <= 300, "lapses form a tail: " + slow + " long gaps");
+		System.out.printf("[scaffold-test] gaps mean=%.1fms median=%dms lapses=%d%n",
+			mean, (long) median, slow);
 	}
 
 	private static void testRhythmFatigue() {
@@ -241,7 +269,7 @@ public final class ScaffoldModelSelfTest {
 
 	private static void check(boolean condition, String message) {
 		if (!condition) {
-			System.out.println("[scaffold-test] FAIL: " + message);
+			System.out.println("[scaffold-test] FAILED: " + message);
 			System.exit(1);
 		}
 		passed++;

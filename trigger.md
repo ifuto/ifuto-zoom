@@ -60,3 +60,4 @@ artifact_path: ifuto-fastplace/build/libs/*.jar
 - tput r138: fastplace mixin package fix + CI mixin-class verification
 # 2026-11-16-fastplace-scaffold
 - tput r139: fastplace 0.2.0 module screen + FastPlace keybind + god bridge scaffold
+- tput r140: fastplace 0.2.1 scaffold aim fixes (sub-stepped pursuit, 3deg saccade threshold, jump-strip via KeyboardInput) 

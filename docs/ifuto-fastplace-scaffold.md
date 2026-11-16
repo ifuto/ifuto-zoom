@@ -1,6 +1,6 @@
 # Scaffold（God Bridge）の設計と人間モデル
 
-対象: `ifuto-fastplace` 0.2.0 / Minecraft 1.21.11 (Fabric)
+対象: `ifuto-fastplace` 0.2.1 / Minecraft 1.21.11 (Fabric)
 
 ## 0. 前提: 何を作ったか
 

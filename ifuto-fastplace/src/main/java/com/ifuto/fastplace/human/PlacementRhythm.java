@@ -35,9 +35,9 @@ public final class PlacementRhythm {
 	public static final double RECOVERY_TAU_MS = 2400.0;
 	public static final long IDLE_THRESHOLD_MS = 400L;
 	/** ためらい（大きく遅れる）の確率 */
-	public static final double HESITATION_PROB = 0.045;
+	public static final double HESITATION_PROB = 0.02;
 	/** 二度打ち（少し速い）の確率 */
-	public static final double DOUBLE_TAP_PROB = 0.035;
+	public static final double DOUBLE_TAP_PROB = 0.02;
 	/** 間隔の対数正規ゆらぎ */
 	public static final double LOG_SIGMA = 0.17;
 	/** 「狙いが合ってから押すまで」の反応時間（ex-Gaussian, 平均 ≈ 45 ms） */
@@ -76,10 +76,10 @@ public final class PlacementRhythm {
 
 		if (safeToDelay && random.nextDouble() < HESITATION_PROB) {
 			// 注意の途切れ・置き直し
-			value *= 1.35 + random.nextDouble() * 0.75;
+			value *= 2.0 + random.nextDouble() * 1.4;
 		} else if (!safeToDelay && random.nextDouble() < DOUBLE_TAP_PROB) {
 			// 二度打ち（詰めて置く）
-			value *= 0.70 + random.nextDouble() * 0.12;
+			value *= 0.72 + random.nextDouble() * 0.12;
 		}
 		return (long) Math.round(clamp(value, MIN_GAP_MS, MAX_GAP_MS));
 	}

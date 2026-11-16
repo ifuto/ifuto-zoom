@@ -27,7 +27,7 @@ import java.util.Random;
  */
 public final class HumanAim {
 	/** これ以上のズレは弾道（サッケード的）に動かす */
-	public static final double BALLISTIC_MIN_DEG = 12.0;
+	public static final double BALLISTIC_MIN_DEG = 3.0;
 	/** 持続時間 D = SLOPE * A + INTERCEPT [ms]（Collewijn et al. 1988） */
 	public static final double MAIN_SEQUENCE_SLOPE = 2.7;
 	public static final double MAIN_SEQUENCE_INTERCEPT = 23.0;
@@ -129,13 +129,20 @@ public final class HumanAim {
 			}
 		} else {
 			planning = false;
-			// 追従系（臨界減衰）。目標が細かく動く設置中はこちらが支配的になる
-			double omega = 1.0 / PURSUIT_TAU_MS;
-			double accel = omega * omega * error - 2.0 * omega * velocity;
-			velocity += accel * dt;
-			double maxV = peakVelocityDegPerMs(Math.max(0.5, Math.abs(error)));
-			velocity = clamp(velocity, -maxV, maxV);
-			angle += velocity * dt;
+			// 追従系（臨界減衰）。目標が細かく動く設置中はこちらが支配的になる。
+			// tick 間隔（50ms）でそのまま積分すると応答が歪むので 10ms 以下に分割する
+			double remaining = dt;
+			while (remaining > 1.0e-9) {
+				double h = Math.min(10.0, remaining);
+				remaining -= h;
+				double omega = 1.0 / PURSUIT_TAU_MS;
+				double accel = omega * omega * error - 2.0 * omega * velocity;
+				velocity += accel * h;
+				double maxV = peakVelocityDegPerMs(Math.max(0.5, Math.abs(error)));
+				velocity = clamp(velocity, -maxV, maxV);
+				angle += velocity * h;
+				error = target - angle;
+			}
 			if (Math.abs(target - angle) < 0.01 && Math.abs(velocity) < 1.0e-4) {
 				angle = target;
 				velocity = 0.0;

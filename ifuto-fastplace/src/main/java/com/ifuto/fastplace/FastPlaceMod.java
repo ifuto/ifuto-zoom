@@ -24,7 +24,7 @@ public final class FastPlaceMod implements ClientModInitializer {
 	public static final String VERSION = FabricLoader.getInstance()
 		.getModContainer(MOD_ID)
 		.map(container -> container.getMetadata().getVersion().getFriendlyString())
-		.orElse("0.2.0");
+		.orElse("dev");
 
 	private static final KeyBinding.Category MODULE_CATEGORY =
 		KeyBinding.Category.create(Identifier.of(MOD_ID, "modules"));
