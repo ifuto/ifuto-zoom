@@ -1,8 +1,8 @@
-# FastPlace + Scaffold + Aim Assist (ifuto-fastplace)
+# FastPlace + Scaffold + Aim Assist + Auto Tool (ifuto-fastplace)
 
 右クリック長押しの連続設置を**人間の連打のクセ**で行う Mod に、
 **Vape v4 風の Module Select 画面**（RShift）、**God Bridge 用 Scaffold**、
-**剣用 Aim Assist** を追加したものです。
+**剣用 Aim Assist**、**Auto Tool** を追加したものです。
 
 - `RShift` … Module Select 画面を開く
 - `R` … FastPlace の ON/OFF（操作設定 → `Ifuto FastPlace` で変更できます）
@@ -35,6 +35,15 @@
 - 反応時間 90〜150ms、速度上限 220 deg/s、振戦、予測的先読み
 - 既定は「攻撃ボタンを押している間・剣か斧を持っているとき」だけ
 - 弓などの投射物には効きません（近接専用）
+
+### Auto Tool（採掘）
+適正でない道具で掘り始めたら、**人間が選び直すのと同じ時間**をかけて持ち替えます。
+
+- 持ち替えてから掘るのはバニラ任せ（攻撃キーは押されたままなので、そのまま掘り進む）
+- 判断時間は Hick–Hyman（候補数）+ 練習のべき乗則 + drift-diffusion + 反復 + 誤り後減速
+- 差が小さいときだけ、たまに隣の道具を掴む（人間の取り違え）
+- **15% 以上速くならないなら持ち替えない**（掘るのが遅くならない）
+- 既定は「攻撃キーを押している間」だけ
 
 ### Module Select 画面
 - 左にカテゴリ（Movement / Player / Render）、右にモジュール一覧
@@ -71,6 +80,18 @@
 - **外さない保証**: 速度上限 + 1 tick クリップ（行き過ぎない）/ 誤差が悪化する回転は
   適用しない / 当たり判定の角度半径の 55% より外なら内側へ引き戻す
 
+## 人間らしさの根拠（Auto Tool）
+
+詳細は [`docs/ifuto-fastplace-autotool.md`](../docs/ifuto-fastplace-autotool.md)。
+
+- **選択肢の数**: `RT = 165 + 62·log2(n+1) ms`（Hick 1952 / Hyman 1953）
+- **練習**: `+150·(n+1)^(-0.35) ms`（Newell & Rosenbloom 1981 のべき乗則）
+- **証拠の強さ**: 差が明白なほど速い（Ratcliff 1978 / Ratcliff & McKoon 2008）。
+  同じ項が取り違え確率にも効く（迷うと間違える）
+- **反復**: 同じスロットなら ×0.88（Rogers & Monsell 1995）
+- **誤り後**: 直後の判断は +110〜170ms（Rabbitt 1966）
+- 典型条件で約 300ms、全体は 110〜560ms にクランプ
+
 ## 設定
 
 | 場所 | 項目 |
@@ -78,6 +99,7 @@
 | Module Select → Scaffold → `…` | ジャンプ抑止 / 視点を前のまま / 人間らしさ / 腕を振る / 設置ペース |
 | Module Select → FastPlace → `…` | 有効 / CPS 表示 / 設置間隔 |
 | Module Select → Aim Assist → `…` | 強さ / 視野 / 人間らしさ / 攻撃中だけ / 剣・斧のみ / 先読み |
+| Module Select → Auto Tool → `…` | 人間らしさ / 掘っている間だけ / 壊れかけを避ける |
 | 操作設定 (Controls) | モジュール画面を開くキー、FastPlace の ON/OFF キー |
 
 設定は `config/ifuto-fastplace.json` に保存されます。
@@ -88,6 +110,7 @@
 ./gradlew -p ifuto-fastplace testFastplace   # 連打タイミングモデル
 ./gradlew -p ifuto-fastplace testScaffold    # 視線・設置リズム・距離トリガの安全性
 ./gradlew -p ifuto-fastplace testAim         # アシストの反応時間・速度上限・当たり判定
+./gradlew -p ifuto-fastplace testAutoTool    # 道具選択の判断時間モデル
 ```
 
 CI では `build` に全部ぶら下げてあるので、壊れたらビルドが落ちます。
@@ -102,6 +125,8 @@ src/main/java/com/ifuto/fastplace/
 ├── human/HumanAim.java        … 視線（サッケード・追従・振戦）
 ├── human/TrackingAim.java     … 近接アシストの追従モデル（反応時間・速度上限・振戦）
 ├── aim/AimAssistModule.java   … 相手の選択・先読み・当たり判定の安全域
+├── human/ToolSelectModel.java … 道具を選ぶまでの時間（Hick・練習・誤り）
+├── tool/AutoToolModule.java   … 適正ツールへの持ち替え
 ├── human/PlacementRhythm.java … 設置間隔（ex-Gaussian・疲労・ためらい）
 ├── scaffold/ScaffoldView.java … カメラと体の向きの分離 / 復帰
 ├── scaffold/ScaffoldModule.java … God Bridge 本体
@@ -109,13 +134,15 @@ src/main/java/com/ifuto/fastplace/
 ├── gui/ModuleScreen.java      … Module Select 画面
 ├── gui/ScaffoldSettingsScreen.java
 ├── gui/AimAssistSettingsScreen.java
+├── gui/AutoToolSettingsScreen.java
 ├── gui/FastPlaceConfigScreen.java
 └── mixin/                     … Camera / Entity(changeLookDirection) / Input
 ```
 
 ## 注意
 
-- ブロック自動設置・連打・エイムアシストが禁止されているサーバーでは使わないでください。
+- ブロック自動設置・連打・エイムアシスト・自動持ち替えが禁止されているサーバーでは
+  使わないでください。
   サーバーのルールと BAN リスクは自己責任で。
 - `ifuto-f3` を同時に入れている場合、同じ RShift を取り合わないよう
   f3 側（0.2.1 以降）はモジュール画面と Scaffold を自動で休みます。

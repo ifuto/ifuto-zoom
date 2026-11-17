@@ -58,6 +58,16 @@ public final class FastPlaceConfig {
 	/** 相手の速度を先読みして補償する */
 	public boolean aimAssistPredict = true;
 
+	// ---- Auto Tool ----
+	/** モジュール ON/OFF */
+	public boolean autoToolEnabled = false;
+	/** 人間モデル（判断時間・練習・たまの取り違え）を使う */
+	public boolean autoToolHumanize = true;
+	/** 掘っている間だけ持ち替える（OFF なら見ただけで持ち替え） */
+	public boolean autoToolOnlyWhileMining = true;
+	/** 残り耐久が少ない道具を避ける */
+	public boolean autoToolAvoidBreaking = false;
+
 	public static FastPlaceConfig get() {
 		if (instance == null) {
 			load();

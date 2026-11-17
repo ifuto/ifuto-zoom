@@ -103,6 +103,11 @@ public final class AimAssistModule {
 		MODEL.reset();
 	}
 
+	/** いま相手を追っているか（他のモジュールが遠慮するための問い合わせ） */
+	public static boolean isTracking() {
+		return enabled() && target != null;
+	}
+
 	public static void tick(MinecraftClient client) {
 		long now = System.currentTimeMillis();
 		ClientPlayerEntity player = client.player;

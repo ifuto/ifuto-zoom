@@ -75,7 +75,13 @@ tasks.register('testAim', JavaExec) {
 	mainClass = 'com.ifuto.fastplace.test.AimAssistSelfTest'
 }
 
-check.dependsOn testFastplace, testScaffold, testAim
+// Auto Tool の「選ぶまでの時間」モデル（Hick / 練習 / 誤り後減速）の自己テスト
+tasks.register('testAutoTool', JavaExec) {
+	classpath = sourceSets.main.runtimeClasspath
+	mainClass = 'com.ifuto.fastplace.test.AutoToolSelfTest'
+}
+
+check.dependsOn testFastplace, testScaffold, testAim, testAutoTool
 
 // mixins.json が参照するクラスが実際にビルドされているか検証する（起動時クラッシュ防止）
 tasks.register('verifyMixinConfigs') {

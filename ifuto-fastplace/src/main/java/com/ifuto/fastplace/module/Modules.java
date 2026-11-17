@@ -5,10 +5,12 @@ import com.ifuto.fastplace.FastPlaceMod;
 import com.ifuto.fastplace.FastPlaceModule;
 import com.ifuto.fastplace.aim.AimAssistModule;
 import com.ifuto.fastplace.gui.AimAssistSettingsScreen;
+import com.ifuto.fastplace.gui.AutoToolSettingsScreen;
 import com.ifuto.fastplace.gui.FastPlaceConfigScreen;
 import com.ifuto.fastplace.gui.ModuleScreen;
 import com.ifuto.fastplace.gui.ScaffoldSettingsScreen;
 import com.ifuto.fastplace.scaffold.ScaffoldModule;
+import com.ifuto.fastplace.tool.AutoToolModule;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -38,6 +40,13 @@ public final class Modules {
 			AimAssistModule::enabled,
 			AimAssistModule::setEnabled,
 			AimAssistSettingsScreen::new,
+			null));
+		ALL.add(new Module(
+			"autotool", "Auto Tool", "適正でない道具で掘り始めたら人間の判断で持ち替える",
+			ModuleCategory.PLAYER,
+			AutoToolModule::enabled,
+			AutoToolModule::setEnabled,
+			AutoToolSettingsScreen::new,
 			null));
 		ALL.add(new Module(
 			"cps", "CPS Counter", "連打中だけ CPS を画面右上に表示",

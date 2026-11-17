@@ -4,6 +4,7 @@ import com.ifuto.fastplace.aim.AimAssistModule;
 import com.ifuto.fastplace.gui.ModuleScreen;
 import com.ifuto.fastplace.hud.CpsHud;
 import com.ifuto.fastplace.scaffold.ScaffoldModule;
+import com.ifuto.fastplace.tool.AutoToolModule;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
@@ -60,6 +61,7 @@ public final class FastPlaceMod implements ClientModInitializer {
 
 		// 入力 → モジュール → Scaffold の順で 1 tick の先頭に処理する。
 		// Scaffold がエンティティの向きを書くのはプレイヤーの tick（= 移動パケット送信）より前。
+		// Aim Assist は向きを、Auto Tool はホットバーを書く。Scaffold が最後（向きの最終決定権）。
 		ClientTickEvents.START_CLIENT_TICK.register(client -> {
 			while (modulesKey.wasPressed()) {
 				if (client.currentScreen == null) {
@@ -69,6 +71,8 @@ public final class FastPlaceMod implements ClientModInitializer {
 			while (fastPlaceKey.wasPressed()) {
 				FastPlaceModule.toggle();
 			}
+			AimAssistModule.tick(client);
+			AutoToolModule.tick(client);
 			ScaffoldModule.tick(client);
 		});
 
