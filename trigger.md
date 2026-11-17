@@ -67,3 +67,4 @@ artifact_path: ifuto-fastplace/build/libs/*.jar
 - tput r144: fastplace 0.3.2 aim assist lead gain 0.40 + goal/true combined safety rule (no per-tick tug of war) 
 - tput r145: fastplace 0.4.0 Auto Tool module (human tool-choice latency model) 
 - tput r146: fastplace 0.4.1 crash fix (class_743 mixin) — drop inherited @Shadow in KeyboardInputMixin, mixin config required=false + jump-hook warning 
+- tput r147: fastplace 0.4.2 compile fix (FastPlaceMod was missing the MinecraftClient import; 0.4.1 never built) 
