@@ -98,6 +98,21 @@ public final class ScaffoldModule {
 		return ScaffoldView.isCapturing();
 	}
 
+	/**
+	 * ジャンプ抑制ミキシンが実際に動いたか。
+	 * mixin config は required=false なので、適用に失敗しても起動はする（代わりに
+	 * このフラグが false のままになる）。起動ログで気づけるようにするための記録。
+	 */
+	private static volatile boolean jumpHookAlive;
+
+	public static void noteJumpHook() {
+		jumpHookAlive = true;
+	}
+
+	public static boolean jumpHookAlive() {
+		return jumpHookAlive;
+	}
+
 	/** ジャンプ入力だけを落とした入力（Scaffold 中は跳ばない） */
 	public static PlayerInput withoutJump(PlayerInput input) {
 		if (input == null || !input.jump() || !blocksJump()) {

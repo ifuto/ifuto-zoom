@@ -20,6 +20,7 @@ public abstract class InputMixin {
 
 	@Inject(method = "tick", at = @At("RETURN"), require = 0)
 	private void ifutoFastplace$blockJumpWhileBridging(CallbackInfo ci) {
+		ScaffoldModule.noteJumpHook();
 		this.playerInput = ScaffoldModule.withoutJump(this.playerInput);
 	}
 }

@@ -31,6 +31,9 @@ public final class FastPlaceMod implements ClientModInitializer {
 	private static final KeyBinding.Category MODULE_CATEGORY =
 		KeyBinding.Category.create(Identifier.of(MOD_ID, "modules"));
 
+	private static int worldTicks;
+	private static boolean jumpHookWarned;
+
 	private static KeyBinding modulesKey;
 	private static KeyBinding fastPlaceKey;
 
@@ -74,11 +77,31 @@ public final class FastPlaceMod implements ClientModInitializer {
 			AimAssistModule.tick(client);
 			AutoToolModule.tick(client);
 			ScaffoldModule.tick(client);
+			warnIfJumpHookMissing(client);
 		});
 
 		ClientTickEvents.END_CLIENT_TICK.register(FastPlaceModule::onTick);
 
 		HudElementRegistry.attachElementAfter(VanillaHudElements.HOTBAR,
 			Identifier.of(MOD_ID, "cps_counter"), new CpsHud());
+	}
+
+	/**
+	 * mixin config を required=false にしてあるので、ジャンプ抑制ミキシンが適用できなくても
+	 * ゲームは落ちない。代わりに「効いていない」ことを 1 回だけ警告する。
+	 */
+	private static void warnIfJumpHookMissing(MinecraftClient client) {
+		if (client.player == null) {
+			worldTicks = 0;
+			return;
+		}
+		if (jumpHookWarned || ScaffoldModule.jumpHookAlive()) {
+			return;
+		}
+		if (++worldTicks > 60) {
+			jumpHookWarned = true;
+			LOGGER.warn("[ifuto-fastplace] jump-suppression mixin is not applied; "
+				+ "Scaffold will not block jumping. Mixin config is non-fatal (required=false).");
+		}
 	}
 }
