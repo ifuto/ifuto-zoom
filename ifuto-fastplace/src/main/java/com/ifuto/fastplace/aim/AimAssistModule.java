@@ -7,12 +7,14 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
-import net.minecraft.item.AxeItem;
+import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
-import net.minecraft.item.SwordItem;
+import net.minecraft.item.Items;
 import net.minecraft.util.math.Box;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
+
+import java.util.Set;
 
 /**
  * 剣（近接）用のアシスト。
@@ -43,6 +45,17 @@ public final class AimAssistModule {
 	private static final double HIT_HALF_WIDTH = 0.40;
 	/** 当たり判定の角度半径のこの割合まで内側にいれば十分とみなす */
 	private static final double SAFE_FRACTION = 0.55;
+	/**
+	 * 近接武器として扱うアイテム。
+	 * 1.21 以降 {@code SwordItem}/{@code AxeItem} はデータコンポーネント方式に移り、
+	 * クラスとしては存在しないので、実体（{@link Items}）で判定する。
+	 */
+	private static final Set<Item> MELEE_WEAPONS = Set.of(
+		Items.WOODEN_SWORD, Items.STONE_SWORD, Items.IRON_SWORD, Items.GOLDEN_SWORD,
+		Items.DIAMOND_SWORD, Items.NETHERITE_SWORD,
+		Items.WOODEN_AXE, Items.STONE_AXE, Items.IRON_AXE, Items.GOLDEN_AXE,
+		Items.DIAMOND_AXE, Items.NETHERITE_AXE);
+
 	/** 先読み（予測的追従）の見込み時間 [s] と係数（Barnes & Asselman 1991） */
 	private static final double LEAD_SECONDS = 0.065;
 	private static final double LEAD_GAIN = 0.70;
@@ -237,7 +250,7 @@ public final class AimAssistModule {
 	}
 
 	private static boolean isMeleeWeapon(ItemStack stack) {
-		return stack.getItem() instanceof SwordItem || stack.getItem() instanceof AxeItem;
+		return MELEE_WEAPONS.contains(stack.getItem());
 	}
 
 	// ------------------------------------------------------------------

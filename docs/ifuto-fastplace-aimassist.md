@@ -1,6 +1,6 @@
 # Aim Assist（近接 / 剣）設計メモ
 
-対象: `ifuto-fastplace` 0.3.0 / Minecraft 1.21.11 (Fabric)
+対象: `ifuto-fastplace` 0.3.1 / Minecraft 1.21.11 (Fabric)
 
 弓（投射物）ではなく **剣・斧の間合い** のためのアシスト。設計の制約は 2 つ。
 
