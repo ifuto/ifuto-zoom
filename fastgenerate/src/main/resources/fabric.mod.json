@@ -1,0 +1,34 @@
+{
+	"schemaVersion": 1,
+	"id": "fastgenerate",
+	"version": "${version}",
+	"name": "FastGenerate",
+	"description": "Prefetches the chunks you are about to walk into, so terrain-generation datapacks feel instant: the ring ahead of you is generated while you are still far away, and the concurrency is AIMD-controlled so weak CPUs and integrated GPUs never stutter.",
+	"authors": [
+		"ifuto"
+	],
+	"contact": {
+		"homepage": "https://github.com/ifuto/ifuto-zoom",
+		"sources": "https://github.com/ifuto/ifuto-zoom",
+		"issues": "https://github.com/ifuto/ifuto-zoom/issues"
+	},
+	"license": "MIT",
+	"environment": "*",
+	"entrypoints": {
+		"preLaunch": [
+			"com.ifuto.fastgenerate.FastGeneratePreLaunch"
+		],
+		"main": [
+			"com.ifuto.fastgenerate.FastGenerateMod"
+		],
+		"client": [
+			"com.ifuto.fastgenerate.client.FastGenerateClient"
+		]
+	},
+	"depends": {
+		"fabricloader": ">=0.16.0",
+		"minecraft": "~1.21.11",
+		"java": ">=21",
+		"fabric-api": "*"
+	}
+}
