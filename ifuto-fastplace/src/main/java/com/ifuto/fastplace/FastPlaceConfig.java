@@ -42,6 +42,22 @@ public final class FastPlaceConfig {
 	/** 設置ペースの倍率（0.6 = ゆっくり / 1.4 = 速め）。実際の間隔は距離で決まる */
 	public double scaffoldCadence = 1.0;
 
+	// ---- Aim Assist (melee) ----
+	/** モジュール ON/OFF */
+	public boolean aimAssistEnabled = false;
+	/** アシストの強さ（0.2〜1.0）。速度上限と立ち上がりに効く */
+	public double aimAssistStrength = 0.75;
+	/** 狙い始める視野（全角）[deg] */
+	public double aimAssistFov = 70.0;
+	/** 人間モデル（反応時間・振戦・予測）を使う */
+	public boolean aimAssistHumanize = true;
+	/** 攻撃ボタンを押している間だけ効かせる */
+	public boolean aimAssistOnlyWhileAttacking = true;
+	/** 剣・斧を持っているときだけ効かせる */
+	public boolean aimAssistWeaponsOnly = true;
+	/** 相手の速度を先読みして補償する */
+	public boolean aimAssistPredict = true;
+
 	public static FastPlaceConfig get() {
 		if (instance == null) {
 			load();
@@ -93,6 +109,18 @@ public final class FastPlaceConfig {
 		}
 		if (scaffoldCadence > 1.4) {
 			scaffoldCadence = 1.4;
+		}
+		if (Double.isNaN(aimAssistStrength) || aimAssistStrength < 0.2) {
+			aimAssistStrength = 0.2;
+		}
+		if (aimAssistStrength > 1.0) {
+			aimAssistStrength = 1.0;
+		}
+		if (Double.isNaN(aimAssistFov) || aimAssistFov < 15.0) {
+			aimAssistFov = 15.0;
+		}
+		if (aimAssistFov > 170.0) {
+			aimAssistFov = 170.0;
 		}
 	}
 

@@ -62,3 +62,4 @@ artifact_path: ifuto-fastplace/build/libs/*.jar
 - tput r139: fastplace 0.2.0 module screen + FastPlace keybind + god bridge scaffold
 - tput r140: fastplace 0.2.1 scaffold aim fixes (sub-stepped pursuit, 3deg saccade threshold, jump-strip via KeyboardInput) 
 - tput r141: fastplace 0.2.2 saccade plan no longer restarts on its own progress (main-sequence timing) 
+- tput r142: fastplace 0.3.0 melee aim assist module (human tracking model + hitbox safety) 

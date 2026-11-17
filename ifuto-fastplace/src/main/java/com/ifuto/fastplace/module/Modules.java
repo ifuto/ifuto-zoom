@@ -3,6 +3,8 @@ package com.ifuto.fastplace.module;
 import com.ifuto.fastplace.FastPlaceConfig;
 import com.ifuto.fastplace.FastPlaceMod;
 import com.ifuto.fastplace.FastPlaceModule;
+import com.ifuto.fastplace.aim.AimAssistModule;
+import com.ifuto.fastplace.gui.AimAssistSettingsScreen;
 import com.ifuto.fastplace.gui.FastPlaceConfigScreen;
 import com.ifuto.fastplace.gui.ModuleScreen;
 import com.ifuto.fastplace.gui.ScaffoldSettingsScreen;
@@ -30,6 +32,13 @@ public final class Modules {
 			FastPlaceModule::setEnabled,
 			FastPlaceConfigScreen::new,
 			FastPlaceMod::fastPlaceBindText));
+		ALL.add(new Module(
+			"aimassist", "Aim Assist", "剣の間合いで、人間の速度とクセで相手に寄る",
+			ModuleCategory.PLAYER,
+			AimAssistModule::enabled,
+			AimAssistModule::setEnabled,
+			AimAssistSettingsScreen::new,
+			null));
 		ALL.add(new Module(
 			"cps", "CPS Counter", "連打中だけ CPS を画面右上に表示",
 			ModuleCategory.RENDER,

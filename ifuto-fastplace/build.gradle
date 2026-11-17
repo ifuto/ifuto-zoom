@@ -69,7 +69,13 @@ tasks.register('testScaffold', JavaExec) {
 	mainClass = 'com.ifuto.fastplace.test.ScaffoldModelSelfTest'
 }
 
-check.dependsOn testFastplace, testScaffold
+// Aim Assist の人間モデル（反応時間・速度上限・当たり判定に収まるか）の自己テスト
+tasks.register('testAim', JavaExec) {
+	classpath = sourceSets.main.runtimeClasspath
+	mainClass = 'com.ifuto.fastplace.test.AimAssistSelfTest'
+}
+
+check.dependsOn testFastplace, testScaffold, testAim
 
 // mixins.json が参照するクラスが実際にビルドされているか検証する（起動時クラッシュ防止）
 tasks.register('verifyMixinConfigs') {

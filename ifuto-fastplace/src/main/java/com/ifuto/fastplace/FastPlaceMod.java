@@ -1,5 +1,6 @@
 package com.ifuto.fastplace;
 
+import com.ifuto.fastplace.aim.AimAssistModule;
 import com.ifuto.fastplace.gui.ModuleScreen;
 import com.ifuto.fastplace.hud.CpsHud;
 import com.ifuto.fastplace.scaffold.ScaffoldModule;
