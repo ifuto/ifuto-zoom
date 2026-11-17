@@ -64,3 +64,4 @@ artifact_path: ifuto-fastplace/build/libs/*.jar
 - tput r141: fastplace 0.2.2 saccade plan no longer restarts on its own progress (main-sequence timing) 
 - tput r142: fastplace 0.3.0 melee aim assist module (human tracking model + hitbox safety) 
 - tput r143: fastplace 0.3.1 melee weapon detection via Items (SwordItem/AxeItem are gone in 1.21) + CI annotation shows symbol detail 
+- tput r144: fastplace 0.3.2 aim assist lead gain 0.40 + goal/true combined safety rule (no per-tick tug of war) 

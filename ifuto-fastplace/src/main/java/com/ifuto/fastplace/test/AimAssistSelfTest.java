@@ -27,6 +27,7 @@ public final class AimAssistSelfTest {
 		testStrengthScaling();
 		testPullInside();
 		testStrafingTargetStaysOnTarget();
+		testStrafingWithLeadAndSafety();
 		testImplementationDisabledWhenHumanizeOff();
 		System.out.println("[aim-test] all " + passed + " checks passed (hit radius "
 			+ String.format(java.util.Locale.ROOT, "%.2f", HIT_RADIUS) + " deg at " + DISTANCE + " blocks)");
@@ -199,6 +200,55 @@ public final class AimAssistSelfTest {
 		System.out.println("[aim-test] strafing 5.6m/s: worst residual "
 			+ String.format(java.util.Locale.ROOT, "%.2f", worst) + "deg, tail "
 			+ String.format(java.util.Locale.ROOT, "%.2f", tail) + "deg");
+	}
+
+	/**
+	 * 先読みと安全域ルールを込みにした場合（{@code AimAssistModule} と同じ式）でも、
+	 * 横移動する相手の当たり判定の内側に留まること。
+	 */
+	private static void testStrafingWithLeadAndSafety() {
+		final double leadSeconds = 0.065;
+		final double leadGain = 0.40;
+		final double speedPerTick = 0.28;          // 5.6 m/s
+		final double safeLimit = HIT_RADIUS * 0.55;
+
+		TrackingAim model = new TrackingAim(new Random(10));
+		model.acquire(-5000L);
+		double view = 0.0;
+		double x = 0.0;
+		double worst = 0.0;
+		long t = 0L;
+		for (int i = 0; i < 200; i++) {
+			t += 50L;
+			x += speedPerTick;
+			double trueGoal = Math.toDegrees(Math.atan2(x, DISTANCE));
+			double lead = Math.toDegrees(Math.atan2(speedPerTick * leadSeconds * 20.0 * leadGain, DISTANCE));
+			double errGoal = trueGoal + lead - view;
+			double[] d = model.step(t, errGoal, 0.0, 0.75);
+			double beforeTrue = Math.abs(trueGoal - view);
+			double afterTrue = Math.abs(trueGoal - (view + d[0]));
+			double afterGoal = Math.abs(errGoal - d[0]);
+			if (!(afterGoal > 0.02 && afterTrue > beforeTrue + 0.02)) {
+				double next = view + d[0];
+				if (afterTrue > safeLimit) {
+					double[] fix = TrackingAim.pullInside(trueGoal - view, 0.0, safeLimit);
+					double fixMag = Math.abs(fix[0]);
+					if (fixMag > 1.0e-9) {
+						double k = Math.min(1.0, Math.abs(d[0]) / fixMag);
+						double candidate = view + fix[0] * k;
+						if (Math.abs(trueGoal - candidate) <= beforeTrue + 1.0e-6) {
+							next = candidate;
+						}
+					}
+				}
+				view = next;
+			}
+			worst = Math.max(worst, Math.abs(trueGoal - view));
+		}
+		check(worst < HIT_RADIUS * 0.6,
+			"stays inside the hitbox with lead + safety: " + worst + "deg");
+		System.out.println("[aim-test] lead + safety worst residual "
+			+ String.format(java.util.Locale.ROOT, "%.2f", worst) + "deg");
 	}
 
 	/** 人間らしさ OFF なら反応時間も振戦も無しで素直に詰める */

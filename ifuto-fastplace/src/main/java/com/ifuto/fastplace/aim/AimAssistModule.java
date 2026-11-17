@@ -58,7 +58,7 @@ public final class AimAssistModule {
 
 	/** 先読み（予測的追従）の見込み時間 [s] と係数（Barnes & Asselman 1991） */
 	private static final double LEAD_SECONDS = 0.065;
-	private static final double LEAD_GAIN = 0.70;
+	private static final double LEAD_GAIN = 0.40;
 
 	/** 一瞬だけ対象から外れたときに反応時間をやり直さない猶予 [ms] */
 	private static final long RETARGET_GRACE_MS = 500L;
@@ -166,25 +166,32 @@ public final class AimAssistModule {
 		double hitRadius = Math.toDegrees(Math.atan2(HIT_HALF_WIDTH, eyeToBox));
 		double safeLimit = hitRadius * SAFE_FRACTION;
 
-		double before = errorTo(yaw, pitch, eye, truePoint);
+		double beforeTrue = errorTo(yaw, pitch, eye, truePoint);
+		double beforeGoal = Math.hypot(errYaw, errPitch);
 		float nextYaw = yaw + (float) delta[0];
 		float nextPitch = MathHelper.clamp(pitch + (float) delta[1], -90.0f, 90.0f);
-		double after = errorTo(nextYaw, nextPitch, eye, truePoint);
+		double afterTrue = errorTo(nextYaw, nextPitch, eye, truePoint);
+		double afterGoal = Math.hypot(errYaw - delta[0], errPitch - delta[1]);
 
-		if (after > before + 1.0e-6) {
-			// アシストが悪化させた → 安全域の外にいるときだけ、同じ速度上限で引き戻す
+		// 狙い（先読み込み）からも相手からも遠ざかる回転は適用しない
+		if (afterGoal > beforeGoal + 0.02 && afterTrue > beforeTrue + 0.02) {
+			return;
+		}
+
+		if (afterTrue > safeLimit) {
+			// 当たり判定の安全域から出る → 同じ速度上限の範囲で内側へ戻す
 			double[] errTrue = errorVector(yaw, pitch, eye, truePoint);
 			double[] fix = TrackingAim.pullInside(errTrue[0], errTrue[1], safeLimit);
 			double fixMag = Math.hypot(fix[0], fix[1]);
-			if (fixMag < 1.0e-9) {
-				return;   // すでに十分内側。何もしない
-			}
-			double stepMag = Math.hypot(delta[0], delta[1]);
-			double k = Math.min(1.0, stepMag / fixMag);
-			nextYaw = yaw + (float) (fix[0] * k);
-			nextPitch = MathHelper.clamp(pitch + (float) (fix[1] * k), -90.0f, 90.0f);
-			if (errorTo(nextYaw, nextPitch, eye, truePoint) > before + 1.0e-6) {
-				return;   // それでも悪くなるなら触らない
+			if (fixMag > 1.0e-9) {
+				double stepMag = Math.hypot(delta[0], delta[1]);
+				double k = Math.min(1.0, stepMag / fixMag);
+				float fixYaw = yaw + (float) (fix[0] * k);
+				float fixPitch = MathHelper.clamp(pitch + (float) (fix[1] * k), -90.0f, 90.0f);
+				if (errorTo(fixYaw, fixPitch, eye, truePoint) <= beforeTrue + 1.0e-6) {
+					nextYaw = fixYaw;
+					nextPitch = fixPitch;
+				}
 			}
 		}
 
