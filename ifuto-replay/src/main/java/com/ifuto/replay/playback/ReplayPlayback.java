@@ -763,10 +763,8 @@ public final class ReplayPlayback implements ReplayStream.Sink {
 			return fromFile;
 		}
 
-		ClientWorld world = this.client.world;
-
-		if (world != null) {
-			Registry<DimensionType> live = world.getRegistryManager()
+		if (this.client.world != null) {
+			Registry<DimensionType> live = this.client.world.getRegistryManager()
 				.getOptional(RegistryKeys.DIMENSION_TYPE).orElse(null);
 
 			if (live != null) {

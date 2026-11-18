@@ -79,3 +79,4 @@ artifact_path: ifuto-replay/build/libs/*.jar
 - tput r156: replay 0.30.2 compile fix — RegistryEntryLookup#getOptional for the dimension entry
 - tput r157: replay 0.30.2 compile fix 2 — drop Registries.DIMENSION_TYPE fallback
 - tput r158: replay 0.30.3 — minecraft:login decode failure is not fatal + dimension type fallback
+- tput r159: replay 0.30.3 compile fix — don't name ClientWorld (not imported)
