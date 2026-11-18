@@ -70,11 +70,24 @@ public final class AimAssistModule {
 	 * 近接武器として扱うアイテム。1.21 以降 {@code SwordItem}/{@code AxeItem} は
 	 * データコンポーネント方式に移ったので実体（{@link Items}）で判定する。
 	 */
-	private static final Set<Item> MELEE_WEAPONS = Set.of(
-		Items.WOODEN_SWORD, Items.STONE_SWORD, Items.IRON_SWORD, Items.GOLDEN_SWORD,
-		Items.DIAMOND_SWORD, Items.NETHERITE_SWORD,
-		Items.WOODEN_AXE, Items.STONE_AXE, Items.IRON_AXE, Items.GOLDEN_AXE,
-		Items.DIAMOND_AXE, Items.NETHERITE_AXE);
+	/**
+	 ** 遅延初期化。{@code Items.*} はレジストリ（Bootstrap）が要るので、
+	 * 静的初期化で触るとテスト用のヘッドレス実行が落ちる。
+	 */
+	private static Set<Item> meleeWeapons;
+
+	private static Set<Item> meleeWeapons() {
+		Set<Item> cached = meleeWeapons;
+		if (cached == null) {
+			cached = Set.of(
+				Items.WOODEN_SWORD, Items.STONE_SWORD, Items.IRON_SWORD, Items.GOLDEN_SWORD,
+				Items.DIAMOND_SWORD, Items.NETHERITE_SWORD,
+				Items.WOODEN_AXE, Items.STONE_AXE, Items.IRON_AXE, Items.GOLDEN_AXE,
+				Items.DIAMOND_AXE, Items.NETHERITE_AXE);
+			meleeWeapons = cached;
+		}
+		return cached;
+	}
 
 	private static final TrackingAim MODEL = new TrackingAim();
 
@@ -489,7 +502,7 @@ public final class AimAssistModule {
 	}
 
 	private static boolean isMeleeWeapon(ItemStack stack) {
-		return MELEE_WEAPONS.contains(stack.getItem());
+		return meleeWeapons().contains(stack.getItem());
 	}
 
 	// ------------------------------------------------------------------
