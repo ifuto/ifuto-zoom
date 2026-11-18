@@ -81,3 +81,4 @@ artifact_path: ifuto-replay/build/libs/*.jar
 - tput r158: replay 0.30.3 — minecraft:login decode failure is not fatal + dimension type fallback
 - tput r159: replay 0.30.3 compile fix — don't name ClientWorld (not imported)
 - tput r160: replay 0.30.4 — remember live registries at join; use them when the recording lacks dimension_type
+- tput r161: replay 0.30.4 compile fix — annotate the nested type (DynamicRegistryManager.@Nullable Immutable)

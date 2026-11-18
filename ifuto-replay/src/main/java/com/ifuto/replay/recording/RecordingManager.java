@@ -53,7 +53,7 @@ public final class RecordingManager {
 	 * 古い録画（{@code minecraft:dimension_type} が入っていない物）を復元するには
 	 * どうしてもレジストリが要るので、入室した時点の物を覚えておく。</p>
 	 */
-	private static volatile @Nullable DynamicRegistryManager.Immutable liveRegistries;
+	private static volatile DynamicRegistryManager.@Nullable Immutable liveRegistries;
 
 	/** 入ったあとに別の次元へ移っていた場合のパケット */
 	private static volatile @Nullable Packet<?> respawnPacket;
@@ -103,7 +103,7 @@ public final class RecordingManager {
 		liveRegistries = registries;
 	}
 
-	public static @Nullable DynamicRegistryManager.Immutable getLiveRegistries() {
+	public static DynamicRegistryManager.@Nullable Immutable getLiveRegistries() {
 		return liveRegistries;
 	}
 
