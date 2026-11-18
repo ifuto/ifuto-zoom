@@ -1,5 +1,5 @@
-workdir: ifuto-fastplace
-artifact_path: ifuto-fastplace/build/libs/*.jar
+workdir: ifuto-replay
+artifact_path: ifuto-replay/build/libs/*.jar
 # 2026-09-17-06:03:20
 # 2026-09-17-06:32:25
 # 2026-09-17-06:35:40
@@ -83,3 +83,4 @@ artifact_path: ifuto-fastplace/build/libs/*.jar
 - tput r160: replay 0.30.4 — remember live registries at join; use them when the recording lacks dimension_type
 - tput r161: replay 0.30.4 compile fix — annotate the nested type (DynamicRegistryManager.@Nullable Immutable)
 - tput r162: replay 0.30.5 — layered fallbacks (alt codec, join re-decode, dimension-type candidates, real error text)
+- tput r163: replay 0.30.5 build (the r162 run built fastplace by mistake)
