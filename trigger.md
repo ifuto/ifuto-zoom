@@ -1,5 +1,5 @@
-workdir: ifuto-fastplace
-artifact_path: ifuto-fastplace/build/libs/*.jar
+workdir: ifuto-replay
+artifact_path: ifuto-replay/build/libs/*.jar
 # 2026-09-17-06:03:20
 # 2026-09-17-06:32:25
 # 2026-09-17-06:35:40
@@ -73,3 +73,4 @@ artifact_path: ifuto-fastplace/build/libs/*.jar
 - tput r150: fastplace 0.5.0 compile fix — JOML Matrix3x2fStack pushMatrix/popMatrix + 2-arg translate/scale, clearLine takes World (Entity#getWorld removed in 1.21.11)
 - tput r151: fastplace 0.5.0 — lazy melee weapon table (static Items.* init crashed testAim with 'Not bootstrapped: minecraft:game_event')
 - tput r152: fastplace 0.5.1 frame-driven placement + no-repeat intervals + virtual key reads, ClickGUI blur backdrop; replay 0.30.1 deferred chunk packets + Essential-safe pause buttons
+- tput r153: replay 0.30.1 build check (deferred chunk packets, Essential-safe pause panel)
