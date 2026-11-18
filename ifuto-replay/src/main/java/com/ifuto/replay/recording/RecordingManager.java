@@ -16,6 +16,7 @@ import net.minecraft.client.network.ClientPlayNetworkHandler;
 import net.minecraft.client.network.ServerInfo;
 import net.minecraft.network.ClientConnection;
 import net.minecraft.network.listener.PacketListener;
+import net.minecraft.registry.DynamicRegistryManager;
 import net.minecraft.network.packet.Packet;
 import net.minecraft.text.Text;
 import org.jspecify.annotations.Nullable;
@@ -43,6 +44,16 @@ public final class RecordingManager {
 
 	/** 世界を作ったパケット（途中から録り始めたときの「世界の写し」に使う） */
 	private static volatile @Nullable Packet<?> joinPacket;
+
+	/**
+	 * 直近の接続で使っていたレジストリ。
+	 *
+	 * <p>再生は「世界から切断してから」始まるので、その時点では
+	 * {@code client.world} も {@code getNetworkHandler()} も null になっている。
+	 * 古い録画（{@code minecraft:dimension_type} が入っていない物）を復元するには
+	 * どうしてもレジストリが要るので、入室した時点の物を覚えておく。</p>
+	 */
+	private static volatile @Nullable DynamicRegistryManager.Immutable liveRegistries;
 
 	/** 入ったあとに別の次元へ移っていた場合のパケット */
 	private static volatile @Nullable Packet<?> respawnPacket;
@@ -85,6 +96,15 @@ public final class RecordingManager {
 	public static void forgetWorldPackets() {
 		joinPacket = null;
 		respawnPacket = null;
+	}
+
+	/** 入室したときのレジストリを覚える（切断後も使えるように） */
+	public static void rememberRegistries(DynamicRegistryManager.Immutable registries) {
+		liveRegistries = registries;
+	}
+
+	public static @Nullable DynamicRegistryManager.Immutable getLiveRegistries() {
+		return liveRegistries;
 	}
 
 	public static @Nullable Packet<?> getJoinPacket() {

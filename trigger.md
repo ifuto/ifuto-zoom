@@ -1,5 +1,5 @@
-workdir: ifuto-fastplace
-artifact_path: ifuto-fastplace/build/libs/*.jar
+workdir: ifuto-replay
+artifact_path: ifuto-replay/build/libs/*.jar
 # 2026-09-17-06:03:20
 # 2026-09-17-06:32:25
 # 2026-09-17-06:35:40
@@ -80,3 +80,4 @@ artifact_path: ifuto-fastplace/build/libs/*.jar
 - tput r157: replay 0.30.2 compile fix 2 — drop Registries.DIMENSION_TYPE fallback
 - tput r158: replay 0.30.3 — minecraft:login decode failure is not fatal + dimension type fallback
 - tput r159: replay 0.30.3 compile fix — don't name ClientWorld (not imported)
+- tput r160: replay 0.30.4 — remember live registries at join; use them when the recording lacks dimension_type

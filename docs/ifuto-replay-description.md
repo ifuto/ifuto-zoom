@@ -465,3 +465,31 @@ IOException: 世界を作れませんでした（minecraft:login: Failed to deco
 3. 次元タイプを **録画 → いまの世界 → いまの接続** の順で探す（`dimensionTypes`）。
    次元タイプはバニラ組み込みなので、どの世界の物でも中身は同じ。
 4. それでも作れないときは、原因（`Caused by` の一番奥）を添えて理由を出す。
+
+
+## 12. レジストリを控えておく（0.30.4）
+
+0.30.3 のログで次の段階が見えた:
+
+```
+IOException: 世界を作れませんでした（minecraft:player_abilities:
+  Cannot invoke "PlayerEntity.getAbilities()" because "$$1" is null）
+```
+
+* `minecraft:player_abilities` は写しの 2 番目のパケット。`client.player` が null なので落ちる。
+  = **世界ができていない**（`minecraft:login` の復元に失敗したまま）。
+* `minecraft:login` が復元できない理由はレジストリ不足（`minecraft:dimension_type` が無い）。
+* しかも再生は **`client.disconnect()` の後**に始まるので、
+  その時点で `client.world` も `getNetworkHandler()` も null。
+  「いまのレジストリで代用する」が**そもそも取れていなかった**。
+
+### 直したこと
+
+1. 入室（`onGameJoin`）の時点で **`handler.getRegistryManager()` を控える**
+   （`RecordingManager.rememberRegistries`）。切断後でも使える。
+2. 録画のレジストリに `dimension_type` が無い場合は、控えておいた
+   「いまの接続のレジストリ」で再生する。これで `minecraft:login` が普通に復元でき、
+   写しのパケット（能力・持ち物・位置・地形）もそのまま流せる。
+3. それでも復元できないときは「録画のワールド情報を復元できませんでした（古い形式…）」
+   と、**原因が join 側にあること**を明示する（写しの 2 番目のパケットの NPE を
+   原因として出さない）。

@@ -4,6 +4,7 @@ import com.ifuto.replay.IfutoReplayClient;
 import com.ifuto.replay.gui.BlankScreen;
 import com.ifuto.replay.mixin.MinecraftClientAccessor;
 import com.ifuto.replay.mixin.MouseAccessor;
+import com.ifuto.replay.recording.RecordingManager;
 import com.ifuto.replay.recording.RegistrySnapshot;
 import com.ifuto.replay.recording.LocalEvents;
 import com.ifuto.replay.recording.ReplayFormat;
@@ -1029,6 +1030,11 @@ public final class ReplayPlayback implements ReplayStream.Sink {
 						+ (this.firstErrorName == null ? "?" : this.firstErrorName) + ": " + cause + "）");
 			}
 
+			if (this.joinUndecodable) {
+				throw new NoWorldException("録画のワールド情報を復元できませんでした"
+					+ "（古い形式で、必要なレジストリが入っていません。録り直してください）");
+			}
+
 			if (this.firstError != null) {
 				String cause = this.firstError.getMessage();
 				throw new IOException("世界を作れませんでした（"
@@ -1078,15 +1084,48 @@ public final class ReplayPlayback implements ReplayStream.Sink {
 	 * 古いファイルで入っていないときは、いまの世界の物を使う。
 	 */
 	private static DynamicRegistryManager.Immutable resolveRegistries(MinecraftClient client,
-																	  net.minecraft.nbt.@Nullable NbtCompound saved) {
+																		  net.minecraft.nbt.@Nullable NbtCompound saved) {
+		DynamicRegistryManager.Immutable live = liveRegistries(client);
+
 		if (saved != null && !saved.isEmpty()) {
 			try {
-				return RegistrySnapshot.restore(saved, client.getResourceManager());
+				DynamicRegistryManager.Immutable restored = RegistrySnapshot.restore(saved,
+					client.getResourceManager());
+
+				// dimension_type は GameJoin（パケット名は minecraft:login）の復元に必須。
+				// 古い録画には入っていないので、その場合はいまの接続の物で代用する。
+				if (restored.getOptional(RegistryKeys.DIMENSION_TYPE).isPresent()) {
+					return restored;
+				}
+
+				if (live != null) {
+					IfutoReplayClient.LOGGER.warn("[ifuto-replay] 録画に次元タイプ（dimension_type）が入っていないので、"
+						+ "いまの接続のレジストリで再生します");
+					return live;
+				}
+
+				IfutoReplayClient.LOGGER.warn("[ifuto-replay] 録画に次元タイプが入っていて、代わりに使えるレジストリもありません");
+				return restored;
 			} catch (Throwable t) {
 				IfutoReplayClient.LOGGER.warn("[ifuto-replay] 保存されたレジストリを復元できませんでした", t);
 			}
 		}
 
+		if (live != null) {
+			return live;
+		}
+
+		IfutoReplayClient.LOGGER.warn("[ifuto-replay] レジストリが見つからないので、既定の物で再生します");
+		return DynamicRegistryManager.of(Registries.REGISTRIES);
+	}
+
+	/**
+	 * いまの接続のレジストリ。
+	 *
+	 * <p>再生は切断後に始まるので、そのときは {@code world} も {@code handler} も無い。
+	 * 入室時に控えた物（{@link RecordingManager#getLiveRegistries()}）まで見に行く。</p>
+	 */
+	private static DynamicRegistryManager.@Nullable Immutable liveRegistries(MinecraftClient client) {
 		if (client.world != null) {
 			return client.world.getRegistryManager().toImmutable();
 		}
@@ -1097,8 +1136,7 @@ public final class ReplayPlayback implements ReplayStream.Sink {
 			return handler.getRegistryManager();
 		}
 
-		IfutoReplayClient.LOGGER.warn("[ifuto-replay] レジストリが見つからないので、既定の物で再生します");
-		return DynamicRegistryManager.of(Registries.REGISTRIES);
+		return RecordingManager.getLiveRegistries();
 	}
 
 	/** カメラの位置のサンプル（2個あればその間を補間できる） */

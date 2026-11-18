@@ -24,6 +24,14 @@ public class ClientPlayNetworkHandlerMixin {
 	@Inject(method = "onGameJoin", at = @At("HEAD"))
 	private void ifutoReplay$onGameJoin(GameJoinS2CPacket packet, CallbackInfo ci) {
 		RecordingManager.rememberJoinPacket(packet);
+
+		// 再生は切断後に始まるので、レジストリはここで控えておく
+		try {
+			RecordingManager.rememberRegistries(
+				((ClientPlayNetworkHandler) (Object) this).getRegistryManager());
+		} catch (Throwable ignored) {
+			// 取れなくても再生はできる（古い録画だけが困る）
+		}
 	}
 
 	@Inject(method = "onPlayerRespawn", at = @At("HEAD"))
