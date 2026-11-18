@@ -480,9 +480,14 @@ public class ReplayPreviewScreen extends Screen {
 		} catch (ReplayPlayback.NoWorldException e) {
 			IfutoReplayClient.LOGGER.error("[ifuto-replay] 再生を始められませんでした", e);
 			Screen back = parent == null ? new TitleScreen() : parent;
+			// 何が足りないのか（join が無いのか、壊れているのか）をそのまま見せる。
+			// 決め打ちの文言だと、ログを見ないと何も分からないため。
+			String detail = e.getMessage() == null || e.getMessage().isBlank()
+				? Text.translatable("ifuto-replay.preview.error_no_join").getString()
+				: e.getMessage();
 			client.setScreen(new NoticeScreen(new RecordingListScreen(back),
 					Text.translatable("ifuto-replay.preview.error_title"),
-					Text.translatable("ifuto-replay.preview.error_no_join")));
+					Text.literal(detail)));
 		} catch (Exception e) {
 			IfutoReplayClient.LOGGER.error("[ifuto-replay] 再生を始められませんでした", e);
 			Screen back = parent == null ? new TitleScreen() : parent;

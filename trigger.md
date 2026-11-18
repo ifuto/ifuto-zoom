@@ -82,3 +82,4 @@ artifact_path: ifuto-fastplace/build/libs/*.jar
 - tput r159: replay 0.30.3 compile fix — don't name ClientWorld (not imported)
 - tput r160: replay 0.30.4 — remember live registries at join; use them when the recording lacks dimension_type
 - tput r161: replay 0.30.4 compile fix — annotate the nested type (DynamicRegistryManager.@Nullable Immutable)
+- tput r162: replay 0.30.5 — layered fallbacks (alt codec, join re-decode, dimension-type candidates, real error text)

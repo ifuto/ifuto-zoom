@@ -91,8 +91,17 @@ public final class ReplayPlayback implements ReplayStream.Sink {
 	/** ログインパケットの復元に失敗したか（ログを 1 回だけ出すため） */
 	private boolean joinUndecodable;
 
+	/** 予備の codec を使ったか（ログを 1 回だけ出すため） */
+	private boolean altCodecUsed;
+
 	/** この再生で使うレジストリ（ファイルに入っていた物を最優先） */
 	private final DynamicRegistryManager.Immutable registries;
+
+	/** 予備の codec（録画のレジストリで復元できなかったパケット用。無ければ null） */
+	private final @Nullable NetworkState<ClientPlayPacketListener> serverToClientAlt;
+
+	/** 復元できなかった「世界を作るパケット」の生データ（最後にもう一度試す） */
+	private byte @Nullable [] undecodedJoin;
 
 	/** ワールド待ちで預かるパケットの上限（壊れたファイルで無限に溜めないため） */
 	private static final int MAX_DEFERRED_PACKETS = 4096;
@@ -207,6 +216,16 @@ public final class ReplayPlayback implements ReplayStream.Sink {
 
 		this.serverToClient = PlayStateFactories.S2C.bind(binder);
 		this.clientToServer = PlayStateFactories.C2S.bind(binder, () -> false);
+
+		// 予備の codec: 録画のレジストリでは復元できないパケット（古い録画の join など）を
+		// いまの接続のレジストリでもう一度だけ試すため。無くても動く。
+		DynamicRegistryManager.Immutable alt = alternativeRegistries(client, registries);
+
+		if (alt != null && alt != registries) {
+			this.serverToClientAlt = PlayStateFactories.S2C.bind(RegistryByteBuf.makeFactory(alt));
+		} else {
+			this.serverToClientAlt = null;
+		}
 		this.connection = new ReplayConnection();
 
 		GameProfile profile = client.getGameProfile();
@@ -684,7 +703,16 @@ public final class ReplayPlayback implements ReplayStream.Sink {
 		Packet<? super ClientPlayPacketListener> packet = null;
 
 		try {
-			packet = this.serverToClient.codec().decode(buf);
+			try {
+				packet = this.serverToClient.codec().decode(buf);
+			} catch (Throwable primary) {
+				// 冗長化: 録画のレジストリで駄目なら、いまの接続のレジストリでも試す
+				packet = decodeWithAlt(payload, this.pendingOffset, this.pendingLength, name);
+
+				if (packet == null) {
+					throw primary;
+				}
+			}
 
 			if (this.client.world == null && needsWorld(packet)) {
 				// 世界より先に来たチャンク等。ワールドができてから流す
@@ -700,6 +728,10 @@ public final class ReplayPlayback implements ReplayStream.Sink {
 			packet.apply(this.handler);
 		} catch (Throwable t) {
 			if (this.client.world == null && isJoinLabel(name)) {
+				// 生データを控えておく（最後の悪あがきでもう一度試す）
+				this.undecodedJoin = java.util.Arrays.copyOfRange(payload, this.pendingOffset,
+					this.pendingOffset + this.pendingLength);
+
 				// 古い録画はログインパケットを復元できない（次元タイプが入っていない等）。
 				// 世界は syntheticJoin で組み立て直すので、ここでは黙って諦める。
 				this.joinSeen = true;
@@ -719,6 +751,81 @@ public final class ReplayPlayback implements ReplayStream.Sink {
 		} finally {
 			buf.release();
 		}
+	}
+
+	/**
+	 * 予備の codec で復号する（冗長化）。
+	 *
+	 * @return 復号できたらパケット、できなければ null
+	 */
+	private @Nullable Packet<? super ClientPlayPacketListener> decodeWithAlt(byte[] payload, int offset,
+			int length, @Nullable String name) {
+		if (this.serverToClientAlt == null) {
+			return null;
+		}
+
+		ByteBuf buf = Unpooled.wrappedBuffer(payload, offset, length);
+
+		try {
+			Packet<? super ClientPlayPacketListener> packet = this.serverToClientAlt.codec().decode(buf);
+
+			if (!this.altCodecUsed) {
+				this.altCodecUsed = true;
+				IfutoReplayClient.LOGGER.info("[ifuto-replay] 録画のレジストリでは復元できないパケットがあったので、"
+					+ "いまの接続のレジストリで復元しました（最初の 1 件: {}）", name);
+			}
+
+			return packet;
+		} catch (Throwable ignored) {
+			return null;
+		} finally {
+			buf.release();
+		}
+	}
+
+	/** 世界とプレイヤーが揃っているか */
+	private boolean worldReady() {
+		return this.client.world != null && this.client.player != null;
+	}
+
+	/**
+	 * 控えておいた「世界を作るパケット」の生データを、使える codec すべてで順に試す。
+	 *
+	 * @return 世界ができたら true
+	 */
+	private boolean replayUndecodedJoin() {
+		byte[] payload = this.undecodedJoin;
+
+		if (payload == null) {
+			return false;
+		}
+
+		List<NetworkState<ClientPlayPacketListener>> states = new ArrayList<>(2);
+		states.add(this.serverToClient);
+
+		if (this.serverToClientAlt != null) {
+			states.add(this.serverToClientAlt);
+		}
+
+		for (NetworkState<ClientPlayPacketListener> state : states) {
+			ByteBuf buf = Unpooled.wrappedBuffer(payload);
+
+			try {
+				Packet<? super ClientPlayPacketListener> packet = state.codec().decode(buf);
+				packet.apply(this.handler);
+
+				if (this.worldReady()) {
+					IfutoReplayClient.LOGGER.info("[ifuto-replay] 控えておいたログインパケットで世界を作れました");
+					return true;
+				}
+			} catch (Throwable t) {
+				IfutoReplayClient.LOGGER.debug("[ifuto-replay] ログインパケットの再試行に失敗しました", t);
+			} finally {
+				buf.release();
+			}
+		}
+
+		return false;
 	}
 
 	/** その種類名が「世界を作るパケット」か（バニラの実体名は {@code minecraft:login}） */
@@ -757,30 +864,42 @@ public final class ReplayPlayback implements ReplayStream.Sink {
 	 * なかった時代がある）。その場合は<b>いまの接続</b>の物を使う。次元タイプは
 	 * バニラ組み込みなので、どの世界でも中身は同じ。</p>
 	 */
-	private @Nullable Registry<DimensionType> dimensionTypes() {
-		Registry<DimensionType> fromFile = this.registries.getOptional(RegistryKeys.DIMENSION_TYPE).orElse(null);
-
-		if (fromFile != null) {
-			return fromFile;
-		}
+	/**
+	 * 次元タイプのレジストリ候補（重複なし・null なし）。
+	 *
+	 * <p>古い録画には {@code minecraft:dimension_type} が入っていない（保存する対象では
+	 * なかった時代がある）。次元タイプはバニラ組み込みなので、どこから引いても中身は同じ。
+	 * 取れる所を<b>全部</b>集めて、上から順に試す。</p>
+	 */
+	private List<Registry<DimensionType>> dimensionTypeCandidates() {
+		List<Registry<DimensionType>> result = new ArrayList<>(4);
+		addDimensionTypes(result, this.registries.getOptional(RegistryKeys.DIMENSION_TYPE).orElse(null));
 
 		if (this.client.world != null) {
-			Registry<DimensionType> live = this.client.world.getRegistryManager()
-				.getOptional(RegistryKeys.DIMENSION_TYPE).orElse(null);
-
-			if (live != null) {
-				IfutoReplayClient.LOGGER.info("[ifuto-replay] 録画に次元タイプが入っていないので、いまの物で補います");
-				return live;
-			}
+			addDimensionTypes(result, this.client.world.getRegistryManager()
+				.getOptional(RegistryKeys.DIMENSION_TYPE).orElse(null));
 		}
 
 		ClientPlayNetworkHandler handler = this.client.getNetworkHandler();
 
 		if (handler != null) {
-			return handler.getRegistryManager().getOptional(RegistryKeys.DIMENSION_TYPE).orElse(null);
+			addDimensionTypes(result, handler.getRegistryManager()
+				.getOptional(RegistryKeys.DIMENSION_TYPE).orElse(null));
 		}
 
-		return null;
+		DynamicRegistryManager.Immutable remembered = RecordingManager.getLiveRegistries();
+
+		if (remembered != null) {
+			addDimensionTypes(result, remembered.getOptional(RegistryKeys.DIMENSION_TYPE).orElse(null));
+		}
+
+		return result;
+	}
+
+	private static void addDimensionTypes(List<Registry<DimensionType>> into, @Nullable Registry<DimensionType> types) {
+		if (types != null && !into.contains(types)) {
+			into.add(types);
+		}
 	}
 
 	/**
@@ -792,11 +911,9 @@ public final class ReplayPlayback implements ReplayStream.Sink {
 	 *
 	 * @return 組み立てられなければ null（その場合は従来どおり再生不可の扱い）
 	 */
-	private @Nullable GameJoinS2CPacket syntheticJoin() {
+	private @Nullable GameJoinS2CPacket syntheticJoin(Registry<DimensionType> types) {
 		try {
-			Registry<DimensionType> types = dimensionTypes();
-			RegistryEntry.Reference<DimensionType> overworld = types == null ? null
-				: types.getOptional(DimensionTypes.OVERWORLD).orElse(null);
+			RegistryEntry.Reference<DimensionType> overworld = types.getOptional(DimensionTypes.OVERWORLD).orElse(null);
 
 			if (overworld == null) {
 				return null;
@@ -815,20 +932,31 @@ public final class ReplayPlayback implements ReplayStream.Sink {
 	}
 
 	/** 世界が無いときに、最低限の GameJoin を流して世界だけ作らせる */
-	private void applySyntheticJoin() {
-		GameJoinS2CPacket join = syntheticJoin();
+	private boolean applySyntheticJoin() {
+		List<Registry<DimensionType>> candidates = dimensionTypeCandidates();
 
-		if (join == null) {
-			return;
+		for (Registry<DimensionType> types : candidates) {
+			GameJoinS2CPacket join = syntheticJoin(types);
+
+			if (join == null) {
+				continue;
+			}
+
+			try {
+				join.apply(this.handler);
+			} catch (Throwable t) {
+				IfutoReplayClient.LOGGER.warn("[ifuto-replay] 空の世界を作れませんでした（次の候補を試します）", t);
+				continue;
+			}
+
+			if (this.worldReady()) {
+				IfutoReplayClient.LOGGER.info("[ifuto-replay] 録画にワールド情報が無かったので、空の世界を作って再生します"
+					+ "（地形とエンティティは記録されたパケットから流し込みます）");
+				return true;
+			}
 		}
 
-		try {
-			join.apply(this.handler);
-			IfutoReplayClient.LOGGER.info("[ifuto-replay] 録画にワールド情報が無かったので、空の世界を作って再生します"
-				+ "（地形とエンティティは記録されたパケットから流し込みます）");
-		} catch (Throwable t) {
-			IfutoReplayClient.LOGGER.warn("[ifuto-replay] 空の世界を作れませんでした", t);
-		}
+		return false;
 	}
 
 	/** 預かっていたパケットを、ワールドができた後に流す */
@@ -1001,10 +1129,10 @@ public final class ReplayPlayback implements ReplayStream.Sink {
 			}
 		}
 
-		// ここまでで世界ができていない = 録画に GameJoin が入っていない
-		// （途中から録って写しの作成に失敗したファイル）。空の世界を作って、
-		// 記録された地形・エンティティをその上に流し込む。
-		if (this.client.world == null) {
+		// --- ここから冗長化: 世界ができるまで、手を変えて順に試す ---
+		// 1) 控えておいたログインパケットの生データを、使えるレジストリすべてで復元し直す
+		// 2) それでも駄目なら、次元タイプの候補を総当たりして空の世界を組み立てる
+		if (!this.worldReady() && !replayUndecodedJoin()) {
 			applySyntheticJoin();
 		}
 
@@ -1117,6 +1245,23 @@ public final class ReplayPlayback implements ReplayStream.Sink {
 
 		IfutoReplayClient.LOGGER.warn("[ifuto-replay] レジストリが見つからないので、既定の物で再生します");
 		return DynamicRegistryManager.of(Registries.REGISTRIES);
+	}
+
+	/**
+	 * 予備のレジストリ（録画の物と違う場合だけ返す）。
+	 *
+	 * <p>古い録画は {@code minecraft:dimension_type} を持っていないことがある。
+	 * そういうファイルでも、いまの接続のレジストリなら復元できる。</p>
+	 */
+	private static DynamicRegistryManager.@Nullable Immutable alternativeRegistries(MinecraftClient client,
+			DynamicRegistryManager.Immutable chosen) {
+		DynamicRegistryManager.Immutable live = liveRegistries(client);
+
+		if (live == null || live == chosen) {
+			return null;
+		}
+
+		return live;
 	}
 
 	/**
