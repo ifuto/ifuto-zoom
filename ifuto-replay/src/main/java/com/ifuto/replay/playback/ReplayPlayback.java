@@ -28,16 +28,25 @@ import net.minecraft.network.packet.c2s.play.HandSwingC2SPacket;
 import net.minecraft.network.packet.c2s.play.PlayerInputC2SPacket;
 import net.minecraft.network.packet.c2s.play.PlayerMoveC2SPacket;
 import net.minecraft.network.packet.s2c.play.ChunkDataS2CPacket;
+import net.minecraft.network.packet.s2c.play.CommonPlayerSpawnInfo;
+import net.minecraft.network.packet.s2c.play.GameJoinS2CPacket;
 import net.minecraft.network.packet.s2c.play.UnloadChunkS2CPacket;
 import net.minecraft.network.state.NetworkState;
 import net.minecraft.network.state.PlayStateFactories;
 import net.minecraft.registry.DynamicRegistryManager;
+import net.minecraft.registry.Registry;
+import net.minecraft.registry.RegistryKeys;
+import net.minecraft.registry.entry.RegistryEntry;
 import net.minecraft.registry.Registries;
 import net.minecraft.resource.featuretoggle.FeatureFlags;
 import net.minecraft.server.ServerLinks;
 import net.minecraft.util.Util;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
+import net.minecraft.world.GameMode;
+import net.minecraft.world.World;
+import net.minecraft.world.dimension.DimensionType;
+import net.minecraft.world.dimension.DimensionTypes;
 import org.jspecify.annotations.Nullable;
 
 import java.io.ByteArrayInputStream;
@@ -77,6 +86,9 @@ public final class ReplayPlayback implements ReplayStream.Sink {
 
 	/** これ以上エラーが続いたら再生をあきらめる */
 	private static final int MAX_ERRORS = 30;
+
+	/** この再生で使うレジストリ（ファイルに入っていた物を最優先） */
+	private final DynamicRegistryManager.Immutable registries;
 
 	/** ワールド待ちで預かるパケットの上限（壊れたファイルで無限に溜めないため） */
 	private static final int MAX_DEFERRED_PACKETS = 4096;
@@ -186,6 +198,7 @@ public final class ReplayPlayback implements ReplayStream.Sink {
 		this.stream = new ReplayStream(file);
 
 		DynamicRegistryManager.Immutable registries = resolveRegistries(client, this.stream.registries());
+		this.registries = registries;
 		Function<ByteBuf, RegistryByteBuf> binder = RegistryByteBuf.makeFactory(registries);
 
 		this.serverToClient = PlayStateFactories.S2C.bind(binder);
@@ -682,8 +695,9 @@ public final class ReplayPlayback implements ReplayStream.Sink {
 
 			packet.apply(this.handler);
 		} catch (Throwable t) {
-			if (this.client.world == null && packet != null && t instanceof NullPointerException) {
-				// 世界が無いだけで落ちただけ。捨てずに、ワールド完成後に流し直す
+			// 中身がワールド前提の物だけは預け直す（それ以外は今まで通り本当の理由を出す）
+			if (this.client.world == null && packet != null && needsWorld(packet)
+				&& this.deferredWorldPackets.size() <= MAX_DEFERRED_PACKETS) {
 				this.deferredWorldPackets.addLast(packet);
 			} else {
 				this.onError(name, t);
@@ -697,6 +711,54 @@ public final class ReplayPlayback implements ReplayStream.Sink {
 	private static boolean needsWorld(Packet<?> packet) {
 		return packet instanceof ChunkDataS2CPacket
 			|| packet instanceof UnloadChunkS2CPacket;
+	}
+
+	/**
+	 * 録画に「世界を作るパケット」が無いときの、最低限の {@link GameJoinS2CPacket}。
+	 *
+	 * <p>ファイルには録り始めの {@code DynamicRegistryManager} が入っているので、
+	 * 次元（オーバーワールド）だけはそこから引ける。種・時刻・持ち物は記録された
+	 * パケット側で上書きされるので、ここでは「世界が存在する」ことだけ作れればよい。</p>
+	 *
+	 * @return 組み立てられなければ null（その場合は従来どおり再生不可の扱い）
+	 */
+	private @Nullable GameJoinS2CPacket syntheticJoin() {
+		try {
+			Registry<DimensionType> types = this.registries.getOrThrow(RegistryKeys.DIMENSION_TYPE);
+			RegistryEntry.Reference<DimensionType> overworld = types.getEntry(DimensionTypes.OVERWORLD)
+				.orElseGet(() -> Registries.DIMENSION_TYPE.getEntry(DimensionTypes.OVERWORLD).orElse(null));
+
+			if (overworld == null) {
+				return null;
+			}
+
+			CommonPlayerSpawnInfo spawn = new CommonPlayerSpawnInfo(overworld, World.OVERWORLD, 0L,
+				GameMode.SURVIVAL, null, false, false, java.util.Optional.empty(), 0, 63);
+
+			return new GameJoinS2CPacket(1, false,
+				java.util.Set.of(World.OVERWORLD, World.NETHER, World.END),
+				100, 8, 8, false, true, false, spawn, false);
+		} catch (Throwable t) {
+			IfutoReplayClient.LOGGER.warn("[ifuto-replay] 最低限のワールド情報を組み立てられませんでした", t);
+			return null;
+		}
+	}
+
+	/** 世界が無いときに、最低限の GameJoin を流して世界だけ作らせる */
+	private void applySyntheticJoin() {
+		GameJoinS2CPacket join = syntheticJoin();
+
+		if (join == null) {
+			return;
+		}
+
+		try {
+			join.apply(this.handler);
+			IfutoReplayClient.LOGGER.info("[ifuto-replay] 録画にワールド情報が無かったので、空の世界を作って再生します"
+				+ "（地形とエンティティは記録されたパケットから流し込みます）");
+		} catch (Throwable t) {
+			IfutoReplayClient.LOGGER.warn("[ifuto-replay] 空の世界を作れませんでした", t);
+		}
 	}
 
 	/** 預かっていたパケットを、ワールドができた後に流す */
@@ -869,6 +931,13 @@ public final class ReplayPlayback implements ReplayStream.Sink {
 			}
 		}
 
+		// ここまでで世界ができていない = 録画に GameJoin が入っていない
+		// （途中から録って写しの作成に失敗したファイル）。空の世界を作って、
+		// 記録された地形・エンティティをその上に流し込む。
+		if (this.client.world == null) {
+			applySyntheticJoin();
+		}
+
 		// チャンクを先に預けていたなら、ここで流し込む（世界ができた直後）
 		drainDeferredWorldPackets();
 
@@ -891,7 +960,15 @@ public final class ReplayPlayback implements ReplayStream.Sink {
 						+ (this.firstErrorName == null ? "?" : this.firstErrorName) + ": " + cause + "）");
 			}
 
-			throw new NoWorldException("ワールドを開始できませんでした");
+			if (this.firstError != null) {
+				String cause = this.firstError.getMessage();
+				throw new IOException("世界を作れませんでした（"
+					+ (this.firstErrorName == null ? "?" : this.firstErrorName) + ": "
+					+ (cause == null || cause.isEmpty() ? this.firstError.toString() : cause) + "）");
+			}
+
+			throw new NoWorldException("この録画にはワールドを作る情報が入っていません"
+				+ "（録画の先頭にワールドの写しがありません。録り直してください）");
 		}
 
 		this.setupPlayer();

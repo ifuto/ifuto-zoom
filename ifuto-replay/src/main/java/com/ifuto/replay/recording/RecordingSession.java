@@ -357,10 +357,25 @@ public final class RecordingSession {
 		int radius = Math.max(1, this.config.snapshotRadius);
 
 		try {
-			return WorldSnapshot.build(client, radius, cancelled);
+			WorldSnapshot.Snapshot snapshot = WorldSnapshot.build(client, radius, cancelled);
+
+			if (snapshot != null) {
+				return snapshot;
+			}
+
+			// 地形の写しが作れなかった。ここで諦めると「再生できないファイル」になるので、
+			// ワールドを作るパケットと位置だけの最小構成を入れておく。
+			WorldSnapshot.Snapshot minimal = WorldSnapshot.minimal(client);
+
+			if (minimal != null) {
+				IfutoReplayClient.LOGGER.info("[ifuto-replay] 地形の写しを作れなかったので、"
+					+ "最小構成（ワールド + 位置）だけ保存します（地形は再生されません）");
+			}
+
+			return minimal;
 		} catch (Throwable t) {
 			IfutoReplayClient.LOGGER.warn("[ifuto-replay] 世界の写しを作れませんでした", t);
-			return null;
+			return WorldSnapshot.minimal(client);
 		}
 	}
 

@@ -87,6 +87,49 @@ public final class WorldSnapshot {
 	 * @param radius 保存する地形の半径（チャンク）
 	 * @return 作れたら内容、必要条件が足りなければ null
 	 */
+	/**
+	 * 地形を諦めた最小構成の写し。ワールドを作るパケット（{@code GameJoin}）と
+	 * 自分の位置・持ち物の一部だけを入れる。
+	 *
+	 * <p>地形の走査が失敗した（重すぎる／世界を読めない等）ときに、
+	 * 「再生できないファイル」になるのを避けるための保険。地形は無いが、
+	 * 記録されたパケットは動くので、少なくとも絵は出る。</p>
+	 *
+	 * @return 作れなければ null（{@code join} を覚えていないとき）
+	 */
+	public static @Nullable Snapshot minimal(MinecraftClient client) {
+		ClientWorld world = client.world;
+		ClientPlayerEntity player = client.player;
+		Packet<?> join = RecordingManager.getJoinPacket();
+
+		if (world == null || player == null || join == null) {
+			return null;
+		}
+
+		List<Packet<?>> packets = new ArrayList<>();
+		packets.add(join);
+
+		Packet<?> respawn = RecordingManager.getRespawnPacket();
+
+		if (respawn != null) {
+			packets.add(respawn);
+		}
+
+		packets.add(new PlayerAbilitiesS2CPacket(player.getAbilities()));
+		packets.add(new HealthUpdateS2CPacket(player.getHealth(),
+				player.getHungerManager().getFoodLevel(), player.getHungerManager().getSaturationLevel()));
+		packets.add(new ExperienceBarUpdateS2CPacket(player.experienceProgress, player.experienceLevel,
+				player.totalExperience));
+		packets.add(PlayerPositionLookS2CPacket.of(0, EntityPosition.fromEntity(player), Set.of()));
+		return new Snapshot(packets, 0, 0);
+	}
+
+	/**
+	 * いまの世界から「再生の開始に必要なパケット」を組み立てる。
+	 *
+	 * @param radius 保存する地形の半径（チャンク）
+	 * @return 作れたら内容、必要条件が足りなければ null
+	 */
 	public static @Nullable Snapshot build(MinecraftClient client, int radius) {
 		return build(client, radius, () -> false);
 	}
