@@ -17,6 +17,7 @@ import net.minecraft.util.math.Box;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.RaycastContext;
+import net.minecraft.world.World;
 
 import java.util.Optional;
 import java.util.Set;
@@ -328,7 +329,7 @@ public final class AimAssistModule {
 				continue;
 			}
 			Vec3d point = hit.get();
-			if (!clearLine(player, eye, point, living)) {
+			if (!clearLine(player, client.world, eye, point, living)) {
 				continue;
 			}
 			double distance = eye.squaredDistanceTo(point);
@@ -353,11 +354,12 @@ public final class AimAssistModule {
 	}
 
 	/** 視線が相手まで遮られていないか（ブロック・他のエンティティ） */
-	public static boolean clearLine(ClientPlayerEntity player, Vec3d eye, Vec3d point, Entity ignore) {
-		if (player.getWorld() == null) {
+	public static boolean clearLine(ClientPlayerEntity player, World world, Vec3d eye, Vec3d point,
+			Entity ignore) {
+		if (world == null) {
 			return false;
 		}
-		BlockHitResult blockHit = player.getWorld().raycast(new RaycastContext(eye, point,
+		BlockHitResult blockHit = world.raycast(new RaycastContext(eye, point,
 			RaycastContext.ShapeType.COLLIDER, RaycastContext.FluidHandling.NONE, player));
 		double targetDistance = eye.squaredDistanceTo(point);
 		if (blockHit.getType() == HitResult.Type.BLOCK
@@ -365,7 +367,7 @@ public final class AimAssistModule {
 			return false;
 		}
 		Box sweep = new Box(eye, point).expand(0.05);
-		for (Entity other : player.getWorld().getOtherEntities(player, sweep)) {
+		for (Entity other : world.getOtherEntities(player, sweep)) {
 			if (other == ignore || other.isSpectator() || other.isRemoved()) {
 				continue;
 			}

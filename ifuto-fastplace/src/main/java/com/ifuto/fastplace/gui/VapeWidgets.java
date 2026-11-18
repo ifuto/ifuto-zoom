@@ -51,11 +51,11 @@ public final class VapeWidgets {
 			return;
 		}
 		var matrices = context.getMatrices();
-		matrices.push();
-		matrices.translate(x, y, 0.0f);
-		matrices.scale(scale, scale, 1.0f);
+		matrices.pushMatrix();
+		matrices.translate(x, y);
+		matrices.scale(scale, scale);
 		context.drawText(renderer, value, 0, 0, color, false);
-		matrices.pop();
+		matrices.popMatrix();
 	}
 
 	public static void pill(DrawContext context, int x, int y, int w, int h, boolean on) {

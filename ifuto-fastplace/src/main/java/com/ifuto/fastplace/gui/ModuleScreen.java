@@ -353,11 +353,11 @@ public final class ModuleScreen extends Screen {
 			return;
 		}
 		var matrices = context.getMatrices();
-		matrices.push();
-		matrices.translate(x, y, 0.0f);
-		matrices.scale(scale, scale, 1.0f);
+		matrices.pushMatrix();
+		matrices.translate(x, y);
+		matrices.scale(scale, scale);
 		context.drawText(textRenderer, value, 0, 0, color, false);
-		matrices.pop();
+		matrices.popMatrix();
 	}
 
 	private void badge(DrawContext context, int x, int y, String label) {
