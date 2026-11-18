@@ -725,8 +725,8 @@ public final class ReplayPlayback implements ReplayStream.Sink {
 	private @Nullable GameJoinS2CPacket syntheticJoin() {
 		try {
 			Registry<DimensionType> types = this.registries.getOrThrow(RegistryKeys.DIMENSION_TYPE);
-			RegistryEntry.Reference<DimensionType> overworld = types.getEntry(DimensionTypes.OVERWORLD)
-				.orElseGet(() -> Registries.DIMENSION_TYPE.getEntry(DimensionTypes.OVERWORLD).orElse(null));
+			RegistryEntry.Reference<DimensionType> overworld = types.getOptional(DimensionTypes.OVERWORLD)
+				.orElseGet(() -> Registries.DIMENSION_TYPE.getOptional(DimensionTypes.OVERWORLD).orElse(null));
 
 			if (overworld == null) {
 				return null;

@@ -76,3 +76,4 @@ artifact_path: ifuto-replay/build/libs/*.jar
 - tput r153: replay 0.30.1 build check (deferred chunk packets, Essential-safe pause panel)
 - tput r154: replay 0.30.1 full build (chunk deferral + Essential pause panel)
 - tput r155: replay 0.30.2 missing-GameJoin fix (synthetic world + minimal snapshot prefix)
+- tput r156: replay 0.30.2 compile fix — RegistryEntryLookup#getOptional for the dimension entry
