@@ -8,17 +8,18 @@ import net.minecraft.client.gui.DrawContext;
  * 設定画面どうしで色と形を揃えるためだけのクラス。
  */
 public final class VapeWidgets {
-	public static final int WINDOW = 0xFF181819;
+	/** パネルの地（85%）。完全に塗り潰さず、後ろのぼかした世界を少し透かす */
+	public static final int WINDOW = 0xD8181819;
 	public static final int BORDER = 0xFF242426;
-	public static final int HOVER = 0xFF1F1F21;
-	public static final int SECTION = 0xFF151516;
+	public static final int HOVER = 0xD81F1F21;
+	public static final int SECTION = 0xC8151516;
 	public static final int ACCENT = 0xFF16A37F;
 	public static final int TEXT = 0xFFD4D4D8;
 	public static final int MUTED = 0xFF9E9EA4;
 	public static final int DIM = 0xFF5E5E62;
 	public static final int TRACK = 0xFF27272A;
 	public static final int TRACK_OFF = 0xFF2A2A2E;
-	public static final int CHIP = 0xFF232326;
+	public static final int CHIP = 0xD8232326;
 	public static final int CHIP_BORDER = 0xFF2D2D30;
 	public static final int SHADOW = 0x44000000;
 

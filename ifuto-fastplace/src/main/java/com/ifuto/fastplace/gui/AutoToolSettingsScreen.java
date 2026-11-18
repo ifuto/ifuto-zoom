@@ -14,7 +14,7 @@ import org.lwjgl.glfw.GLFW;
 /**
  * Auto Tool の設定。
  */
-public final class AutoToolSettingsScreen extends Screen {
+public final class AutoToolSettingsScreen extends GlassScreen {
 	private static final int PANEL_W = 440;
 	private static final int PANEL_H = 250;
 	private static final int ACCENT = 0xFF16A37F;

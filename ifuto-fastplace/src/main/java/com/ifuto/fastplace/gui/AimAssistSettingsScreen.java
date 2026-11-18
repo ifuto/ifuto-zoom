@@ -21,7 +21,7 @@ import java.util.function.DoubleSupplier;
  * <p>掴み方（クリックで掴む / 押している間だけ）、判定の倍率、掴む時間、
  * 進行方向のズレ、滑らかさなど、挙動を決める数値を全部ここから動かせる。</p>
  */
-public final class AimAssistSettingsScreen extends Screen {
+public final class AimAssistSettingsScreen extends GlassScreen {
 	private static final int PANEL_W = 520;
 	private static final int HEADER = 46;
 	private static final int FOOTER = 32;

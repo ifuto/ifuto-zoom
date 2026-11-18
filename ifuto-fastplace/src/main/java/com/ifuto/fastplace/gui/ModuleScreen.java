@@ -22,7 +22,7 @@ import java.util.Map;
  * 右がそのカテゴリのモジュール一覧。行クリックで ON/OFF、`⋮` で設定画面。
  * ヘッダーをドラッグすると画面ごと動く。</p>
  */
-public final class ModuleScreen extends Screen {
+public final class ModuleScreen extends GlassScreen {
 	private static final int PANEL_W = 270;
 	private static final int GAP = 12;
 	private static final int TOP = 34;

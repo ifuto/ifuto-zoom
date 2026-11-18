@@ -382,3 +382,31 @@ Japanese and English are both supported.
 ## License
 
 MIT
+
+
+## 8. 再生時にチャンクを「預かる」（0.30.1）
+
+`ReplayPlayback#enterWorld` は GameJoin を流し込んで世界を作るが、録画の先頭が
+チャンク（`minecraft:level_chunk_with_light`）で始まっていることがある。
+その状態で `ChunkDataS2CPacket#apply` を呼ぶと
+`ClientPlayNetworkHandler#loadChunk` の中で `this.world` が null のため
+NullPointerException になり、ログに大量の
+「パケットを流し込めませんでした」が出ていた。
+
+* ワールドが無いあいだに届いたチャンク系（`ChunkDataS2CPacket` /
+  `UnloadChunkS2CPacket`）は **捨てずに順番を保って預ける**。
+* ワールドができた直後（`enterWorld` の直後と、次のパケットを流す前）に
+  預かったぶんをまとめて流す。
+* 万一ほかのパケットが「ワールドが無い」だけで NPE した場合も、
+  捨てずに預けて後で流し直す（ワールドがある状態での NPE は従来どおり報告）。
+* 壊れたファイル対策に預かり上限（4096 個）を設けた。
+
+## 9. Essential Mod とポーズ画面（0.30.1）
+
+Essential Mod はポーズ画面の**左**に自分のキャラクターを表示する。
+こちらは録画ボタンの板を左上に出していたため、キャラクターと重なって
+ボタンが押せなくなっていた。
+
+* `essential` が読み込まれているときは板を**右上**へ回す
+  （Essential のキャラは左、バニラのボタンは中央なので、右上が唯一の空き）。
+* `FabricLoader#isModLoaded` を try で包み、判定に失敗しても従来の位置で動く。

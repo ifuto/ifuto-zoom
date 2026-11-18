@@ -5,6 +5,7 @@ import com.ifuto.fastplace.gui.ModuleScreen;
 import com.ifuto.fastplace.crystal.ClickCrystalModule;
 import com.ifuto.fastplace.hud.AimFrameHook;
 import com.ifuto.fastplace.hud.CpsHud;
+import com.ifuto.fastplace.hud.FastPlaceFrameHook;
 import com.ifuto.fastplace.scaffold.ScaffoldModule;
 import com.ifuto.fastplace.tool.AutoToolModule;
 import net.fabricmc.api.ClientModInitializer;
@@ -92,6 +93,10 @@ public final class FastPlaceMod implements ClientModInitializer {
 		// アシストの回転はフレーム単位で足す（20Hz の段差を消す）
 		HudElementRegistry.attachElementAfter(VanillaHudElements.HOTBAR,
 			Identifier.of(MOD_ID, "aim_frame_hook"), new AimFrameHook());
+
+		// 高速設置もフレーム単位で撃つ（50ms の倍数に丸めない = 間隔が同じ数字にならない）
+		HudElementRegistry.attachElementAfter(VanillaHudElements.HOTBAR,
+			Identifier.of(MOD_ID, "fastplace_frame_hook"), new FastPlaceFrameHook());
 	}
 
 	/**

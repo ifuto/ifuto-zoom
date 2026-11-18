@@ -11,7 +11,7 @@ import org.lwjgl.glfw.GLFW;
 /**
  * ClickCrystal の設定（The Client. の見た目）。
  */
-public final class ClickCrystalSettingsScreen extends Screen {
+public final class ClickCrystalSettingsScreen extends GlassScreen {
 	private static final int PANEL_W = 420;
 	private static final int HEADER = 46;
 	private static final int FOOTER = 32;

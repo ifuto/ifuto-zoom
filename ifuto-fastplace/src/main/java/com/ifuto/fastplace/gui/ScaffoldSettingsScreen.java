@@ -16,7 +16,7 @@ import java.util.Locale;
 /**
  * Scaffold（God Bridge）の設定。
  */
-public final class ScaffoldSettingsScreen extends Screen {
+public final class ScaffoldSettingsScreen extends GlassScreen {
 	private static final int PANEL_W = 430;
 	private static final int PANEL_H = 336;
 	private static final int ACCENT = 0xFF16A37F;

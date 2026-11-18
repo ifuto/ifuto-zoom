@@ -72,3 +72,4 @@ artifact_path: ifuto-fastplace/build/libs/*.jar
 - tput r149: fastplace 0.5.0 aim assist click-acquire + per-frame smoothing + strafe bias, ClickCrystal module, The Client. GUI
 - tput r150: fastplace 0.5.0 compile fix — JOML Matrix3x2fStack pushMatrix/popMatrix + 2-arg translate/scale, clearLine takes World (Entity#getWorld removed in 1.21.11)
 - tput r151: fastplace 0.5.0 — lazy melee weapon table (static Items.* init crashed testAim with 'Not bootstrapped: minecraft:game_event')
+- tput r152: fastplace 0.5.1 frame-driven placement + no-repeat intervals + virtual key reads, ClickGUI blur backdrop; replay 0.30.1 deferred chunk packets + Essential-safe pause buttons

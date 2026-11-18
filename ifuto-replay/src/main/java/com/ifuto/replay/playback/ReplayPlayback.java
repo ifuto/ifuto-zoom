@@ -27,6 +27,8 @@ import net.minecraft.network.packet.c2s.play.ClientCommandC2SPacket;
 import net.minecraft.network.packet.c2s.play.HandSwingC2SPacket;
 import net.minecraft.network.packet.c2s.play.PlayerInputC2SPacket;
 import net.minecraft.network.packet.c2s.play.PlayerMoveC2SPacket;
+import net.minecraft.network.packet.s2c.play.ChunkDataS2CPacket;
+import net.minecraft.network.packet.s2c.play.UnloadChunkS2CPacket;
 import net.minecraft.network.state.NetworkState;
 import net.minecraft.network.state.PlayStateFactories;
 import net.minecraft.registry.DynamicRegistryManager;
@@ -42,6 +44,7 @@ import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -74,6 +77,9 @@ public final class ReplayPlayback implements ReplayStream.Sink {
 
 	/** これ以上エラーが続いたら再生をあきらめる */
 	private static final int MAX_ERRORS = 30;
+
+	/** ワールド待ちで預かるパケットの上限（壊れたファイルで無限に溜めないため） */
+	private static final int MAX_DEFERRED_PACKETS = 4096;
 
 	/** いま動いている再生（画面を開いていないときは null） */
 	private static volatile ReplayPlayback active;
@@ -112,6 +118,17 @@ public final class ReplayPlayback implements ReplayStream.Sink {
 	private int errors;
 	/** 世界を作るパケットが来たか（来ないファイルと来て失敗したファイルを区別するため） */
 	private boolean joinSeen;
+	/**
+	 ** ワールドができる前に届いた「ワールドが要る」パケットの預かり所。
+	 *
+	 * <p>録画の先頭がチャンク（{@code level_chunk_with_light}）で始まっていると、
+	 * まだ GameJoin が来ていない＝{@code client.world == null} の状態で
+	 * {@code ClientPlayNetworkHandler#loadChunk} に渡してしまい、
+	 * 「this.world が null」で NullPointerException になる。
+	 * 捨てるのは勿体ないので、ワールドができるまで順番を保ったまま取っておく。</p>
+	 */
+	private final ArrayDeque<Packet<? super ClientPlayPacketListener>> deferredWorldPackets = new ArrayDeque<>();
+
 	/** 最初の失敗（世界が作れなかったときに本当の理由を出すため） */
 	private @Nullable Throwable firstError;
 	private @Nullable String firstErrorName;
@@ -628,6 +645,9 @@ public final class ReplayPlayback implements ReplayStream.Sink {
 			return;
 		}
 
+		// ワールドができたなら、預かっていたぶんを先に流す（順番は録画どおり）
+		drainDeferredWorldPackets();
+
 		int direction = this.typeDirections.getOrDefault(this.pendingTypeIndex, ReplayFormat.DIRECTION_S2C);
 		String name = this.typeNames.get(this.pendingTypeIndex);
 
@@ -644,13 +664,66 @@ public final class ReplayPlayback implements ReplayStream.Sink {
 		// 中身を複写せず、その場で読む（wrappedBuffer は見るだけで所有しない）
 		ByteBuf buf = Unpooled.wrappedBuffer(payload, this.pendingOffset, this.pendingLength);
 
+		Packet<? super ClientPlayPacketListener> packet = null;
+
 		try {
-			Packet<? super ClientPlayPacketListener> packet = this.serverToClient.codec().decode(buf);
+			packet = this.serverToClient.codec().decode(buf);
+
+			if (this.client.world == null && needsWorld(packet)) {
+				// 世界より先に来たチャンク等。ワールドができてから流す
+				if (this.deferredWorldPackets.size() > MAX_DEFERRED_PACKETS) {
+					this.onError(name, new IllegalStateException("ワールドができないままパケットが溜まりすぎました"));
+					return;
+				}
+
+				this.deferredWorldPackets.addLast(packet);
+				return;
+			}
+
 			packet.apply(this.handler);
 		} catch (Throwable t) {
-			this.onError(name, t);
+			if (this.client.world == null && packet != null && t instanceof NullPointerException) {
+				// 世界が無いだけで落ちただけ。捨てずに、ワールド完成後に流し直す
+				this.deferredWorldPackets.addLast(packet);
+			} else {
+				this.onError(name, t);
+			}
 		} finally {
 			buf.release();
+		}
+	}
+
+	/** ワールドが要るパケットか（まだ世界が無いなら預ける） */
+	private static boolean needsWorld(Packet<?> packet) {
+		return packet instanceof ChunkDataS2CPacket
+			|| packet instanceof UnloadChunkS2CPacket;
+	}
+
+	/** 預かっていたパケットを、ワールドができた後に流す */
+	private void drainDeferredWorldPackets() {
+		if (this.deferredWorldPackets.isEmpty() || this.client.world == null) {
+			return;
+		}
+
+		int count = 0;
+
+		while (!this.deferredWorldPackets.isEmpty()) {
+			Packet<? super ClientPlayPacketListener> packet = this.deferredWorldPackets.pollFirst();
+
+			if (packet == null) {
+				break;
+			}
+
+			try {
+				packet.apply(this.handler);
+				count++;
+			} catch (Throwable t) {
+				this.onError(packet.getClass().getSimpleName(), t);
+			}
+		}
+
+		if (count > 0) {
+			IfutoReplayClient.LOGGER.info("[ifuto-replay] 預かっていた {} パケットを流し込みました", count);
 		}
 	}
 
@@ -795,6 +868,9 @@ public final class ReplayPlayback implements ReplayStream.Sink {
 				}
 			}
 		}
+
+		// チャンクを先に預けていたなら、ここで流し込む（世界ができた直後）
+		drainDeferredWorldPackets();
 
 		if (this.client.world == null || this.client.player == null) {
 			// 世界の入っているかたまり自体が壊れていた。場所を出して諦める

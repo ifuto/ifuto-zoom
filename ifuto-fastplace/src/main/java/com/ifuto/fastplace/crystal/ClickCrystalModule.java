@@ -1,6 +1,7 @@
 package com.ifuto.fastplace.crystal;
 
 import com.ifuto.fastplace.FastPlaceConfig;
+import com.ifuto.fastplace.input.VirtualKeys;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
 import net.minecraft.client.MinecraftClient;
@@ -77,7 +78,8 @@ public final class ClickCrystalModule {
 		}
 
 		long now = System.currentTimeMillis();
-		boolean pressed = client.options.attackKey.isPressed();
+		// 自分で「押したことにする」ぶんは拾わない（本物の指の状態だけ見る）
+		boolean pressed = VirtualKeys.physical(client.options.attackKey);
 		boolean clicked = pressed && !lastAttackPressed;
 		lastAttackPressed = pressed;
 
@@ -122,6 +124,8 @@ public final class ClickCrystalModule {
 			Vec3d.ofCenter(basePos).add(0.0, 0.5, 0.0), Direction.UP, basePos, false);
 		interaction.interactBlock(player, Hand.MAIN_HAND, hit);
 		player.swingHand(Hand.MAIN_HAND);
+		// キー表示 Mod / CPS 表示 Mod に「右クリックした」と見せる（読み取りだけ）
+		VirtualKeys.press(client.options.useKey);
 
 		nextActionAt = now + Math.max(20L, cfg.clickCrystalIntervalMs);
 	}
@@ -142,7 +146,10 @@ public final class ClickCrystalModule {
 			}
 		}
 		if (best != null) {
+			// バニラの doAttack と同じ 2 手（攻撃 + 腕振り）。攻撃だけ送るのは「パケットだけ」に見える
 			interaction.attackEntity(player, best);
+			player.swingHand(Hand.MAIN_HAND);
+			VirtualKeys.press(client.options.attackKey);
 		}
 	}
 
@@ -183,6 +190,7 @@ public final class ClickCrystalModule {
 			client.player.getInventory().setSelectedSlot(originalSlot);
 		}
 		armed = false;
+		VirtualKeys.clear();
 		basePos = null;
 		originalSlot = -1;
 		nextActionAt = 0L;

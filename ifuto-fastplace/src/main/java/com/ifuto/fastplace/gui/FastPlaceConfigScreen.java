@@ -13,7 +13,7 @@ import net.minecraft.util.Formatting;
 /**
  * FastPlace の設定画面。モダンなパネル + スライダー。
  */
-public final class FastPlaceConfigScreen extends Screen {
+public final class FastPlaceConfigScreen extends GlassScreen {
 	private static final int PANEL_W = 400;
 	private static final int PANEL_H = 240;
 	private static final int ACCENT = 0xFFFFB020;

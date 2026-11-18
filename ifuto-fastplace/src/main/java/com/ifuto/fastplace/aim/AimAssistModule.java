@@ -2,6 +2,7 @@ package com.ifuto.fastplace.aim;
 
 import com.ifuto.fastplace.FastPlaceConfig;
 import com.ifuto.fastplace.human.TrackingAim;
+import com.ifuto.fastplace.input.VirtualKeys;
 import com.ifuto.fastplace.scaffold.ScaffoldModule;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerEntity;
@@ -177,7 +178,7 @@ public final class AimAssistModule {
 		handleClick(client, player, cfg, now);
 
 		boolean active = !cfg.aimAssistClickAcquire || now < stickyUntil;
-		if (cfg.aimAssistOnlyWhileAttacking && !client.options.attackKey.isPressed()) {
+		if (cfg.aimAssistOnlyWhileAttacking && !VirtualKeys.physical(client.options.attackKey)) {
 			active = false;
 		}
 		if (!active) {
@@ -291,7 +292,7 @@ public final class AimAssistModule {
 
 	private static void handleClick(MinecraftClient client, ClientPlayerEntity player,
 			FastPlaceConfig cfg, long now) {
-		boolean pressed = client.options.attackKey.isPressed();
+		boolean pressed = VirtualKeys.physical(client.options.attackKey);
 		boolean clicked = pressed && !lastAttackPressed;
 		lastAttackPressed = pressed;
 		if (!clicked || !cfg.aimAssistClickAcquire) {

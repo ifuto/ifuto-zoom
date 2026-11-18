@@ -8,6 +8,7 @@ import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
 import net.fabricmc.fabric.api.client.screen.v1.Screens;
+import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
@@ -63,9 +64,13 @@ public final class PauseMenuButtons {
 			padding = 3;
 		}
 
-		panelX = PANEL_MARGIN;
-		panelY = PANEL_MARGIN;
 		panelWidth = buttonWidth + padding * 2;
+		panelY = PANEL_MARGIN;
+		// Essential Mod はポーズ画面の左に自分のキャラクターを置く。同じところに板を出すと
+		// ボタンが隠れて押せなくなるので、Essential が居るときは右端へ回す。
+		// （Essential のキャラは左、バニラのボタンは中央なので、右上が唯一の空き）
+		panelX = essentialLoaded() ? Math.max(PANEL_MARGIN, scaledWidth - panelWidth - PANEL_MARGIN)
+			: PANEL_MARGIN;
 		panelHeight = buttonHeight * BUTTON_COUNT + spacing * (BUTTON_COUNT - 1) + padding * 2;
 
 		int x = panelX + padding;
@@ -123,6 +128,15 @@ public final class PauseMenuButtons {
 
 		// 録画中は経過時間をボタンに出すので、毎ティック書き換える
 		ScreenEvents.afterTick(screen).register(ignored -> refresh(client, recordButton, markerButton, clipButton));
+	}
+
+	/** Essential Mod が入っているか（キャラクターが左に出る） */
+	private static boolean essentialLoaded() {
+		try {
+			return FabricLoader.getInstance().isModLoaded("essential");
+		} catch (Throwable t) {
+			return false;
+		}
 	}
 
 	/** 操作ボタンをまとめる板 */

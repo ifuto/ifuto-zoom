@@ -34,6 +34,18 @@ public final class ClickTimingModel {
 	public static final double RECOVERY_TAU_MS = 2200.0;
 	/** 微小なブレ（毎回・±2.5%） */
 	public static final double MICRO_JITTER = 0.025;
+	/**
+	 * 直前と「ほぼ同じ」間隔を出さないための許容差 [ms]。
+	 *
+	 * <p>同じ数字（例: 50ms が 5 回続く）や、数 ms しか違わない数字の連続は
+	 * どんな統計モデルでも「機械っぽさ」として残る。ここでは最後の数回と
+	 * {@code REPEAT_WINDOW_MS} 以内に近い値を候補から外して、必ず動かす。</p>
+	 */
+	public static final double REPEAT_WINDOW_MS = 6.0;
+
+	/** 何回ぶんの履歴と比べるか */
+	private static final int REPEAT_HISTORY = 4;
+
 	/** ソフトクランプ。ここを下回る間隔は出さない */
 	public static final double MIN_INTERVAL_MS = 15.0;
 	public static final double MAX_INTERVAL_MS = 1000.0;
@@ -57,6 +69,11 @@ public final class ClickTimingModel {
 
 	private static final SecureRandom CRYPTO = new SecureRandom();
 
+	/** 直近の間隔（丸めた ms）。REPEAT_WINDOW_MS 以内の再出現を防ぐ */
+	private final long[] recentIntervals = new long[REPEAT_HISTORY];
+	private int recentCount = 0;
+	private int recentCursor = 0;
+
 	private long clickCount = 0;
 	private double fatigue = 0.0;
 	private double cpsEma = 1000.0 / 55.0;
@@ -78,6 +95,9 @@ public final class ClickTimingModel {
 
 	public void resetStats() {
 		clickCount = 0;
+		recentCount = 0;
+		recentCursor = 0;
+		java.util.Arrays.fill(recentIntervals, 0L);
 		fatigue = 0.0;
 		cpsEma = 1000.0 / 55.0;
 		sigmaRatioWalk = 1.0;
@@ -156,11 +176,76 @@ public final class ClickTimingModel {
 
 		interval = interval * micro * jitter * outlier;
 		interval = clamp(interval, MIN_INTERVAL_MS, MAX_INTERVAL_MS);
+		// 直前と同じ / ほぼ同じ数字を続けない（検知の一番の手掛かりになる）
+		interval = avoidRepeat(interval, rand, mean);
 		lastInterval = interval;
 
 		double instCps = 1000.0 / interval;
 		cpsEma += (instCps - cpsEma) * 0.22;
 		return Math.round(interval);
+	}
+
+	/**
+	 * 直近 {@link #REPEAT_HISTORY} 回のどれかと {@link #REPEAT_WINDOW_MS} 以内なら値をずらす。
+	 *
+	 * <p>ずらし幅は「窓 + 平均の 10% 以内のランダム」で、上下どちらにも動く。
+	 * 20 回試しても決まらない場合は履歴の最大・最小の外側へ押し出す（必ず決まる）。</p>
+	 */
+	private double avoidRepeat(double interval, Random rand, double mean) {
+		double v = clamp(interval, MIN_INTERVAL_MS, MAX_INTERVAL_MS);
+
+		for (int attempt = 0; attempt < 20 && isNearRecent(v); attempt++) {
+			double shift = REPEAT_WINDOW_MS + rand.nextDouble() * mean * 0.10;
+			v = clamp(rand.nextBoolean() ? v + shift : v - shift, MIN_INTERVAL_MS, MAX_INTERVAL_MS);
+		}
+
+		if (isNearRecent(v)) {
+			double upper = Math.min(MAX_INTERVAL_MS, maxRecent() + REPEAT_WINDOW_MS * 1.5);
+			v = isNearRecent(upper)
+				? Math.max(MIN_INTERVAL_MS, minRecent() - REPEAT_WINDOW_MS * 1.5)
+				: upper;
+		}
+
+		remember(v);
+		return v;
+	}
+
+	private boolean isNearRecent(double value) {
+		long rounded = Math.round(value);
+
+		for (int i = 0; i < recentCount; i++) {
+			if (Math.abs(rounded - recentIntervals[i]) < REPEAT_WINDOW_MS) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	private void remember(double value) {
+		recentIntervals[recentCursor] = Math.round(value);
+		recentCursor = (recentCursor + 1) % REPEAT_HISTORY;
+		recentCount = Math.min(recentCount + 1, REPEAT_HISTORY);
+	}
+
+	private long maxRecent() {
+		long max = Math.round(MIN_INTERVAL_MS);
+
+		for (int i = 0; i < recentCount; i++) {
+			max = Math.max(max, recentIntervals[i]);
+		}
+
+		return max;
+	}
+
+	private long minRecent() {
+		long min = Math.round(MAX_INTERVAL_MS);
+
+		for (int i = 0; i < recentCount; i++) {
+			min = Math.min(min, recentIntervals[i]);
+		}
+
+		return min;
 	}
 
 	/** 表示用 CPS。毎 tick 呼ぶたびに細かく変動し、決して整数にならない */
