@@ -437,3 +437,31 @@ Essential Mod はポーズ画面の**左**に自分のキャラクターを表�
    - 流し込みで本当に落ちた → 「世界を作れませんでした（パケット名: 理由）」
 4. 「ワールドが無い」で落ちたパケットを預けるのは
    **チャンク系だけ**に戻した。他のパケットの失敗は握り潰さず、理由をログに出す。
+
+
+## 11. 古い録画の「ログイン」パケットが復元できない（0.30.3）
+
+ログ（0.30.2）で分かった本当の原因:
+
+```
+[syntheticJoin] IllegalArgumentException ... minecraft:dimension_type
+```
+
+```
+IOException: 世界を作れませんでした（minecraft:login: Failed to decode packet 'clientbound/minecraft:login'）
+```
+
+* バニラでは **GameJoin パケットの名前が `minecraft:login`**（プレイ状態の中では login）。
+  こちらは `game_join` という名前だけを見ていたので「join が来た」と認識できていなかった。
+* 録画には `minecraft:dimension_type` が入っていない（保存対象ではなかった時代がある）。
+  GameJoin はその中身（`RegistryEntry<DimensionType>`）を復元するので、**デコード自体が失敗**する。
+* 結果、世界が作れず「世界を作れませんでした」で終わっていた。
+
+### 直したこと
+
+1. `minecraft:login` も「世界を作るパケット」として認識する（`isJoinLabel`）。
+2. ログインパケットのデコードに失敗しても**致命的エラーにしない**。
+   代わりに「ワールドは組み立て直して再生します」と 1 回だけ警告する。
+3. 次元タイプを **録画 → いまの世界 → いまの接続** の順で探す（`dimensionTypes`）。
+   次元タイプはバニラ組み込みなので、どの世界の物でも中身は同じ。
+4. それでも作れないときは、原因（`Caused by` の一番奥）を添えて理由を出す。

@@ -87,6 +87,9 @@ public final class ReplayPlayback implements ReplayStream.Sink {
 	/** これ以上エラーが続いたら再生をあきらめる */
 	private static final int MAX_ERRORS = 30;
 
+	/** ログインパケットの復元に失敗したか（ログを 1 回だけ出すため） */
+	private boolean joinUndecodable;
+
 	/** この再生で使うレジストリ（ファイルに入っていた物を最優先） */
 	private final DynamicRegistryManager.Immutable registries;
 
@@ -664,7 +667,7 @@ public final class ReplayPlayback implements ReplayStream.Sink {
 		int direction = this.typeDirections.getOrDefault(this.pendingTypeIndex, ReplayFormat.DIRECTION_S2C);
 		String name = this.typeNames.get(this.pendingTypeIndex);
 
-		if (name != null && name.toLowerCase(Locale.ROOT).contains("game_join")) {
+		if (isJoinLabel(name)) {
 			this.joinSeen = true;
 		}
 
@@ -695,9 +698,19 @@ public final class ReplayPlayback implements ReplayStream.Sink {
 
 			packet.apply(this.handler);
 		} catch (Throwable t) {
-			// 中身がワールド前提の物だけは預け直す（それ以外は今まで通り本当の理由を出す）
-			if (this.client.world == null && packet != null && needsWorld(packet)
+			if (this.client.world == null && isJoinLabel(name)) {
+				// 古い録画はログインパケットを復元できない（次元タイプが入っていない等）。
+				// 世界は syntheticJoin で組み立て直すので、ここでは黙って諦める。
+				this.joinSeen = true;
+
+				if (!this.joinUndecodable) {
+					this.joinUndecodable = true;
+					IfutoReplayClient.LOGGER.warn("[ifuto-replay] 録画のログインパケットを復元できませんでした（{}）。"
+						+ "ワールドは組み立て直して再生します", rootCause(t));
+				}
+			} else if (this.client.world == null && packet != null && needsWorld(packet)
 				&& this.deferredWorldPackets.size() <= MAX_DEFERRED_PACKETS) {
+				// 中身がワールド前提の物は、世界ができてから流す
 				this.deferredWorldPackets.addLast(packet);
 			} else {
 				this.onError(name, t);
@@ -707,10 +720,68 @@ public final class ReplayPlayback implements ReplayStream.Sink {
 		}
 	}
 
+	/** その種類名が「世界を作るパケット」か（バニラの実体名は {@code minecraft:login}） */
+	private static boolean isJoinLabel(@Nullable String name) {
+		if (name == null) {
+			return false;
+		}
+
+		String lower = name.toLowerCase(Locale.ROOT);
+		return lower.endsWith(":login") || lower.endsWith("/login") || lower.contains("game_join");
+	}
+
+	/** 例外の一番奥の理由（"Failed to decode packet" の下にある本当の原因） */
+	private static String rootCause(Throwable t) {
+		Throwable cursor = t;
+
+		while (cursor.getCause() != null && cursor.getCause() != cursor) {
+			cursor = cursor.getCause();
+		}
+
+		String message = cursor.getMessage();
+		return cursor.getClass().getSimpleName() + (message == null ? ""
+			: ": " + message.replace('\n', ' ').trim());
+	}
+
 	/** ワールドが要るパケットか（まだ世界が無いなら預ける） */
 	private static boolean needsWorld(Packet<?> packet) {
 		return packet instanceof ChunkDataS2CPacket
 			|| packet instanceof UnloadChunkS2CPacket;
+	}
+
+	/**
+	 * 次元タイプのレジストリ。
+	 *
+	 * <p>古い録画には {@code minecraft:dimension_type} が入っていない（保存する対象では
+	 * なかった時代がある）。その場合は<b>いまの接続</b>の物を使う。次元タイプは
+	 * バニラ組み込みなので、どの世界でも中身は同じ。</p>
+	 */
+	private @Nullable Registry<DimensionType> dimensionTypes() {
+		Registry<DimensionType> fromFile = this.registries.getOptional(RegistryKeys.DIMENSION_TYPE).orElse(null);
+
+		if (fromFile != null) {
+			return fromFile;
+		}
+
+		ClientWorld world = this.client.world;
+
+		if (world != null) {
+			Registry<DimensionType> live = world.getRegistryManager()
+				.getOptional(RegistryKeys.DIMENSION_TYPE).orElse(null);
+
+			if (live != null) {
+				IfutoReplayClient.LOGGER.info("[ifuto-replay] 録画に次元タイプが入っていないので、いまの物で補います");
+				return live;
+			}
+		}
+
+		ClientPlayNetworkHandler handler = this.client.getNetworkHandler();
+
+		if (handler != null) {
+			return handler.getRegistryManager().getOptional(RegistryKeys.DIMENSION_TYPE).orElse(null);
+		}
+
+		return null;
 	}
 
 	/**
@@ -724,9 +795,9 @@ public final class ReplayPlayback implements ReplayStream.Sink {
 	 */
 	private @Nullable GameJoinS2CPacket syntheticJoin() {
 		try {
-			Registry<DimensionType> types = this.registries.getOrThrow(RegistryKeys.DIMENSION_TYPE);
-			RegistryEntry.Reference<DimensionType> overworld =
-				types.getOptional(DimensionTypes.OVERWORLD).orElse(null);
+			Registry<DimensionType> types = dimensionTypes();
+			RegistryEntry.Reference<DimensionType> overworld = types == null ? null
+				: types.getOptional(DimensionTypes.OVERWORLD).orElse(null);
 
 			if (overworld == null) {
 				return null;
@@ -967,8 +1038,10 @@ public final class ReplayPlayback implements ReplayStream.Sink {
 					+ (cause == null || cause.isEmpty() ? this.firstError.toString() : cause) + "）");
 			}
 
-			throw new NoWorldException("この録画にはワールドを作る情報が入っていません"
-				+ "（録画の先頭にワールドの写しがありません。録り直してください）");
+			throw new NoWorldException(this.joinSeen
+				? "録画のワールド情報を復元できませんでした（古い形式か、レジストリが欠けています）"
+				: "この録画にはワールドを作る情報が入っていません"
+					+ "（録画の先頭にワールドの写しがありません。録り直してください）");
 		}
 
 		this.setupPlayer();
