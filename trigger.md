@@ -70,3 +70,4 @@ artifact_path: ifuto-fastplace/build/libs/*.jar
 - tput r147: fastplace 0.4.2 compile fix (FastPlaceMod was missing the MinecraftClient import; 0.4.1 never built) 
 - tput r148: fastgenerate 0.1.0 new mod — predictive chunk prefetch (stride/Markov) + AIMD window (Little's law) + bg thread tuning for weak CPUs
 - tput r149: fastplace 0.5.0 aim assist click-acquire + per-frame smoothing + strafe bias, ClickCrystal module, The Client. GUI
+- tput r150: fastplace 0.5.0 compile fix — JOML Matrix3x2fStack pushMatrix/popMatrix + 2-arg translate/scale, clearLine takes World (Entity#getWorld removed in 1.21.11)
