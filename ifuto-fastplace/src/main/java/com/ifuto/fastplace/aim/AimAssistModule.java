@@ -7,29 +7,39 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
+import net.minecraft.util.hit.BlockHitResult;
+import net.minecraft.util.hit.HitResult;
 import net.minecraft.util.math.Box;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
+import net.minecraft.world.RaycastContext;
 
+import java.util.Optional;
 import java.util.Set;
 
 /**
  * 剣（近接）用のアシスト。
  *
- * <p><b>何をするか</b>: 視野の内側・間合いの少し手前にいる相手に対して、
- * {@link TrackingAim} が計算した「人間の速度で寄る」1 tick ぶんの回転を
- * <b>足す</b>だけ。視点を奪わない（マウスは常にそのまま効く）し、パケットも偽装しない。</p>
+ * <p><b>掴み方</b>: 左クリックした瞬間、視線の先（敵の当たり判定を
+ * {@code aimAssistClickBoxScale} 倍に広げた箱）に相手がいて、<b>ブロックや他の
+ * エンティティに遮られていなければ</b>その相手を掴む。掴んだら
+ * {@code aimAssistStickMs} のあいだ追い続ける（押しっぱなしにする必要はない）。</p>
  *
- * <p><b>外さないための約束</b>:</p>
+ * <p><b>動かし方</b>: 回転は tick ではなく<b>描画フレームごと</b>に、{@link TrackingAim} が
+ * 出す「人間の速度」ぶんだけ足す。20 回/秒で書くと 50ms ごとの段差が出るため。
+ * マウスは常にそのまま効く（視点を奪わない）。</p>
+ *
+ * <p><b>外さないための約束</b></p>
  * <ol>
- *   <li>1 tick の回転量は {@link TrackingAim} が人間の上限速度でクリップする。</li>
+ *   <li>1 フレームの回転量は人間の上限速度でクリップされる。</li>
  *   <li>回した結果、相手への角度誤差が<b>悪化するなら適用しない</b>。</li>
- *   <li>すでに当たり判定の安全域より外にいる場合だけ、そのぶんを内側へ引き戻す
- *       （引き戻しも同じ速度上限の中）。</li>
- *   <li>狙うのは当たり判定の 62% の高さ（胸）。上下の当たり判定には余裕がある。</li>
+ *   <li>安全域より外に出た場合だけ、同じ速度上限のなかで内側へ引き戻す。</li>
+ *   <li>進行方向と逆向きに数度ずれる（{@code aimAssistStrafeBiasDeg}）が、これは
+ *       「狙う点」のずれなので命中判定の内側に収まる。</li>
  * </ol>
  */
 public final class AimAssistModule {
@@ -45,10 +55,19 @@ public final class AimAssistModule {
 	private static final double HIT_HALF_WIDTH = 0.40;
 	/** 当たり判定の角度半径のこの割合まで内側にいれば十分とみなす */
 	private static final double SAFE_FRACTION = 0.55;
+	/** 先読み（予測的追従）の見込み時間 [s] と係数（Barnes & Asselman 1991） */
+	private static final double LEAD_SECONDS = 0.065;
+	private static final double LEAD_GAIN = 0.40;
+	/** 一瞬だけ対象から外れたときに反応時間をやり直さない猶予 [ms] */
+	private static final long RETARGET_GRACE_MS = 500L;
+	/** 進行方向バイアスの追従時定数 [ms] */
+	private static final double STRAFE_BIAS_TAU_MS = 220.0;
+	/** 横移動の基準速度 [blocks/tick]（4.317 m/s 相当） */
+	public static final double STRAFE_REFERENCE = 0.216;
+
 	/**
-	 * 近接武器として扱うアイテム。
-	 * 1.21 以降 {@code SwordItem}/{@code AxeItem} はデータコンポーネント方式に移り、
-	 * クラスとしては存在しないので、実体（{@link Items}）で判定する。
+	 * 近接武器として扱うアイテム。1.21 以降 {@code SwordItem}/{@code AxeItem} は
+	 * データコンポーネント方式に移ったので実体（{@link Items}）で判定する。
 	 */
 	private static final Set<Item> MELEE_WEAPONS = Set.of(
 		Items.WOODEN_SWORD, Items.STONE_SWORD, Items.IRON_SWORD, Items.GOLDEN_SWORD,
@@ -56,18 +75,23 @@ public final class AimAssistModule {
 		Items.WOODEN_AXE, Items.STONE_AXE, Items.IRON_AXE, Items.GOLDEN_AXE,
 		Items.DIAMOND_AXE, Items.NETHERITE_AXE);
 
-	/** 先読み（予測的追従）の見込み時間 [s] と係数（Barnes & Asselman 1991） */
-	private static final double LEAD_SECONDS = 0.065;
-	private static final double LEAD_GAIN = 0.40;
-
-	/** 一瞬だけ対象から外れたときに反応時間をやり直さない猶予 [ms] */
-	private static final long RETARGET_GRACE_MS = 500L;
-
 	private static final TrackingAim MODEL = new TrackingAim();
 
 	private static LivingEntity target;
 	private static LivingEntity previousTarget;
 	private static long previousTargetAt = -1L;
+	/** クリックで掴んだ相手を追い続ける期限 */
+	private static long stickyUntil = -1L;
+	/** クリックで掴んだ相手を優先するか */
+	private static boolean lockedByClick;
+	private static boolean lastAttackPressed;
+
+	/** tick で決めた「狙う点」。フレーム側はこれへ向かう */
+	private static Vec3d goalPoint;
+	/** 進行方向による狙いの偏り [deg]（EMA） */
+	private static double strafeBias;
+	private static double lastX = Double.NaN;
+	private static double lastZ = Double.NaN;
 
 	private AimAssistModule() {
 	}
@@ -94,12 +118,19 @@ public final class AimAssistModule {
 		return target;
 	}
 
+	/** いまクリックで掴んでいる最中か */
+	public static boolean stickyActive(long nowMs) {
+		return enabled() && nowMs < stickyUntil;
+	}
+
 	public static void release() {
 		if (target != null) {
 			previousTarget = target;
 			previousTargetAt = System.currentTimeMillis();
 		}
 		target = null;
+		goalPoint = null;
+		lockedByClick = false;
 		MODEL.reset();
 	}
 
@@ -107,6 +138,10 @@ public final class AimAssistModule {
 	public static boolean isTracking() {
 		return enabled() && target != null;
 	}
+
+	// ------------------------------------------------------------------
+	// tick: 相手を選ぶ（20 回/秒で十分）
+	// ------------------------------------------------------------------
 
 	public static void tick(MinecraftClient client) {
 		long now = System.currentTimeMillis();
@@ -124,14 +159,28 @@ public final class AimAssistModule {
 			release();
 			return;
 		}
+
+		handleClick(client, player, cfg, now);
+
+		boolean active = !cfg.aimAssistClickAcquire || now < stickyUntil;
 		if (cfg.aimAssistOnlyWhileAttacking && !client.options.attackKey.isPressed()) {
+			active = false;
+		}
+		if (!active) {
 			release();
 			return;
 		}
 
 		MODEL.setHumanize(cfg.aimAssistHumanize);
+		updateStrafeBias(player, cfg);
 
-		LivingEntity picked = pickTarget(client, player);
+		LivingEntity picked;
+		if (lockedByClick && target != null && stillValid(player, target, cfg)) {
+			picked = target;
+		} else {
+			lockedByClick = false;
+			picked = pickTarget(client, player, cfg);
+		}
 		if (picked == null) {
 			release();
 			return;
@@ -144,30 +193,49 @@ public final class AimAssistModule {
 				MODEL.acquire(now);
 			}
 		}
+		goalPoint = computeGoal(picked, cfg);
+	}
 
-		Vec3d eye = player.getEyePos();
-		Box box = picked.getBoundingBox();
-		Vec3d truePoint = aimPoint(box);
-		Vec3d goal = truePoint;
-		if (cfg.aimAssistPredict) {
-			// 相手の速度 × 知覚遅れ × 係数。人間は追従の遅れぶんを予測で埋める
-			goal = goal.add(picked.getVelocity().multiply(LEAD_SECONDS * 20.0 * LEAD_GAIN));
+	// ------------------------------------------------------------------
+	// フレーム: 回転を足す（60fps でも滑らか）
+	// ------------------------------------------------------------------
+
+	/**
+	 * 描画フレームごとに 1 回呼ぶ。20Hz の段差を消すための入口。
+	 *
+	 * @param dtMs 前フレームからの経過 [ms]
+	 */
+	public static void frameStep(MinecraftClient client, double dtMs) {
+		ClientPlayerEntity player = client.player;
+		if (!enabled() || player == null || client.world == null
+			|| client.currentScreen != null || target == null || goalPoint == null
+			|| !player.isAlive() || player.isSpectator() || ScaffoldModule.isEngaged()) {
+			return;
+		}
+		if (target.isRemoved() || !target.isAlive()) {
+			release();
+			return;
 		}
 
-		double[] goalAngles = anglesTo(eye, goal);
+		long now = System.currentTimeMillis();
+		FastPlaceConfig cfg = FastPlaceConfig.get();
+		Vec3d eye = player.getEyePos();
+		Vec3d truePoint = aimPoint(target.getBoundingBox());
+
+		double[] goalAngles = anglesTo(eye, goalPoint);
 		double errYaw = MathHelper.wrapDegrees((float) (goalAngles[0] - player.getYaw()));
 		double errPitch = goalAngles[1] - player.getPitch();
 
-		double[] delta = MODEL.step(now, errYaw, errPitch, cfg.aimAssistStrength);
-		if (delta[0] == 0.0 && delta[1] == 0.0) {
+		double[] delta = MODEL.stepFrame(now, dtMs, errYaw, errPitch,
+			cfg.aimAssistStrength, strafeBias, cfg.aimAssistSmoothing);
+		if (Math.abs(delta[0]) < 1.0e-4 && Math.abs(delta[1]) < 1.0e-4) {
 			return;
 		}
 
 		float yaw = player.getYaw();
 		float pitch = player.getPitch();
 
-		// 当たり判定の角度半径（水平の半幅が厳しいのでそれを基準にする）
-		double eyeToBox = Math.max(0.6, eye.distanceTo(box.getCenter()) - 0.3);
+		double eyeToBox = Math.max(0.6, eye.distanceTo(target.getBoundingBox().getCenter()) - 0.3);
 		double hitRadius = Math.toDegrees(Math.atan2(HIT_HALF_WIDTH, eyeToBox));
 		double safeLimit = hitRadius * SAFE_FRACTION;
 
@@ -184,7 +252,6 @@ public final class AimAssistModule {
 		}
 
 		if (afterTrue > safeLimit) {
-			// 当たり判定の安全域から出る → 同じ速度上限の範囲で内側へ戻す
 			double[] errTrue = errorVector(yaw, pitch, eye, truePoint);
 			double[] fix = TrackingAim.pullInside(errTrue[0], errTrue[1], safeLimit);
 			double fixMag = Math.hypot(fix[0], fix[1]);
@@ -205,11 +272,125 @@ public final class AimAssistModule {
 	}
 
 	// ------------------------------------------------------------------
-	// 相手を選ぶ
+	// クリックで掴む
 	// ------------------------------------------------------------------
 
-	private static LivingEntity pickTarget(MinecraftClient client, ClientPlayerEntity player) {
-		FastPlaceConfig cfg = FastPlaceConfig.get();
+	private static void handleClick(MinecraftClient client, ClientPlayerEntity player,
+			FastPlaceConfig cfg, long now) {
+		boolean pressed = client.options.attackKey.isPressed();
+		boolean clicked = pressed && !lastAttackPressed;
+		lastAttackPressed = pressed;
+		if (!clicked || !cfg.aimAssistClickAcquire) {
+			return;
+		}
+		LivingEntity clickedTarget = pickClickTarget(client, player,
+			cfg.aimAssistClickBoxScale, cfg.aimAssistPlayersOnly);
+		if (clickedTarget == null) {
+			return;
+		}
+		stickyUntil = now + (long) cfg.aimAssistStickMs;
+		target = clickedTarget;
+		lockedByClick = true;
+		MODEL.acquire(now);
+	}
+
+	/**
+	 * 視線の先にいる相手（当たり判定を {@code boxScale} 倍に広げて判定）。
+	 * ブロックや他のエンティティに遮られていたら選ばない。
+	 */
+	public static LivingEntity pickClickTarget(MinecraftClient client, ClientPlayerEntity player,
+			double boxScale, boolean playersOnly) {
+		if (client.world == null) {
+			return null;
+		}
+		Vec3d eye = player.getEyePos();
+		Vec3d look = player.getRotationVec(1.0f);
+		Vec3d end = eye.add(look.multiply(MAX_RANGE + 1.0));
+
+		LivingEntity best = null;
+		double bestDistance = Double.MAX_VALUE;
+		for (Entity entity : client.world.getEntities()) {
+			if (!(entity instanceof LivingEntity living) || living == player) {
+				continue;
+			}
+			if (!living.isAlive() || living.isRemoved() || living.isInvisible()) {
+				continue;
+			}
+			if (playersOnly && !(living instanceof PlayerEntity)) {
+				continue;
+			}
+			if (player.squaredDistanceTo(living) > MAX_RANGE * MAX_RANGE) {
+				continue;
+			}
+			Box box = scaledHitbox(living.getBoundingBox(), boxScale);
+			Optional<Vec3d> hit = box.raycast(eye, end);
+			if (hit.isEmpty()) {
+				continue;
+			}
+			Vec3d point = hit.get();
+			if (!clearLine(player, eye, point, living)) {
+				continue;
+			}
+			double distance = eye.squaredDistanceTo(point);
+			if (distance < bestDistance) {
+				bestDistance = distance;
+				best = living;
+			}
+		}
+		return best;
+	}
+
+	/** 当たり判定を倍率 {@code scale} 倍に広げた箱（実際の判定は広がらない） */
+	public static Box scaledHitbox(Box box, double scale) {
+		double s = Math.max(1.0, scale);
+		double cx = (box.minX + box.maxX) * 0.5;
+		double cy = (box.minY + box.maxY) * 0.5;
+		double cz = (box.minZ + box.maxZ) * 0.5;
+		double hx = (box.maxX - box.minX) * 0.5 * s;
+		double hy = (box.maxY - box.minY) * 0.5 * s;
+		double hz = (box.maxZ - box.minZ) * 0.5 * s;
+		return new Box(cx - hx, cy - hy, cz - hz, cx + hx, cy + hy, cz + hz);
+	}
+
+	/** 視線が相手まで遮られていないか（ブロック・他のエンティティ） */
+	public static boolean clearLine(ClientPlayerEntity player, Vec3d eye, Vec3d point, Entity ignore) {
+		if (player.getWorld() == null) {
+			return false;
+		}
+		BlockHitResult blockHit = player.getWorld().raycast(new RaycastContext(eye, point,
+			RaycastContext.ShapeType.COLLIDER, RaycastContext.FluidHandling.NONE, player));
+		double targetDistance = eye.squaredDistanceTo(point);
+		if (blockHit.getType() == HitResult.Type.BLOCK
+			&& blockHit.getPos().squaredDistanceTo(eye) < targetDistance - 1.0e-3) {
+			return false;
+		}
+		Box sweep = new Box(eye, point).expand(0.05);
+		for (Entity other : player.getWorld().getOtherEntities(player, sweep)) {
+			if (other == ignore || other.isSpectator() || other.isRemoved()) {
+				continue;
+			}
+			if (other.getBoundingBox().expand(0.02).raycast(eye, point).isPresent()) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	// ------------------------------------------------------------------
+	// 相手を選ぶ / 狙う点
+	// ------------------------------------------------------------------
+
+	private static boolean stillValid(ClientPlayerEntity player, LivingEntity candidate, FastPlaceConfig cfg) {
+		if (candidate.isRemoved() || !candidate.isAlive() || candidate.isInvisible()) {
+			return false;
+		}
+		if (cfg.aimAssistPlayersOnly && !(candidate instanceof PlayerEntity)) {
+			return false;
+		}
+		return Math.sqrt(player.squaredDistanceTo(candidate)) <= RELEASE_RANGE && player.canSee(candidate);
+	}
+
+	private static LivingEntity pickTarget(MinecraftClient client, ClientPlayerEntity player, FastPlaceConfig cfg) {
 		Vec3d eye = player.getEyePos();
 		Vec3d look = player.getRotationVec(1.0f);
 		double cosNormal = Math.cos(Math.toRadians(cfg.aimAssistFov * 0.5));
@@ -223,6 +404,9 @@ public final class AimAssistModule {
 				continue;
 			}
 			if (!living.isAlive() || living.isRemoved() || living.isInvisible()) {
+				continue;
+			}
+			if (cfg.aimAssistPlayersOnly && !(living instanceof PlayerEntity)) {
 				continue;
 			}
 			boolean locked = living == target;
@@ -254,6 +438,47 @@ public final class AimAssistModule {
 		return best;
 	}
 
+	private static Vec3d computeGoal(LivingEntity picked, FastPlaceConfig cfg) {
+		Vec3d point = aimPoint(picked.getBoundingBox());
+		if (cfg.aimAssistPredict) {
+			// 相手の速度 × 知覚遅れ × 係数。人間は追従の遅れぶんを予測で埋める
+			point = point.add(picked.getVelocity().multiply(LEAD_SECONDS * 20.0 * LEAD_GAIN));
+		}
+		return point;
+	}
+
+	/** 進行方向と逆向きに数度ずれる量を、ゆっくり追従させる（自己運動の残差） */
+	private static void updateStrafeBias(ClientPlayerEntity player, FastPlaceConfig cfg) {
+		double x = player.getX();
+		double z = player.getZ();
+		double dx = Double.isNaN(lastX) ? 0.0 : x - lastX;
+		double dz = Double.isNaN(lastZ) ? 0.0 : z - lastZ;
+		lastX = x;
+		lastZ = z;
+
+		double yawRad = Math.toRadians(player.getYaw());
+		double rightX = Math.cos(yawRad);
+		double rightZ = Math.sin(yawRad);
+		double lateral = dx * rightX + dz * rightZ;
+		double wanted = strafeBiasTarget(lateral, cfg.aimAssistStrafeBiasDeg);
+		double alpha = 1.0 - Math.exp(-50.0 / STRAFE_BIAS_TAU_MS);
+		strafeBias += alpha * (wanted - strafeBias);
+	}
+
+	/**
+	 * 横移動 1 blocks/tick あたりの狙いの偏り [deg]。
+	 * 右へ動くと負（狙いはわずかに左に残る）。
+	 */
+	public static double strafeBiasTarget(double lateralPerTick, double maxDeg) {
+		double normalized = Math.max(-1.0, Math.min(1.0, lateralPerTick / STRAFE_REFERENCE));
+		return -normalized * maxDeg;
+	}
+
+	/** いまの進行方向バイアス [deg]（テスト・HUD 用） */
+	public static double strafeBiasDeg() {
+		return strafeBias;
+	}
+
 	private static Vec3d aimPoint(Box box) {
 		double x = (box.minX + box.maxX) * 0.5;
 		double z = (box.minZ + box.maxZ) * 0.5;
@@ -269,7 +494,7 @@ public final class AimAssistModule {
 	// 角度
 	// ------------------------------------------------------------------
 
-	private static double[] anglesTo(Vec3d from, Vec3d to) {
+	public static double[] anglesTo(Vec3d from, Vec3d to) {
 		Vec3d delta = to.subtract(from);
 		double horizontal = Math.hypot(delta.x, delta.z);
 		double yaw = Math.toDegrees(Math.atan2(-delta.x, delta.z));

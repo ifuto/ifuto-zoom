@@ -51,12 +51,36 @@ public final class FastPlaceConfig {
 	public double aimAssistFov = 70.0;
 	/** 人間モデル（反応時間・振戦・予測）を使う */
 	public boolean aimAssistHumanize = true;
-	/** 攻撃ボタンを押している間だけ効かせる */
-	public boolean aimAssistOnlyWhileAttacking = true;
+	/** 攻撃ボタンを押している間だけ効かせる（既定 OFF: クリックで掴む方式） */
+	public boolean aimAssistOnlyWhileAttacking = false;
 	/** 剣・斧を持っているときだけ効かせる */
 	public boolean aimAssistWeaponsOnly = true;
 	/** 相手の速度を先読みして補償する */
 	public boolean aimAssistPredict = true;
+	/** 左クリックで相手を掴む（1 回のクリックで一定時間追う） */
+	public boolean aimAssistClickAcquire = true;
+	/** クリックで掴むときの当たり判定の倍率（実際の判定は広がらない） */
+	public double aimAssistClickBoxScale = 1.2;
+	/** クリックで掴んでから追い続ける時間 [ms] */
+	public double aimAssistStickMs = 3000.0;
+	/** プレイヤーだけを狙う（OFF なら Mob も） */
+	public boolean aimAssistPlayersOnly = true;
+	/** 移動方向と逆向きにずれる量 [deg]（人間の自己運動による残差） */
+	public double aimAssistStrafeBiasDeg = 1.2;
+	/** 追従の滑らかさ（1.0 標準 / 大きいほどゆっくり滑らか） */
+	public double aimAssistSmoothing = 1.0;
+
+	// ---- ClickCrystal ----
+	/** モジュール ON/OFF */
+	public boolean clickCrystalEnabled = false;
+	/** 置いてから爆破するまでの間隔 [ms] */
+	public int clickCrystalIntervalMs = 45;
+	/** 1 回のクリックで連続爆破を続ける時間 [ms] */
+	public int clickCrystalBurstMs = 1200;
+	/** 終わったら元のスロットに戻す */
+	public boolean clickCrystalRestoreSlot = true;
+	/** 狙う最大距離 [blocks] */
+	public double clickCrystalRange = 4.5;
 
 	// ---- Auto Tool ----
 	/** モジュール ON/OFF */
@@ -131,6 +155,41 @@ public final class FastPlaceConfig {
 		}
 		if (aimAssistFov > 170.0) {
 			aimAssistFov = 170.0;
+		}
+		if (Double.isNaN(aimAssistClickBoxScale) || aimAssistClickBoxScale < 1.0) {
+			aimAssistClickBoxScale = 1.0;
+		}
+		if (aimAssistClickBoxScale > 1.6) {
+			aimAssistClickBoxScale = 1.6;
+		}
+		if (Double.isNaN(aimAssistStickMs) || aimAssistStickMs < 500.0) {
+			aimAssistStickMs = 500.0;
+		}
+		if (aimAssistStickMs > 10000.0) {
+			aimAssistStickMs = 10000.0;
+		}
+		if (Double.isNaN(aimAssistStrafeBiasDeg)) {
+			aimAssistStrafeBiasDeg = 1.2;
+		}
+		if (aimAssistStrafeBiasDeg < -4.0) {
+			aimAssistStrafeBiasDeg = -4.0;
+		}
+		if (aimAssistStrafeBiasDeg > 4.0) {
+			aimAssistStrafeBiasDeg = 4.0;
+		}
+		if (Double.isNaN(aimAssistSmoothing) || aimAssistSmoothing < 0.4) {
+			aimAssistSmoothing = 0.4;
+		}
+		if (aimAssistSmoothing > 2.5) {
+			aimAssistSmoothing = 2.5;
+		}
+		clickCrystalIntervalMs = Math.max(20, Math.min(300, clickCrystalIntervalMs));
+		clickCrystalBurstMs = Math.max(100, Math.min(5000, clickCrystalBurstMs));
+		if (Double.isNaN(clickCrystalRange) || clickCrystalRange < 1.0) {
+			clickCrystalRange = 1.0;
+		}
+		if (clickCrystalRange > 6.0) {
+			clickCrystalRange = 6.0;
 		}
 	}
 

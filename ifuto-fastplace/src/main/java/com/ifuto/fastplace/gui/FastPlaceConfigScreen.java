@@ -19,7 +19,7 @@ public final class FastPlaceConfigScreen extends Screen {
 	private static final int ACCENT = 0xFFFFB020;
 	private static final int PANEL_BG = 0xE0141418;
 	private static final int TRACK = 0xFF2C2C36;
-	private static final int TRACK_OFF = 0xFF3A3A46;
+	private static final int TRACK_OFF = 0xFF2A2A2E;
 
 	private final Screen parent;
 	private final FastPlaceConfig cfg;

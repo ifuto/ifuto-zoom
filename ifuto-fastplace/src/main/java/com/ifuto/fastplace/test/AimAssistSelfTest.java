@@ -1,6 +1,9 @@
 package com.ifuto.fastplace.test;
 
+import com.ifuto.fastplace.aim.AimAssistModule;
 import com.ifuto.fastplace.human.TrackingAim;
+import net.minecraft.util.math.Box;
+import net.minecraft.util.math.Vec3d;
 
 import java.util.Random;
 
@@ -28,6 +31,9 @@ public final class AimAssistSelfTest {
 		testPullInside();
 		testStrafingTargetStaysOnTarget();
 		testStrafingWithLeadAndSafety();
+		testClickHitbox();
+		testStrafeBias();
+		testFrameStepsAreSmooth();
 		testImplementationDisabledWhenHumanizeOff();
 		System.out.println("[aim-test] all " + passed + " checks passed (hit radius "
 			+ String.format(java.util.Locale.ROOT, "%.2f", HIT_RADIUS) + " deg at " + DISTANCE + " blocks)");
@@ -259,6 +265,81 @@ public final class AimAssistSelfTest {
 		double[] first = model.step(50L, 20.0, 0.0, 1.0);
 		check(Math.hypot(first[0], first[1]) > 0.0, "moves immediately when humanize is off");
 		System.out.println("[aim-test] humanize off ok");
+	}
+
+	/**
+	 * クリック判定: 当たり判定を 1.2 倍に広げた箱に視線が当たれば掴む。
+	 * 元の箱の外・広げた箱の内側を狙うケースが「1.2x」の意味。
+	 */
+	private static void testClickHitbox() {
+		Box playerBox = new Box(-0.3, 0.0, -0.3, 0.3, 1.8, 0.3);
+		Box scaled = AimAssistModule.scaledHitbox(playerBox, 1.2);
+		check(Math.abs(scaled.getLengthX() - 0.6 * 1.2) < 1.0e-9, "width x1.2: " + scaled.getLengthX());
+		check(Math.abs(scaled.getLengthY() - 1.8 * 1.2) < 1.0e-9, "height x1.2: " + scaled.getLengthY());
+
+		Vec3d eye = new Vec3d(0.0, 1.5, -4.0);
+		// 右に 0.33 ずれた視線: 元の箱（半幅 0.3）は外れるが、1.2 倍（半幅 0.36）は当たる
+		Vec3d look = new Vec3d(0.33 / 4.0, 0.0, 1.0).normalize();
+		Vec3d end = eye.add(look.multiply(6.0));
+		check(playerBox.raycast(eye, end).isEmpty(), "0.33 offset misses the real hitbox");
+		check(scaled.raycast(eye, end).isPresent(), "0.33 offset hits the 1.2x hitbox");
+
+		Vec3d outside = new Vec3d(0.5 / 4.0, 0.0, 1.0).normalize();
+		check(scaled.raycast(eye, eye.add(outside.multiply(6.0))).isEmpty(),
+			"0.5 offset misses even the 1.2x hitbox");
+		System.out.println("[aim-test] click hitbox: 1.2x catches 0.33 but not 0.5");
+	}
+
+	/** 横移動の向きと逆向きに数度ずれる（人間の自己運動の残差） */
+	private static void testStrafeBias() {
+		double right = AimAssistModule.strafeBiasTarget(0.216, 1.2);
+		double left = AimAssistModule.strafeBiasTarget(-0.216, 1.2);
+		check(right < 0.0 && left > 0.0, "bias opposes the strafe: " + right + " / " + left);
+		check(Math.abs(right + 1.2) < 1.0e-9, "full strafe gives the configured amount: " + right);
+		check(AimAssistModule.strafeBiasTarget(0.0, 1.2) == 0.0, "standing still has no bias");
+		check(Math.abs(AimAssistModule.strafeBiasTarget(5.0, 1.2)) <= 1.2 + 1.0e-9, "bias is clamped");
+		System.out.printf(java.util.Locale.ROOT, "[aim-test] strafe bias: right=%.2f deg%n", right);
+	}
+
+	/**
+	 * フレーム単位で動かすと 1 フレームの段差が小さく、20Hz で書くより滑らかなこと。
+	 * （カクつき = 1 回の更新で動く角度が大きすぎること）
+	 */
+	private static void testFrameStepsAreSmooth() {
+		double frameStep = largestStep(60.0, 8.0);
+		double tickStep = largestStep(20.0, 8.0);
+		check(frameStep < tickStep * 0.5,
+			"60fps steps are much smaller than 20Hz steps: " + frameStep + " vs " + tickStep);
+
+		// 8 度のズレは 1 秒以内に 1 度未満まで詰まる
+		TrackingAim model = new TrackingAim(new Random(3));
+		double err = 8.0;
+		long now = 0L;
+		for (int i = 0; i < 60; i++) {
+			now += 16;
+			double[] delta = model.stepFrame(now, 16.0, err, 0.0, 0.75, 0.0, 1.0);
+			err -= Math.abs(delta[0]);
+			if (err < 0.0) {
+				break;
+			}
+		}
+		check(err < 1.0, "8 deg is closed to <1 deg within 1s: " + err);
+		System.out.printf(java.util.Locale.ROOT, "[aim-test] smoothness: 60fps step=%.3f deg, 20Hz step=%.3f deg%n",
+			frameStep, tickStep);
+	}
+
+	/** 一定のズレに対して 1 回の更新で動く最大角 [deg] */
+	private static double largestStep(double hz, double errorDeg) {
+		TrackingAim model = new TrackingAim(new Random(11));
+		double dt = 1000.0 / hz;
+		long now = 0L;
+		double largest = 0.0;
+		for (int i = 0; i < 200; i++) {
+			now += (long) Math.round(dt);
+			double[] delta = model.stepFrame(now, dt, errorDeg, 0.0, 0.75, 0.0, 1.0);
+			largest = Math.max(largest, Math.abs(delta[0]));
+		}
+		return largest;
 	}
 
 	private static void check(boolean condition, String message) {

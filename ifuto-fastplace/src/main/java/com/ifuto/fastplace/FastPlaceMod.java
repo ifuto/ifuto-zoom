@@ -2,6 +2,8 @@ package com.ifuto.fastplace;
 
 import com.ifuto.fastplace.aim.AimAssistModule;
 import com.ifuto.fastplace.gui.ModuleScreen;
+import com.ifuto.fastplace.crystal.ClickCrystalModule;
+import com.ifuto.fastplace.hud.AimFrameHook;
 import com.ifuto.fastplace.hud.CpsHud;
 import com.ifuto.fastplace.scaffold.ScaffoldModule;
 import com.ifuto.fastplace.tool.AutoToolModule;
@@ -77,6 +79,7 @@ public final class FastPlaceMod implements ClientModInitializer {
 			}
 			AimAssistModule.tick(client);
 			AutoToolModule.tick(client);
+			ClickCrystalModule.tick(client);
 			ScaffoldModule.tick(client);
 			warnIfJumpHookMissing(client);
 		});
@@ -85,6 +88,10 @@ public final class FastPlaceMod implements ClientModInitializer {
 
 		HudElementRegistry.attachElementAfter(VanillaHudElements.HOTBAR,
 			Identifier.of(MOD_ID, "cps_counter"), new CpsHud());
+
+		// アシストの回転はフレーム単位で足す（20Hz の段差を消す）
+		HudElementRegistry.attachElementAfter(VanillaHudElements.HOTBAR,
+			Identifier.of(MOD_ID, "aim_frame_hook"), new AimFrameHook());
 	}
 
 	/**

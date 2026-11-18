@@ -19,13 +19,13 @@ import java.util.Locale;
 public final class ScaffoldSettingsScreen extends Screen {
 	private static final int PANEL_W = 430;
 	private static final int PANEL_H = 336;
-	private static final int ACCENT = 0xFF3D8BFF;
-	private static final int PANEL_BG = 0xF0131317;
-	private static final int CARD_BG = 0xFF1A1A20;
-	private static final int BORDER = 0xFF2A2A33;
+	private static final int ACCENT = 0xFF16A37F;
+	private static final int PANEL_BG = 0xFF181819;
+	private static final int CARD_BG = 0xFF1F1F21;
+	private static final int BORDER = 0xFF242426;
 	private static final int TRACK = 0xFF2C2C36;
-	private static final int TRACK_OFF = 0xFF3A3A46;
-	private static final int TEXT_DIM = 0xFF8B8B96;
+	private static final int TRACK_OFF = 0xFF2A2A2E;
+	private static final int TEXT_DIM = 0xFF9E9EA4;
 
 	private static final int ROW_H = 38;
 	private static final int ROW_GAP = 6;
@@ -102,10 +102,10 @@ public final class ScaffoldSettingsScreen extends Screen {
 
 		context.drawTextWithShadow(textRenderer,
 			Text.literal("実際の設置間隔は歩く速さで決まります（速いほど多く置く）"),
-			panelX + 22, panelY + 274, 0xFF5C5C66);
+			panelX + 22, panelY + 274, 0xFF5E5E62);
 		context.drawTextWithShadow(textRenderer,
 			Text.literal("OFF / ブロックを手放す / 画面を開く と、人の速度で視点が戻ります"),
-			panelX + 22, panelY + 290, 0xFF5C5C66);
+			panelX + 22, panelY + 290, 0xFF5E5E62);
 
 		super.render(context, mouseX, mouseY, delta);
 	}

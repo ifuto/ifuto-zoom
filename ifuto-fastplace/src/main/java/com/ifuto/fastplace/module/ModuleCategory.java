@@ -2,6 +2,7 @@ package com.ifuto.fastplace.module;
 
 /** モジュール画面の左側に並ぶカテゴリ。 */
 public enum ModuleCategory {
+	COMBAT("Combat", "戦闘"),
 	MOVEMENT("Movement", "移動とブリッジ"),
 	PLAYER("Player", "プレイヤー操作"),
 	RENDER("Render", "画面表示");

@@ -1,8 +1,8 @@
-# FastPlace + Scaffold + Aim Assist + Auto Tool (ifuto-fastplace)
+# FastPlace + Scaffold + Aim Assist + Auto Tool + ClickCrystal (ifuto-fastplace)
 
 右クリック長押しの連続設置を**人間の連打のクセ**で行う Mod に、
 **Vape v4 風の Module Select 画面**（RShift）、**God Bridge 用 Scaffold**、
-**剣用 Aim Assist**、**Auto Tool** を追加したものです。
+**剣用 Aim Assist**、**Auto Tool**、**ClickCrystal** を追加したものです。
 
 - `RShift` … Module Select 画面を開く
 - `R` … FastPlace の ON/OFF（操作設定 → `Ifuto FastPlace` で変更できます）
@@ -26,15 +26,23 @@
 - 設置位置・狙い方・タイミングは人間のクセを再現（下記）
 
 ### Aim Assist（剣・近接）
-視野の内側・間合いの少し手前にいる相手へ、**人間の速度で寄る**アシスト。
+**左クリック 1 回**で相手を掴み、人間の速度で寄ります（押しっぱなし不要）。
 
-- 視点を奪いません。毎 tick「寄るぶんの回転」を足すだけで、マウスは常にそのまま効く
-- パケット偽装なし。本物の yaw/pitch が動く
-- **当たり判定の内側から外れない**ことを構造で保証（下記）。だから
-  「人間を再現しすぎて外す」ことがない
-- 反応時間 90〜150ms、速度上限 220 deg/s、振戦、予測的先読み
-- 既定は「攻撃ボタンを押している間・剣か斧を持っているとき」だけ
-- 弓などの投射物には効きません（近接専用）
+- クリックした瞬間の視線が、相手の当たり判定を **1.2 倍**に広げた箱に当たり、
+  **ブロックや他のエンティティで遮られていなければ**掴む（倍率は設定で 1.0–1.6x）
+- 掴んだら既定 3 秒追う（再クリックで延長）。距離・視界を外れたら手放す
+- 回転は **描画フレームごと**に人間の速度で足すので、20Hz の段差（カクつき）がない
+- 歩きながら狙うと **進行方向と逆向きに 1.2°** ずれる（設定 −4〜+4°、0 で無効）
+- マウス入力は常にそのまま効く（視点を奪わない・パケット偽装なし）
+
+### ClickCrystal（結晶爆破）
+黒曜石（岩盤）を**左クリック**すると、数 ms でエンドクリスタルへ持ち替えて
+**置く → 爆破**を連続実行します。
+
+- 対象が黒曜石/岩盤で、上が空気、クリスタルをホットバーに持っているときだけ動く
+- 攻撃 → 設置の順に送るので、サーバーでは必ず「爆破 → 設置」になる
+- 間隔 (20–300ms)・連続時間 (0.1–5s)・届く距離・終了後に元のスロットへ戻すか、を設定可能
+- 爆風は自分にも当たるので、距離を取って撃つこと
 
 ### Auto Tool（採掘）
 適正でない道具で掘り始めたら、**人間が選び直すのと同じ時間**をかけて持ち替えます。
@@ -45,7 +53,7 @@
 - **15% 以上速くならないなら持ち替えない**（掘るのが遅くならない）
 - 既定は「攻撃キーを押している間」だけ
 
-### Module Select 画面
+### ClickGUI（The Client.）
 - 左にカテゴリ（Movement / Player / Render）、右にモジュール一覧
 - 行をクリックで ON/OFF（トグルはアニメーション）
 - モジュール名の右に出る `…` をクリックで設定画面
@@ -96,10 +104,11 @@
 
 | 場所 | 項目 |
 | --- | --- |
-| Module Select → Scaffold → `…` | ジャンプ抑止 / 視点を前のまま / 人間らしさ / 腕を振る / 設置ペース |
-| Module Select → FastPlace → `…` | 有効 / CPS 表示 / 設置間隔 |
-| Module Select → Aim Assist → `…` | 強さ / 視野 / 人間らしさ / 攻撃中だけ / 剣・斧のみ / 先読み |
-| Module Select → Auto Tool → `…` | 人間らしさ / 掘っている間だけ / 壊れかけを避ける |
+| ClickGUI → Scaffold → `…` | ジャンプ抑止 / 視点を前のまま / 人間らしさ / 腕を振る / 設置ペース |
+| ClickGUI → FastPlace → `…` | 有効 / CPS 表示 / 設置間隔 |
+| ClickGUI → Aim Assist → `…` | クリックで掴む / 掴む時間 / 判定の倍率 / プレイヤーだけ / 強さ / 視野 / 滑らかさ / 進行方向のズレ / 先読み / 押している間だけ |
+| ClickGUI → ClickCrystal → `…` | 間隔 / 連続時間 / 届く距離 / 元のスロットに戻す |
+| ClickGUI → Auto Tool → `…` | 人間らしさ / 掘っている間だけ / 壊れかけを避ける |
 | 操作設定 (Controls) | モジュール画面を開くキー、FastPlace の ON/OFF キー |
 
 設定は `config/ifuto-fastplace.json` に保存されます。
@@ -109,7 +118,7 @@
 ```bash
 ./gradlew -p ifuto-fastplace testFastplace   # 連打タイミングモデル
 ./gradlew -p ifuto-fastplace testScaffold    # 視線・設置リズム・距離トリガの安全性
-./gradlew -p ifuto-fastplace testAim         # アシストの反応時間・速度上限・当たり判定
+./gradlew -p ifuto-fastplace testAim         # 反応時間・速度上限・当たり判定・1.2x 掴み・進行方向のズレ・滑らかさ
 ./gradlew -p ifuto-fastplace testAutoTool    # 道具選択の判断時間モデル
 ```
 

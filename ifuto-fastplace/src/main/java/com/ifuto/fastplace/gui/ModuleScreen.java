@@ -9,7 +9,6 @@ import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.input.KeyInput;
 import net.minecraft.text.Text;
-import net.minecraft.util.Formatting;
 import org.lwjgl.glfw.GLFW;
 
 import java.util.HashMap;
@@ -17,261 +16,317 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * RShift で開く Module Select 画面（Vape v4 のモジュール一覧のイメージ）。
+ * RShift で開く ClickGUI（The Client.）。
  *
- * <p>左がカテゴリ、右がモジュール一覧。行をクリックで ON/OFF、
- * 「…」をクリックでそのモジュールの設定。トグルは少しアニメーションする。</p>
+ * <p>2 ペイン構成: 左がカテゴリ（Combat / Movement / Player / Render）と MISC、
+ * 右がそのカテゴリのモジュール一覧。行クリックで ON/OFF、`⋮` で設定画面。
+ * ヘッダーをドラッグすると画面ごと動く。</p>
  */
 public final class ModuleScreen extends Screen {
-	private static final int PANEL_W = 496;
-	private static final int PANEL_H = 316;
-	private static final int SIDEBAR_W = 148;
-	private static final int PAD = 16;
-	private static final int ROW_H = 58;
-	private static final int ROW_GAP = 8;
-	private static final int TOGGLE_W = 44;
-	private static final int TOGGLE_H = 20;
+	private static final int PANEL_W = 270;
+	private static final int GAP = 12;
+	private static final int TOP = 34;
+	private static final int HEADER_L = 48;
+	private static final int HEADER_R = 46;
+	private static final int ROW_H = 40;
+	private static final int DIVIDER_H = 28;
+	private static final int FOOTER_H = 40;
+	private static final int PILL_W = 28;
+	private static final int PILL_H = 14;
 
-	private static final int ACCENT = 0xFF3D8BFF;
-	private static final int BG = 0xF0131317;
-	private static final int SIDEBAR_BG = 0xFF0D0D10;
-	private static final int CARD = 0xFF1A1A20;
-	private static final int CARD_HOVER = 0xFF22222B;
-	private static final int BORDER = 0xFF2A2A33;
-	private static final int CHIP_BG = 0xFF262630;
-	private static final int TEXT_MAIN = 0xFFFFFFFF;
-	private static final int TEXT_DIM = 0xFF8B8B96;
-	private static final int TEXT_FAINT = 0xFF5C5C66;
-	private static final int TRACK_OFF = 0xFF3A3A46;
+	private static final int WINDOW = 0xFF181819;
+	private static final int BORDER = 0xFF242426;
+	private static final int HOVER = 0xFF1F1F21;
+	private static final int SECTION = 0xFF151516;
+	private static final int ACCENT = 0xFF16A37F;
+	private static final int TEXT = 0xFFD4D4D8;
+	private static final int MUTED = 0xFF9E9EA4;
+	private static final int DIM = 0xFF5E5E62;
+	private static final int CHIP = 0xFF232326;
+	private static final int CHIP_BORDER = 0xFF2D2D30;
+	private static final int TRACK_OFF = 0xFF2A2A2E;
+	private static final int SHADOW = 0x44000000;
 
 	private final Screen parent;
-	private ModuleCategory tab = ModuleCategory.MOVEMENT;
+	private ModuleCategory tab = ModuleCategory.COMBAT;
+	private boolean collapsed;
 
-	private final Map<String, Float> toggles = new HashMap<>();
+	private int leftX;
+	private int leftY;
+	private int rightX;
+	private int rightY;
+	private int dragX;
+	private int dragY;
+	private boolean dragging;
+	private int dragOffsetX;
+	private int dragOffsetY;
+
 	private final Map<String, Float> hovers = new HashMap<>();
-	private long lastFrameNs;
-
-	private int panelX;
-	private int panelY;
+	private String hint = "";
+	private long hintUntil;
 
 	public ModuleScreen(Screen parent) {
-		super(Text.literal("Modules"));
+		super(Text.literal("The Client"));
 		this.parent = parent;
 	}
 
 	@Override
 	protected void init() {
-		panelX = (width - PANEL_W) / 2;
-		panelY = (height - PANEL_H) / 2;
+		int totalW = PANEL_W * 2 + GAP;
+		leftX = (width - totalW) / 2;
+		leftY = TOP;
+		rightX = leftX + PANEL_W + GAP;
+		rightY = TOP;
+		dragX = leftX;
+		dragY = leftY;
 	}
 
 	@Override
 	public void render(DrawContext context, int mouseX, int mouseY, float delta) {
 		renderBackground(context, mouseX, mouseY, delta);
+		hovers.clear();
 
-		float frame = frameDelta();
-
-		// 影 + パネル
-		context.fill(panelX + 4, panelY + 5, panelX + PANEL_W + 4, panelY + PANEL_H + 5, 0x55000000);
-		context.fill(panelX, panelY, panelX + PANEL_W, panelY + PANEL_H, BG);
-		border(context, panelX, panelY, PANEL_W, PANEL_H, BORDER);
-		context.fill(panelX, panelY, panelX + PANEL_W, panelY + 2, ACCENT);
-
-		// サイドバー
-		context.fill(panelX, panelY + 2, panelX + SIDEBAR_W, panelY + PANEL_H - 1, SIDEBAR_BG);
-		context.fill(panelX + SIDEBAR_W, panelY + 2, panelX + SIDEBAR_W + 1, panelY + PANEL_H - 1, BORDER);
-		drawSidebar(context, mouseX, mouseY);
-
-		drawContent(context, mouseX, mouseY, frame);
-		drawFooter(context);
-
-		super.render(context, mouseX, mouseY, delta);
+		renderLeft(context, mouseX, mouseY);
+		renderRight(context, mouseX, mouseY);
 	}
 
-	private void drawSidebar(DrawContext context, int mouseX, int mouseY) {
-		int x = panelX + PAD;
-		context.fill(x, panelY + 16, x + 7, panelY + 23, ACCENT);
-		context.drawTextWithShadow(textRenderer, Text.literal("IFUTO").formatted(Formatting.WHITE),
-			x + 12, panelY + 15, TEXT_MAIN);
-		context.drawTextWithShadow(textRenderer, Text.literal("MODULE SELECT"),
-			x, panelY + 30, TEXT_FAINT);
+	// ------------------------------------------------------------------
+	// 左パネル
+	// ------------------------------------------------------------------
 
-		int y = panelY + 58;
+	private int leftHeight() {
+		int categories = ModuleCategory.values().length;
+		return HEADER_L + categories * ROW_H + DIVIDER_H + 2 * ROW_H + FOOTER_H;
+	}
+
+	private void renderLeft(DrawContext context, int mouseX, int mouseY) {
+		int h = leftHeight();
+		int x = leftX;
+		int y = leftY;
+
+		chamfer(context, x, y + 4, PANEL_W, h, 3, SHADOW);
+		panel(context, x, y, PANEL_W, h, WINDOW, BORDER);
+
+		// ヘッダー（ドラッグ用）
+		context.fill(x + 1, y + HEADER_L - 1, x + PANEL_W - 1, y + HEADER_L, BORDER);
+		text(context, "The Client.", x + 14, y + 15, 0xFFFFFFFF, 1.35f);
+		badge(context, x + 14 + (int) (textRenderer.getWidth("The Client.") * 1.35f) + 6, y + 19,
+			"v" + FastPlaceMod.VERSION);
+		gear(context, x + PANEL_W - 26, y + 16, isHovered(mouseX, mouseY, x + PANEL_W - 28, y + 14, 18, 18));
+
+		// カテゴリ
+		int rowY = y + HEADER_L;
 		for (ModuleCategory category : ModuleCategory.values()) {
-			boolean active = tab == category;
-			boolean hover = mouseX >= panelX + 8 && mouseX <= panelX + SIDEBAR_W - 8
-				&& mouseY >= y && mouseY <= y + 28;
-			if (active) {
-				context.fill(panelX + 8, y, panelX + SIDEBAR_W - 8, y + 28, 0xFF1C1C24);
-				context.fill(panelX + 8, y, panelX + 11, y + 28, ACCENT);
-			} else if (hover) {
-				context.fill(panelX + 8, y, panelX + SIDEBAR_W - 8, y + 28, 0xFF15151B);
+			boolean active = category == tab;
+			boolean hover = isHovered(mouseX, mouseY, x, rowY, PANEL_W, ROW_H);
+			if (hover && !active) {
+				context.fill(x + 1, rowY, x + PANEL_W - 1, rowY + ROW_H, HOVER);
 			}
-			context.drawTextWithShadow(textRenderer,
-				Text.literal(category.label),
-				panelX + 20, y + 10,
-				active ? TEXT_MAIN : (hover ? TEXT_DIM : 0xFF75757F));
-
-			String count = String.valueOf(Modules.count(category));
-			int cw = textRenderer.getWidth(count);
-			context.drawTextWithShadow(textRenderer, Text.literal(count),
-				panelX + SIDEBAR_W - 16 - cw, y + 10, active ? 0xFF9CBDFF : TEXT_FAINT);
-			y += 32;
+			if (active) {
+				context.fill(x + 1, rowY, x + PANEL_W - 1, rowY + ROW_H, HOVER);
+				context.fill(x + 1, rowY, x + 3, rowY + ROW_H, ACCENT);
+			}
+			icon(context, category, x + 16, rowY + 14, active ? ACCENT : DIM);
+			text(context, category.label, x + 34, rowY + 15, active ? TEXT : MUTED, 1.0f);
+			chevron(context, x + PANEL_W - 20, rowY + 17, active ? ACCENT : DIM);
+			rowY += ROW_H;
 		}
 
-		// サイドバー下部のヒント
-		int bottom = panelY + PANEL_H - 44;
-		context.fill(panelX + PAD, bottom - 8, panelX + SIDEBAR_W - PAD, bottom - 7, BORDER);
-		context.drawTextWithShadow(textRenderer, Text.literal("RShift / ESC"),
-			panelX + PAD, bottom, TEXT_FAINT);
-		context.drawTextWithShadow(textRenderer, Text.literal("で閉じる"),
-			panelX + PAD, bottom + 11, TEXT_FAINT);
+		// MISC
+		context.fill(x + 1, rowY, x + PANEL_W - 1, rowY + DIVIDER_H, SECTION);
+		context.fill(x + 1, rowY, x + PANEL_W - 1, rowY + 1, BORDER);
+		context.fill(x + 1, rowY + DIVIDER_H - 1, x + PANEL_W - 1, rowY + DIVIDER_H, BORDER);
+		text(context, "MISC", x + 16, rowY + 10, DIM, 0.85f);
+		rowY += DIVIDER_H;
+
+		miscRow(context, "Keybinds", "RShift / R", x, rowY, mouseX, mouseY);
+		rowY += ROW_H;
+		miscRow(context, "Config", "", x, rowY, mouseX, mouseY);
+		rowY += ROW_H;
+
+		// フッター
+		context.fill(x + 1, rowY, x + PANEL_W - 1, rowY + 1, BORDER);
+		String footer = System.currentTimeMillis() < hintUntil ? hint : "The Client. " + FastPlaceMod.VERSION;
+		text(context, footer, x + 14, rowY + 15, DIM, 0.85f);
+		text(context, "RShift", x + PANEL_W - 14 - (int) (textRenderer.getWidth("RShift") * 0.85f),
+			rowY + 15, DIM, 0.85f);
 	}
 
-	private void drawContent(DrawContext context, int mouseX, int mouseY, float frame) {
-		int x = contentX() + PAD;
-		int w = contentWidth() - PAD * 2;
+	private void miscRow(DrawContext context, String label, String value,
+			int x, int y, int mouseX, int mouseY) {
+		if (isHovered(mouseX, mouseY, x, y, PANEL_W, ROW_H)) {
+			context.fill(x + 1, y, x + PANEL_W - 1, y + ROW_H, HOVER);
+		}
+		text(context, label, x + 16, y + 15, MUTED, 1.0f);
+		if (!value.isEmpty()) {
+			text(context, value, x + PANEL_W - 20 - (int) (textRenderer.getWidth(value) * 0.8f),
+				y + 16, DIM, 0.8f);
+		}
+		chevron(context, x + PANEL_W - 16, y + 17, DIM);
+	}
 
-		context.drawTextWithShadow(textRenderer, Text.literal(tab.label).formatted(Formatting.WHITE),
-			x, panelY + 14, TEXT_MAIN);
-		context.drawTextWithShadow(textRenderer, Text.literal(tab.hint),
-			x, panelY + 28, TEXT_DIM);
+	// ------------------------------------------------------------------
+	// 右パネル
+	// ------------------------------------------------------------------
 
-		List<Module> modules = Modules.inCategory(tab);
-		String count = modules.size() + " MODULE" + (modules.size() == 1 ? "" : "S");
-		context.drawTextWithShadow(textRenderer, Text.literal(count),
-			x + w - textRenderer.getWidth(count), panelY + 16, TEXT_FAINT);
+	private List<Module> modules() {
+		return Modules.inCategory(tab);
+	}
 
-		int rowY = panelY + 56;
-		for (Module module : modules) {
-			drawRow(context, module, x, rowY, w, mouseX, mouseY, frame);
-			rowY += ROW_H + ROW_GAP;
+	private int rightHeight() {
+		return HEADER_R + (collapsed ? 0 : Math.max(1, modules().size()) * ROW_H);
+	}
+
+	private void renderRight(DrawContext context, int mouseX, int mouseY) {
+		int h = rightHeight();
+		int x = rightX;
+		int y = rightY;
+
+		chamfer(context, x, y + 4, PANEL_W, h, 3, SHADOW);
+		panel(context, x, y, PANEL_W, h, WINDOW, BORDER);
+
+		context.fill(x + 1, y + HEADER_R - 1, x + PANEL_W - 1, y + HEADER_R, BORDER);
+		icon(context, tab, x + 16, y + 16, MUTED);
+		text(context, tab.label, x + 34, y + 16, TEXT, 1.05f);
+		chevron(context, x + PANEL_W - 22, y + 18, collapsed ? DIM : MUTED);
+
+		if (collapsed) {
+			return;
+		}
+
+		List<Module> list = modules();
+		int rowY = y + HEADER_R;
+		if (list.isEmpty()) {
+			text(context, "まだモジュールがありません", x + 16, rowY + 15, DIM, 0.9f);
+			return;
+		}
+		for (Module module : list) {
+			boolean hover = isHovered(mouseX, mouseY, x, rowY, PANEL_W, ROW_H);
+			if (hover) {
+				context.fill(x + 1, rowY, x + PANEL_W - 1, rowY + ROW_H, HOVER);
+			}
+			// 下線（最後以外）
+			context.fill(x + 1, rowY + ROW_H - 1, x + PANEL_W - 1, rowY + ROW_H, 0x331E1E20);
+
+			boolean on = module.isEnabled();
+			text(context, module.name(), x + 16, rowY + 15, on ? TEXT : MUTED, 1.0f);
+
+			Text key = module.keyText();
+			int chipRight = x + PANEL_W - 74;
+			if (key != null) {
+				String label = key.getString();
+				int w = (int) (textRenderer.getWidth(label) * 0.8f) + 10;
+				int cx = chipRight - w;
+				chamfer(context, cx, rowY + 14, w, 13, 2, CHIP_BORDER);
+				chamfer(context, cx + 1, rowY + 15, w - 2, 11, 1, CHIP);
+				text(context, label, cx + 5, rowY + 17, MUTED, 0.8f);
+			}
+
+			if (module.hasSettings()) {
+				dots(context, x + PANEL_W - 46, rowY + 15,
+					isHovered(mouseX, mouseY, x + PANEL_W - 52, rowY + 8, 16, 24));
+			}
+
+			pill(context, x + PANEL_W - 40, rowY + (ROW_H - PILL_H) / 2, on);
+			rowY += ROW_H;
 		}
 	}
 
-	private void drawRow(DrawContext context, Module module, int x, int y, int w,
-			int mouseX, int mouseY, float frame) {
-		boolean hovered = mouseX >= x && mouseX <= x + w && mouseY >= y && mouseY <= y + ROW_H;
-		float hover = animate(hovers, module.id(), hovered ? 1.0f : 0.0f, frame, 16.0f);
-		float on = animate(toggles, module.id(), module.isEnabled() ? 1.0f : 0.0f, frame, 15.0f);
-
-		int bg = blend(CARD, CARD_HOVER, hover);
-		context.fill(x, y, x + w, y + ROW_H, bg);
-		border(context, x, y, w, ROW_H, blend(BORDER, 0xFF3A4A63, hover * 0.8f));
-		if (on > 0.02f) {
-			context.fill(x, y, x + 3, y + ROW_H, blend(bg, ACCENT, on));
-		}
-
-		context.drawTextWithShadow(textRenderer, Text.literal(module.name()),
-			x + 14, y + 11, TEXT_MAIN);
-
-		// 設定（…）: ホバー時だけ、名前の右
-		if (module.hasSettings() && hover > 0.25f) {
-			int dotsX = x + 16 + textRenderer.getWidth(module.name());
-			int alpha = (int) (Math.min(1.0f, hover) * 255.0f) << 24;
-			int color = alpha | 0x8B8B96;
-			context.fill(dotsX, y + 16, dotsX + 2, y + 18, color);
-			context.fill(dotsX + 4, y + 16, dotsX + 6, y + 18, color);
-			context.fill(dotsX + 8, y + 16, dotsX + 10, y + 18, color);
-		}
-
-		// キーバインドのチップ
-		int toggleX = x + w - TOGGLE_W - 12;
-		int toggleY = y + (ROW_H - TOGGLE_H) / 2;
-		Text key = module.keyText();
-		int descWidth = toggleX - (x + 14) - 12;
-		if (key != null) {
-			int chipW = Math.max(24, textRenderer.getWidth(key.getString()) + 12);
-			int chipX = toggleX - 8 - chipW;
-			int chipY = y + (ROW_H - 18) / 2;
-			context.fill(chipX, chipY, chipX + chipW, chipY + 18, CHIP_BG);
-			border(context, chipX, chipY, chipW, 18, BORDER);
-			context.drawTextWithShadow(textRenderer, key,
-				chipX + 6, chipY + 5, TEXT_DIM);
-			descWidth = chipX - (x + 14) - 10;
-		}
-
-		String description = textRenderer.trimToWidth(module.description(), Math.max(20, descWidth));
-		context.drawTextWithShadow(textRenderer, Text.literal(description),
-			x + 14, y + 30, TEXT_DIM);
-
-		drawToggle(context, toggleX, toggleY, on);
-	}
-
-	private void drawToggle(DrawContext context, int x, int y, float on) {
-		int track = blend(TRACK_OFF, ACCENT, on);
-		context.fill(x, y, x + TOGGLE_W, y + TOGGLE_H, track);
-		context.fill(x, y, x + TOGGLE_W, y + 1, 0x33000000);
-		int knob = TOGGLE_H - 6;
-		int travel = TOGGLE_W - knob - 6;
-		int kx = x + 3 + Math.round(travel * on);
-		context.fill(kx, y + 3, kx + knob, y + 3 + knob, 0xFFFFFFFF);
-		String label = on > 0.5f ? "ON" : "OFF";
-		int color = on > 0.5f ? 0xFFFFFFFF : 0xFFB9B9C4;
-		int lx = on > 0.5f ? x + 6 : x + TOGGLE_W - 6 - textRenderer.getWidth(label);
-		context.drawTextWithShadow(textRenderer, Text.literal(label), lx, y + 6, color);
-	}
-
-	private void drawFooter(DrawContext context) {
-		context.fill(panelX + SIDEBAR_W + 1, panelY + PANEL_H - 26, panelX + PANEL_W - 1,
-			panelY + PANEL_H - 25, BORDER);
-		context.drawTextWithShadow(textRenderer,
-			Text.literal("クリックで ON/OFF ・ … で設定 ・ キーは 操作設定 から"),
-			panelX + SIDEBAR_W + PAD, panelY + PANEL_H - 18, TEXT_FAINT);
-		String version = "v" + FastPlaceMod.VERSION;
-		context.drawTextWithShadow(textRenderer, Text.literal(version),
-			panelX + PANEL_W - PAD - textRenderer.getWidth(version), panelY + PANEL_H - 18, TEXT_FAINT);
-	}
-
+	// ------------------------------------------------------------------
+	// 入力
 	// ------------------------------------------------------------------
 
 	@Override
 	public boolean mouseClicked(Click click, boolean doubled) {
-		if (click.button() == 0) {
-			double mx = click.x();
-			double my = click.y();
+		double mx = click.x();
+		double my = click.y();
+		int x = leftX;
+		int y = leftY;
 
-			int categoryY = panelY + 58;
-			for (ModuleCategory category : ModuleCategory.values()) {
-				if (mx >= panelX + 8 && mx <= panelX + SIDEBAR_W - 8
-					&& my >= categoryY && my <= categoryY + 28) {
-					if (tab != category) {
-						tab = category;
-					}
+		// ヘッダーでドラッグ開始
+		if (click.button() == 0 && inside(mx, my, x, y, PANEL_W, HEADER_L)) {
+			dragging = true;
+			dragOffsetX = (int) mx - leftX;
+			dragOffsetY = (int) my - leftY;
+			return true;
+		}
+		if (click.button() == 0 && inside(mx, my, rightX, rightY, PANEL_W, HEADER_R)) {
+			dragging = true;
+			dragOffsetX = (int) mx - rightX;
+			dragOffsetY = (int) my - rightY;
+			return true;
+		}
+
+		// カテゴリ
+		int rowY = y + HEADER_L;
+		for (ModuleCategory category : ModuleCategory.values()) {
+			if (inside(mx, my, x, rowY, PANEL_W, ROW_H)) {
+				tab = category;
+				return true;
+			}
+			rowY += ROW_H;
+		}
+		// MISC
+		rowY += DIVIDER_H;
+		if (inside(mx, my, x, rowY, PANEL_W, ROW_H)) {
+			showHint("RShift = この画面 / R = FastPlace");
+			return true;
+		}
+		rowY += ROW_H;
+		if (inside(mx, my, x, rowY, PANEL_W, ROW_H)) {
+			client.setScreen(new FastPlaceConfigScreen(this));
+			return true;
+		}
+		// 歯車 = 設定
+		if (inside(mx, my, x + PANEL_W - 28, y + 14, 18, 18)) {
+			client.setScreen(new FastPlaceConfigScreen(this));
+			return true;
+		}
+
+		// 右ヘッダー（折りたたみ）
+		if (inside(mx, my, rightX, rightY, PANEL_W, HEADER_R)) {
+			collapsed = !collapsed;
+			return true;
+		}
+
+		// モジュール行
+		List<Module> list = modules();
+		int moduleY = rightY + HEADER_R;
+		for (Module module : list) {
+			if (inside(mx, my, rightX, moduleY, PANEL_W, ROW_H)) {
+				if (module.hasSettings() && inside(mx, my, rightX + PANEL_W - 52, moduleY + 8, 16, 24)) {
+					client.setScreen(module.createSettings(this));
 					return true;
 				}
-				categoryY += 32;
+				module.toggle();
+				return true;
 			}
-
-			int x = contentX() + PAD;
-			int w = contentWidth() - PAD * 2;
-			int rowY = panelY + 56;
-			for (Module module : Modules.inCategory(tab)) {
-				if (mx >= x && mx <= x + w && my >= rowY && my <= rowY + ROW_H) {
-					if (module.hasSettings() && hitDots(mx, my, module, x, rowY)) {
-						Screen settings = module.createSettings(this);
-						if (settings != null) {
-							client.setScreen(settings);
-						}
-					} else {
-						module.toggle();
-					}
-					return true;
-				}
-				rowY += ROW_H + ROW_GAP;
-			}
+			moduleY += ROW_H;
 		}
 		return super.mouseClicked(click, doubled);
 	}
 
-	private boolean hitDots(double mx, double my, Module module, int x, int rowY) {
-		int dotsX = x + 16 + textRenderer.getWidth(module.name());
-		return mx >= dotsX - 4 && mx <= dotsX + 14 && my >= rowY + 9 && my <= rowY + 27;
+	@Override
+	public boolean mouseDragged(Click click, double offsetX, double offsetY) {
+		if (dragging && click.button() == 0) {
+			leftX = (int) click.x() - dragOffsetX;
+			leftY = (int) click.y() - dragOffsetY;
+			rightX = leftX + PANEL_W + GAP;
+			rightY = leftY;
+			return true;
+		}
+		return super.mouseDragged(click, offsetX, offsetY);
+	}
+
+	@Override
+	public boolean mouseReleased(Click click) {
+		dragging = false;
+		return super.mouseReleased(click);
 	}
 
 	@Override
 	public boolean keyPressed(KeyInput keyInput) {
-		if (keyInput.key() == GLFW.GLFW_KEY_RIGHT_SHIFT) {
+		if (keyInput.key() == GLFW.GLFW_KEY_ESCAPE || keyInput.key() == GLFW.GLFW_KEY_RIGHT_SHIFT) {
 			close();
 			return true;
 		}
@@ -280,50 +335,111 @@ public final class ModuleScreen extends Screen {
 
 	@Override
 	public void close() {
-		if (client != null) {
-			client.setScreen(parent);
-		} else {
-			super.close();
-		}
+		client.setScreen(parent);
 	}
 
 	// ------------------------------------------------------------------
+	// 描画部品
+	// ------------------------------------------------------------------
 
-	private int contentX() {
-		return panelX + SIDEBAR_W + 1;
+	private void showHint(String message) {
+		hint = message;
+		hintUntil = System.currentTimeMillis() + 2500;
 	}
 
-	private int contentWidth() {
-		return PANEL_W - SIDEBAR_W - 1;
+	private void text(DrawContext context, String value, int x, int y, int color, float scale) {
+		if (scale == 1.0f) {
+			context.drawText(textRenderer, value, x, y, color, false);
+			return;
+		}
+		var matrices = context.getMatrices();
+		matrices.push();
+		matrices.translate(x, y, 0.0f);
+		matrices.scale(scale, scale, 1.0f);
+		context.drawText(textRenderer, value, 0, 0, color, false);
+		matrices.pop();
 	}
 
-	private float frameDelta() {
-		long now = System.nanoTime();
-		float dt = lastFrameNs == 0L ? 0.016f : (now - lastFrameNs) / 1.0e9f;
-		lastFrameNs = now;
-		return Math.max(0.0f, Math.min(0.1f, dt));
+	private void badge(DrawContext context, int x, int y, String label) {
+		int w = (int) (textRenderer.getWidth(label) * 0.8f) + 8;
+		chamfer(context, x, y, w, 13, 2, ACCENT);
+		text(context, label, x + 4, y + 4, ACCENT, 0.8f);
 	}
 
-	private static float animate(Map<String, Float> map, String id, float target, float dt, float speed) {
-		float current = map.getOrDefault(id, target);
-		current += (target - current) * Math.min(1.0f, dt * speed);
-		map.put(id, current);
-		return current;
+	private void pill(DrawContext context, int x, int y, boolean on) {
+		chamfer(context, x, y, PILL_W, PILL_H, 6, on ? ACCENT : TRACK_OFF);
+		int knob = PILL_H - 4;
+		int kx = on ? x + PILL_W - knob - 2 : x + 2;
+		chamfer(context, kx, y + 2, knob, knob, 4, 0xFFFFFFFF);
 	}
 
-	private static int blend(int from, int to, float t) {
-		float v = Math.max(0.0f, Math.min(1.0f, t));
-		int a = Math.round(((from >>> 24) & 0xFF) + (((to >>> 24) & 0xFF) - ((from >>> 24) & 0xFF)) * v);
-		int r = Math.round(((from >>> 16) & 0xFF) + (((to >>> 16) & 0xFF) - ((from >>> 16) & 0xFF)) * v);
-		int g = Math.round(((from >>> 8) & 0xFF) + (((to >>> 8) & 0xFF) - ((from >>> 8) & 0xFF)) * v);
-		int b = Math.round((from & 0xFF) + ((to & 0xFF) - (from & 0xFF)) * v);
-		return (a << 24) | (r << 16) | (g << 8) | b;
+	private void chevron(DrawContext context, int x, int y, int color) {
+		context.fill(x, y, x + 1, y + 5, color);
+		context.fill(x + 1, y + 1, x + 2, y + 4, color);
+		context.fill(x + 2, y + 2, x + 3, y + 3, color);
 	}
 
-	private static void border(DrawContext context, int x, int y, int w, int h, int color) {
-		context.fill(x, y, x + w, y + 1, color);
-		context.fill(x, y + h - 1, x + w, y + h, color);
-		context.fill(x, y, x + 1, y + h, color);
-		context.fill(x + w - 1, y, x + w, y + h, color);
+	private void dots(DrawContext context, int x, int y, boolean hover) {
+		int color = hover ? TEXT : DIM;
+		context.fill(x, y, x + 1, y + 1, color);
+		context.fill(x, y + 5, x + 1, y + 6, color);
+		context.fill(x, y + 10, x + 1, y + 11, color);
+	}
+
+	private void gear(DrawContext context, int x, int y, boolean hover) {
+		int color = hover ? TEXT : MUTED;
+		context.fill(x + 4, y, x + 8, y + 2, color);
+		context.fill(x + 4, y + 10, x + 8, y + 12, color);
+		context.fill(x, y + 4, x + 2, y + 8, color);
+		context.fill(x + 10, y + 4, x + 12, y + 8, color);
+		context.fill(x + 3, y + 3, x + 9, y + 9, color);
+		context.fill(x + 5, y + 5, x + 7, y + 7, WINDOW);
+	}
+
+	private void icon(DrawContext context, ModuleCategory category, int x, int y, int color) {
+		switch (category) {
+			case COMBAT -> {
+				context.fill(x + 1, y + 3, x + 9, y + 5, color);
+				context.fill(x + 3, y + 1, x + 5, y + 9, color);
+				context.fill(x + 5, y + 5, x + 9, y + 9, color);
+			}
+			case MOVEMENT -> {
+				context.fill(x, y + 5, x + 10, y + 7, color);
+				context.fill(x + 6, y + 2, x + 10, y + 4, color);
+				context.fill(x + 6, y + 8, x + 10, y + 10, color);
+			}
+			case PLAYER -> {
+				context.fill(x + 3, y, x + 7, y + 4, color);
+				context.fill(x, y + 5, x + 10, y + 10, color);
+			}
+			default -> {
+				context.fill(x + 1, y + 1, x + 9, y + 9, color);
+				context.fill(x + 3, y + 3, x + 7, y + 7, WINDOW);
+			}
+		}
+	}
+
+	private static void chamfer(DrawContext context, int x, int y, int w, int h, int radius, int color) {
+		int r = Math.max(0, Math.min(radius, Math.min(w, h) / 2));
+		if (r == 0) {
+			context.fill(x, y, x + w, y + h, color);
+			return;
+		}
+		context.fill(x + r, y, x + w - r, y + h, color);
+		context.fill(x, y + r, x + r, y + h - r, color);
+		context.fill(x + w - r, y + r, x + w, y + h - r, color);
+	}
+
+	private static void panel(DrawContext context, int x, int y, int w, int h, int fill, int border) {
+		chamfer(context, x, y, w, h, 3, border);
+		chamfer(context, x + 1, y + 1, w - 2, h - 2, 2, fill);
+	}
+
+	private static boolean inside(double mx, double my, int x, int y, int w, int h) {
+		return mx >= x && mx <= x + w && my >= y && my <= y + h;
+	}
+
+	private boolean isHovered(int mx, int my, int x, int y, int w, int h) {
+		return inside(mx, my, x, y, w, h);
 	}
 }

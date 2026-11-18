@@ -6,10 +6,12 @@ import com.ifuto.fastplace.FastPlaceModule;
 import com.ifuto.fastplace.aim.AimAssistModule;
 import com.ifuto.fastplace.gui.AimAssistSettingsScreen;
 import com.ifuto.fastplace.gui.AutoToolSettingsScreen;
+import com.ifuto.fastplace.gui.ClickCrystalSettingsScreen;
 import com.ifuto.fastplace.gui.FastPlaceConfigScreen;
 import com.ifuto.fastplace.gui.ModuleScreen;
 import com.ifuto.fastplace.gui.ScaffoldSettingsScreen;
 import com.ifuto.fastplace.scaffold.ScaffoldModule;
+import com.ifuto.fastplace.crystal.ClickCrystalModule;
 import com.ifuto.fastplace.tool.AutoToolModule;
 
 import java.util.ArrayList;
@@ -35,11 +37,18 @@ public final class Modules {
 			FastPlaceConfigScreen::new,
 			FastPlaceMod::fastPlaceBindText));
 		ALL.add(new Module(
-			"aimassist", "Aim Assist", "剣の間合いで、人間の速度とクセで相手に寄る",
-			ModuleCategory.PLAYER,
+			"aimassist", "Aim Assist", "クリックした相手に人間の速度で寄る",
+			ModuleCategory.COMBAT,
 			AimAssistModule::enabled,
 			AimAssistModule::setEnabled,
 			AimAssistSettingsScreen::new,
+			null));
+		ALL.add(new Module(
+			"clickcrystal", "ClickCrystal", "黒曜石を左クリックでクリスタル連続爆破",
+			ModuleCategory.COMBAT,
+			ClickCrystalModule::enabled,
+			ClickCrystalModule::setEnabled,
+			ClickCrystalSettingsScreen::new,
 			null));
 		ALL.add(new Module(
 			"autotool", "Auto Tool", "適正でない道具で掘り始めたら人間の判断で持ち替える",
