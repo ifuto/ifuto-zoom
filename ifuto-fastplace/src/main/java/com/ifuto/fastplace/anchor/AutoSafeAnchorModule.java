@@ -128,7 +128,7 @@ public final class AutoSafeAnchorModule {
 		if (world == null) {
 			return;
 		}
-		Direction towardsPlayer = horizontalDirectionFrom(Vec3d.ofCenter(placed), player.getPos());
+		Direction towardsPlayer = horizontalDirectionFrom(Vec3d.ofCenter(placed), playerPos(player));
 		BlockPos frontPos = placed.offset(towardsPlayer);
 		// 手前に 1 ブロック置ける空間があるか
 		if (!world.getBlockState(frontPos).isReplaceable()) {
@@ -329,7 +329,7 @@ public final class AutoSafeAnchorModule {
 	/** アンカーの、自分側の面の中心（少し上） */
 	private static Vec3d anchorSidePoint(MinecraftClient client, ClientPlayerEntity player) {
 		Vec3d center = Vec3d.ofCenter(anchor);
-		Vec3d delta = player.getPos().subtract(center);
+		Vec3d delta = playerPos(player).subtract(center);
 		Vec3d horizontal = new Vec3d(delta.x, 0.0, delta.z);
 		if (horizontal.lengthSquared() < 1.0e-6) {
 			return center.add(0.0, 0.3, 0.0);
@@ -350,9 +350,14 @@ public final class AutoSafeAnchorModule {
 		Vec3d side = anchorSidePoint(client, player);
 		return switch (Math.floorMod(index, 3)) {
 			case 0 -> top;
-			case 1 -> upper.withY(anchor.getY() + 0.75);
+			case 1 -> new Vec3d(upper.x, anchor.getY() + 0.75, upper.z);
 			default -> side;
 		};
+	}
+
+	/** プレイヤーの足元の位置（1.21.11 では {@code Entity#getPos()} が無い） */
+	private static Vec3d playerPos(ClientPlayerEntity player) {
+		return new Vec3d(player.getX(), player.getY(), player.getZ());
 	}
 
 	/** アンカー → 自分の水平方向（東西南北のどれか） */
