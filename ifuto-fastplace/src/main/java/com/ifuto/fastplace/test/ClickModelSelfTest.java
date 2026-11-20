@@ -203,8 +203,7 @@ public final class ClickModelSelfTest {
 
 	private static void check(boolean condition, String message) {
 		if (!condition) {
-			System.out.println("[fastplace-test] FAIL: " + message);
-			System.exit(1);
+			throw new IllegalStateException("[fastplace-test] FAIL: " + message);
 		}
 		passed++;
 	}

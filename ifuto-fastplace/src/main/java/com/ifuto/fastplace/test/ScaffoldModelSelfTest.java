@@ -269,8 +269,7 @@ public final class ScaffoldModelSelfTest {
 
 	private static void check(boolean condition, String message) {
 		if (!condition) {
-			System.out.println("[scaffold-test] FAILED: " + message);
-			System.exit(1);
+			throw new IllegalStateException("[scaffold-test] FAILED: " + message);
 		}
 		passed++;
 	}

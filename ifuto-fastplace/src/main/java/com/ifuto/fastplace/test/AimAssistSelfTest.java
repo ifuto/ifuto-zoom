@@ -344,8 +344,7 @@ public final class AimAssistSelfTest {
 
 	private static void check(boolean condition, String message) {
 		if (!condition) {
-			System.out.println("[aim-test] FAILED: " + message);
-			System.exit(1);
+			throw new IllegalStateException("[aim-test] FAILED: " + message);
 		}
 		passed++;
 	}

@@ -149,8 +149,7 @@ public final class AutoToolSelfTest {
 
 	private static void check(boolean condition, String message) {
 		if (!condition) {
-			System.out.println("[autotool-test] FAILED: " + message);
-			System.exit(1);
+			throw new IllegalStateException("[autotool-test] FAILED: " + message);
 		}
 		passed++;
 	}
