@@ -85,3 +85,4 @@ artifact_path: ifuto-fastplace/build/libs/*.jar
 - tput r162: replay 0.30.5 — layered fallbacks (alt codec, join re-decode, dimension-type candidates, real error text)
 - tput r163: replay 0.30.5 build (the r162 run built fastplace by mistake)
 - tput r164: fastplace 0.6.0 rounded web-like ClickGUI (no chamfer, right-click menu), hold-to-repeat ClickCrystal with real aim/LOS, smooth aim assist (no min-speed buzz), Auto Stun Slam, Auto Safe Anchor
+- tput r164a: 0.6.0 compile fix (getPos/withY)
