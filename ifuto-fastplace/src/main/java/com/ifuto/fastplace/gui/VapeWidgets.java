@@ -4,81 +4,61 @@ import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
 
 /**
- * The Client. の見た目（暗いパネル・細いスライダー・小さなピル）を描く部品。
- * 設定画面どうしで色と形を揃えるためだけのクラス。
+ * 設定画面で共通に使う見た目。
+ *
+ * <p>以前は 45° の面取り（カクカク）だったが、いまは {@link Ui} の角丸で描く。
+ * 文字は等倍・影なしにして、拡大による「ドットが目立つ」見た目を避けている。</p>
  */
 public final class VapeWidgets {
-	/** パネルの地（85%）。完全に塗り潰さず、後ろのぼかした世界を少し透かす */
-	public static final int WINDOW = 0xD8181819;
-	public static final int BORDER = 0xFF242426;
-	public static final int HOVER = 0xD81F1F21;
-	public static final int SECTION = 0xC8151516;
-	public static final int ACCENT = 0xFF16A37F;
-	public static final int TEXT = 0xFFD4D4D8;
-	public static final int MUTED = 0xFF9E9EA4;
-	public static final int DIM = 0xFF5E5E62;
-	public static final int TRACK = 0xFF27272A;
-	public static final int TRACK_OFF = 0xFF2A2A2E;
-	public static final int CHIP = 0xD8232326;
-	public static final int CHIP_BORDER = 0xFF2D2D30;
-	public static final int SHADOW = 0x44000000;
+	/** パネルの地 */
+	public static final int WINDOW = 0xE0151518;
+	public static final int BORDER = Ui.BORDER;
+	public static final int HOVER = Ui.HOVER;
+	public static final int SECTION = 0xD0121215;
+	public static final int ACCENT = Ui.ACCENT;
+	public static final int TEXT = Ui.TEXT;
+	public static final int MUTED = Ui.MUTED;
+	public static final int DIM = Ui.DIM;
+	public static final int TRACK = 0xFF2B2B32;
+	public static final int TRACK_OFF = 0xFF2C2C33;
+	public static final int CHIP = 0xE023232A;
+	public static final int CHIP_BORDER = Ui.BORDER;
+	public static final int SHADOW = Ui.SHADOW;
 
 	private VapeWidgets() {
 	}
 
-	/** 角を落とした長方形（アンチエイリアス無しの角丸風） */
+	/** 角丸の長方形（旧・面取り）。呼び出し側の半径をそのまま使う */
 	public static void chamfer(DrawContext context, int x, int y, int w, int h, int radius, int color) {
-		int r = Math.max(0, Math.min(radius, Math.min(w, h) / 2));
-		if (r == 0) {
-			context.fill(x, y, x + w, y + h, color);
-			return;
-		}
-		context.fill(x + r, y, x + w - r, y + h, color);
-		context.fill(x, y + r, x + r, y + h - r, color);
-		context.fill(x + w - r, y + r, x + w, y + h - r, color);
+		Ui.roundRect(context, x, y, w, h, radius <= 2 ? radius + 4 : radius, color);
 	}
 
-	/** 影つきのパネル */
+	/** 影つきパネル */
 	public static void panel(DrawContext context, int x, int y, int w, int h) {
-		chamfer(context, x, y + 4, w, h, 3, SHADOW);
-		chamfer(context, x, y, w, h, 3, BORDER);
-		chamfer(context, x + 1, y + 1, w - 2, h - 2, 2, WINDOW);
+		Ui.shadow(context, x, y, w, h, Ui.RADIUS);
+		Ui.border(context, x, y, w, h, Ui.RADIUS, BORDER, WINDOW);
+	}
+
+	/** 画面タイトル（大文字にしない・等倍） */
+	public static void title(DrawContext context, TextRenderer renderer, int x, int y,
+			String title, String subtitle) {
+		Ui.text(context, renderer, title, x, y, TEXT, 1.0f);
+		Ui.roundRect(context, x, y + 11, 18, 2, 1, ACCENT);
+		Ui.text(context, renderer, subtitle, x, y + 17, DIM, 0.8f);
 	}
 
 	public static void text(DrawContext context, TextRenderer renderer, String value,
 			int x, int y, int color, float scale) {
-		if (scale == 1.0f) {
-			context.drawText(renderer, value, x, y, color, false);
-			return;
-		}
-		var matrices = context.getMatrices();
-		matrices.pushMatrix();
-		matrices.translate(x, y);
-		matrices.scale(scale, scale);
-		context.drawText(renderer, value, 0, 0, color, false);
-		matrices.popMatrix();
+		Ui.text(context, renderer, value, x, y, color, scale);
 	}
 
 	public static void pill(DrawContext context, int x, int y, int w, int h, boolean on) {
-		chamfer(context, x, y, w, h, h / 2, on ? ACCENT : TRACK_OFF);
-		int knob = h - 4;
-		int kx = on ? x + w - knob - 2 : x + 2;
-		chamfer(context, kx, y + 2, knob, knob, knob / 2, 0xFFFFFFFF);
+		float t = Ui.anim("pill:" + x + ":" + y, on);
+		Ui.toggle(context, x, y, w, h, t);
 	}
 
-	/** スライダーのトラック（0..1 の値） */
 	public static void slider(DrawContext context, int x, int y, int w, double t, boolean hover) {
-		int trackY = y;
-		context.fill(x, trackY, x + w, trackY + 4, TRACK);
-		int filled = (int) Math.round(w * Math.max(0.0, Math.min(1.0, t)));
-		if (filled > 0) {
-			context.fill(x, trackY, x + filled, trackY + 4, ACCENT);
-		}
-		int knobX = x + filled - 5;
-		int knobSize = hover ? 12 : 10;
-		chamfer(context, knobX, trackY + 2 - knobSize / 2, knobSize, knobSize, knobSize / 2, 0xFFFFFFFF);
-		chamfer(context, knobX + 2, trackY + 4 - knobSize / 2, knobSize - 4, knobSize - 4,
-			(knobSize - 4) / 2, ACCENT);
+		Ui.slider(context, x, y + 2, w, t, hover);
 	}
 
 	public static String format(double value, String unit) {

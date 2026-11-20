@@ -73,14 +73,36 @@ public final class FastPlaceConfig {
 	// ---- ClickCrystal ----
 	/** モジュール ON/OFF */
 	public boolean clickCrystalEnabled = false;
-	/** 置いてから爆破するまでの間隔 [ms] */
+	/** 1 サイクル（爆破 → 次の設置）の間隔 [ms] */
 	public int clickCrystalIntervalMs = 45;
-	/** 1 回のクリックで連続爆破を続ける時間 [ms] */
+	/** 旧・連続時間。押しっぱなし方式になったので未使用（設定ファイル互換のため残す） */
 	public int clickCrystalBurstMs = 1200;
 	/** 終わったら元のスロットに戻す */
 	public boolean clickCrystalRestoreSlot = true;
 	/** 狙う最大距離 [blocks] */
 	public double clickCrystalRange = 4.5;
+	/** 視点を振り向ける速さ [deg/s]（人間のフリック相当） */
+	public double clickCrystalAimSpeed = 420.0;
+
+	// ---- Auto Stun Slam ----
+	/** モジュール ON/OFF */
+	public boolean stunSlamEnabled = false;
+	/** 斧に持ち替えてから盾を叩くまで [ms] */
+	public int stunSlamAxeDelayMs = 60;
+	/** メイスに戻してからメイスを振るまで [ms] */
+	public int stunSlamMaceDelayMs = 70;
+	/** 終わったら元のスロットに戻す */
+	public boolean stunSlamRestoreSlot = true;
+
+	// ---- Auto Safe Anchor ----
+	/** モジュール ON/OFF */
+	public boolean safeAnchorEnabled = false;
+	/** 視点を振り向ける速さ [deg/s] */
+	public double safeAnchorAimSpeed = 400.0;
+	/** 各操作の間隔 [ms] */
+	public int safeAnchorStepDelayMs = 70;
+	/** 終わったら元のスロットに戻す */
+	public boolean safeAnchorRestoreSlot = true;
 
 	// ---- Auto Tool ----
 	/** モジュール ON/OFF */
@@ -191,6 +213,21 @@ public final class FastPlaceConfig {
 		if (clickCrystalRange > 6.0) {
 			clickCrystalRange = 6.0;
 		}
+		if (Double.isNaN(clickCrystalAimSpeed) || clickCrystalAimSpeed < 60.0) {
+			clickCrystalAimSpeed = 60.0;
+		}
+		if (clickCrystalAimSpeed > 900.0) {
+			clickCrystalAimSpeed = 900.0;
+		}
+		stunSlamAxeDelayMs = Math.max(50, Math.min(400, stunSlamAxeDelayMs));
+		stunSlamMaceDelayMs = Math.max(50, Math.min(400, stunSlamMaceDelayMs));
+		if (Double.isNaN(safeAnchorAimSpeed) || safeAnchorAimSpeed < 60.0) {
+			safeAnchorAimSpeed = 60.0;
+		}
+		if (safeAnchorAimSpeed > 900.0) {
+			safeAnchorAimSpeed = 900.0;
+		}
+		safeAnchorStepDelayMs = Math.max(50, Math.min(400, safeAnchorStepDelayMs));
 	}
 
 	public static Path getPath() {

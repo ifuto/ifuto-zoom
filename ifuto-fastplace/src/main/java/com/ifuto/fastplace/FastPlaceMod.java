@@ -1,12 +1,13 @@
 package com.ifuto.fastplace;
 
 import com.ifuto.fastplace.aim.AimAssistModule;
+import com.ifuto.fastplace.anchor.AutoSafeAnchorModule;
 import com.ifuto.fastplace.gui.ModuleScreen;
 import com.ifuto.fastplace.crystal.ClickCrystalModule;
-import com.ifuto.fastplace.hud.AimFrameHook;
 import com.ifuto.fastplace.hud.CpsHud;
-import com.ifuto.fastplace.hud.FastPlaceFrameHook;
+import com.ifuto.fastplace.hud.FrameDriver;
 import com.ifuto.fastplace.scaffold.ScaffoldModule;
+import com.ifuto.fastplace.stun.AutoStunSlamModule;
 import com.ifuto.fastplace.tool.AutoToolModule;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
@@ -71,7 +72,10 @@ public final class FastPlaceMod implements ClientModInitializer {
 		// Aim Assist は向きを、Auto Tool はホットバーを書く。Scaffold が最後（向きの最終決定権）。
 		ClientTickEvents.START_CLIENT_TICK.register(client -> {
 			while (modulesKey.wasPressed()) {
-				if (client.currentScreen == null) {
+				// RShift は「開く / 閉じる」のトグル。チャット中などは何もしない
+				if (client.currentScreen instanceof ModuleScreen) {
+					client.setScreen(null);
+				} else if (client.currentScreen == null) {
 					client.setScreen(new ModuleScreen(null));
 				}
 			}
@@ -80,7 +84,9 @@ public final class FastPlaceMod implements ClientModInitializer {
 			}
 			AimAssistModule.tick(client);
 			AutoToolModule.tick(client);
+			AutoStunSlamModule.tick(client);
 			ClickCrystalModule.tick(client);
+			AutoSafeAnchorModule.tick(client);
 			ScaffoldModule.tick(client);
 			warnIfJumpHookMissing(client);
 		});
@@ -90,13 +96,10 @@ public final class FastPlaceMod implements ClientModInitializer {
 		HudElementRegistry.attachElementAfter(VanillaHudElements.HOTBAR,
 			Identifier.of(MOD_ID, "cps_counter"), new CpsHud());
 
-		// アシストの回転はフレーム単位で足す（20Hz の段差を消す）
+		// フレーム単位で動くモジュール（高速設置 / アシスト / クリスタル / セーフアンカー）。
+		// 視点を 20Hz で書くと 50ms ごとの段差が出るので、全部ここから動かす
 		HudElementRegistry.attachElementAfter(VanillaHudElements.HOTBAR,
-			Identifier.of(MOD_ID, "aim_frame_hook"), new AimFrameHook());
-
-		// 高速設置もフレーム単位で撃つ（50ms の倍数に丸めない = 間隔が同じ数字にならない）
-		HudElementRegistry.attachElementAfter(VanillaHudElements.HOTBAR,
-			Identifier.of(MOD_ID, "fastplace_frame_hook"), new FastPlaceFrameHook());
+			Identifier.of(MOD_ID, "frame_driver"), new FrameDriver());
 	}
 
 	/**

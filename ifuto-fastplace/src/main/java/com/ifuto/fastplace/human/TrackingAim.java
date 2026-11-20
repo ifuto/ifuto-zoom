@@ -39,8 +39,12 @@ public final class TrackingAim {
 	public static final double TAU_ACCEL_MS = 65.0;
 	/** アシストが出せる角速度の上限 [deg/s]（サッケードの速さにはしない） */
 	public static final double MAX_SPEED_DEG_PER_SEC = 220.0;
-	/** ごく小さいズレでも最低限これだけは詰める [deg/s] */
-	public static final double MIN_SPEED_DEG_PER_SEC = 24.0;
+	/**
+	 * 目標に近づくにつれて自然に減速しはじめる角度 [deg]。
+	 * ここより内側では角速度を誤差に比例させる（等速で押し込むと止まる瞬間に
+	 * ガクッと来るため）。
+	 */
+	public static final double SOFT_STOP_DEG = 1.6;
 	/** メインシーケンス式を何倍に弱めるか（1.0 でサッケード相当） */
 	public static final double SPEED_GAIN = 0.35;
 	/** 反応時間の範囲 [ms] */
@@ -151,16 +155,22 @@ public final class TrackingAim {
 		double mag = Math.hypot(ey, ep);
 
 		if ((humanize && nowMs < onsetUntil) || mag < DEADZONE_DEG) {
-			speed *= Math.pow(0.85, dt / 50.0);
+			speed *= Math.pow(0.80, dt / 50.0);
 			return new double[] {0.0, 0.0};
 		}
 
-		double want = clamp(peakSpeed(mag) * SPEED_GAIN,
-			MIN_SPEED_DEG_PER_SEC, MAX_SPEED_DEG_PER_SEC) * clampStrength(strength);
+		// 誤差が大きいほど速い（メインシーケンスを弱めたもの）が、上限は超えない。
+		double want = Math.min(peakSpeed(mag) * SPEED_GAIN, MAX_SPEED_DEG_PER_SEC)
+			* clampStrength(strength);
+		// 目標の近くでは比例制御に切り替える（行き過ぎない・最後がすっと止まる）。
+		// 以前はここに「最低速度 24 deg/s」があり、狙いが合っているときも毎フレーム
+		// 押し返して微小に振動していた（= かくかくの正体）。
+		want *= clamp(mag / SOFT_STOP_DEG, 0.0, 1.0);
 		double tau = TAU_ACCEL_MS / clamp(smoothing, 0.4, 2.5);
-		speed += (want - speed) * Math.min(1.0, dt / tau);
+		// 速度そのものにも慣性を持たせる（指数的に立ち上がり、指数的に落ちる）
+		speed += (want - speed) * (1.0 - Math.exp(-dt / tau));
 
-		double step = Math.min(speed * dt / 1000.0, mag);
+		double step = Math.min(speed * dt / 1000.0, mag * 0.92);
 		return new double[] {ey / mag * step, ep / mag * step};
 	}
 

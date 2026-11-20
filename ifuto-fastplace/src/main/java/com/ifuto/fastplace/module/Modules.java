@@ -4,7 +4,10 @@ import com.ifuto.fastplace.FastPlaceConfig;
 import com.ifuto.fastplace.FastPlaceMod;
 import com.ifuto.fastplace.FastPlaceModule;
 import com.ifuto.fastplace.aim.AimAssistModule;
+import com.ifuto.fastplace.anchor.AutoSafeAnchorModule;
 import com.ifuto.fastplace.gui.AimAssistSettingsScreen;
+import com.ifuto.fastplace.gui.AutoSafeAnchorSettingsScreen;
+import com.ifuto.fastplace.gui.AutoStunSlamSettingsScreen;
 import com.ifuto.fastplace.gui.AutoToolSettingsScreen;
 import com.ifuto.fastplace.gui.ClickCrystalSettingsScreen;
 import com.ifuto.fastplace.gui.FastPlaceConfigScreen;
@@ -12,6 +15,7 @@ import com.ifuto.fastplace.gui.ModuleScreen;
 import com.ifuto.fastplace.gui.ScaffoldSettingsScreen;
 import com.ifuto.fastplace.scaffold.ScaffoldModule;
 import com.ifuto.fastplace.crystal.ClickCrystalModule;
+import com.ifuto.fastplace.stun.AutoStunSlamModule;
 import com.ifuto.fastplace.tool.AutoToolModule;
 
 import java.util.ArrayList;
@@ -49,6 +53,20 @@ public final class Modules {
 			ClickCrystalModule::enabled,
 			ClickCrystalModule::setEnabled,
 			ClickCrystalSettingsScreen::new,
+			null));
+		ALL.add(new Module(
+			"stunslam", "Auto Stun Slam", "メイスで叩く前に斧へ替えて盾を割り、戻して叩く",
+			ModuleCategory.COMBAT,
+			AutoStunSlamModule::enabled,
+			AutoStunSlamModule::setEnabled,
+			AutoStunSlamSettingsScreen::new,
+			null));
+		ALL.add(new Module(
+			"safeanchor", "Auto Safe Anchor", "アンカー設置 → 1 チャージ → 手前に壁 → 起爆",
+			ModuleCategory.COMBAT,
+			AutoSafeAnchorModule::enabled,
+			AutoSafeAnchorModule::setEnabled,
+			AutoSafeAnchorSettingsScreen::new,
 			null));
 		ALL.add(new Module(
 			"autotool", "Auto Tool", "適正でない道具で掘り始めたら人間の判断で持ち替える",

@@ -216,14 +216,24 @@ public final class AimAssistModule {
 	// ------------------------------------------------------------------
 
 	/**
-	 * 描画フレームごとに 1 回呼ぶ。20Hz の段差を消すための入口。
+	 * 描画フレームごとに 1 回呼ぶ。
+	 *
+	 * <p><b>ここが「かくかく」対策の本体</b>。以前は</p>
+	 * <ul>
+	 *   <li>狙う点を 20Hz の tick でしか更新していなかった（相手が動くと 50ms ごとに
+	 *       目標が飛ぶ）</li>
+	 *   <li>「誤差が悪化したフレームは回転を捨てる」「安全域を外れたら強い補正を足す」
+	 *       という 2 つのルールで、フレームによって回転量が 0 になったり跳ねたりしていた</li>
+	 * </ul>
+	 * <p>いまは毎フレーム狙い点を計算し直し、回転は「誤差より大きくならない」ように
+	 * クランプするだけにした。捨てるフレームが無いので、速度が連続になる。</p>
 	 *
 	 * @param dtMs 前フレームからの経過 [ms]
 	 */
 	public static void frameStep(MinecraftClient client, double dtMs) {
 		ClientPlayerEntity player = client.player;
 		if (!enabled() || player == null || client.world == null
-			|| client.currentScreen != null || target == null || goalPoint == null
+			|| client.currentScreen != null || target == null
 			|| !player.isAlive() || player.isSpectator() || ScaffoldModule.isEngaged()) {
 			return;
 		}
@@ -235,9 +245,11 @@ public final class AimAssistModule {
 		long now = System.currentTimeMillis();
 		FastPlaceConfig cfg = FastPlaceConfig.get();
 		Vec3d eye = player.getEyePos();
-		Vec3d truePoint = aimPoint(target.getBoundingBox());
+		// 狙い点は毎フレーム作り直す（相手の今の位置 + 先読み）
+		// tick の値を使い回すと、目標が 50ms ごとにワープして見える
+		Vec3d goal = computeGoal(target, cfg);
 
-		double[] goalAngles = anglesTo(eye, goalPoint);
+		double[] goalAngles = anglesTo(eye, goal);
 		double errYaw = MathHelper.wrapDegrees((float) (goalAngles[0] - player.getYaw()));
 		double errPitch = goalAngles[1] - player.getPitch();
 
@@ -249,41 +261,17 @@ public final class AimAssistModule {
 
 		float yaw = player.getYaw();
 		float pitch = player.getPitch();
-
-		double eyeToBox = Math.max(0.6, eye.distanceTo(target.getBoundingBox().getCenter()) - 0.3);
-		double hitRadius = Math.toDegrees(Math.atan2(HIT_HALF_WIDTH, eyeToBox));
-		double safeLimit = hitRadius * SAFE_FRACTION;
-
-		double beforeTrue = errorTo(yaw, pitch, eye, truePoint);
-		double beforeGoal = Math.hypot(errYaw, errPitch);
-		float nextYaw = yaw + (float) delta[0];
-		float nextPitch = MathHelper.clamp(pitch + (float) delta[1], -90.0f, 90.0f);
-		double afterTrue = errorTo(nextYaw, nextPitch, eye, truePoint);
-		double afterGoal = Math.hypot(errYaw - delta[0], errPitch - delta[1]);
-
-		// 狙い（先読み込み）からも相手からも遠ざかる回転は適用しない
-		if (afterGoal > beforeGoal + 0.02 && afterTrue > beforeTrue + 0.02) {
+		// 誤差を跨がない（行き過ぎない）ことだけを保証する。ここでフレームを捨てると
+		// 「動く / 止まる」が交互に来て、それがカクつきになる
+		double stepMag = Math.min(Math.hypot(delta[0], delta[1]),
+			Math.hypot(errYaw, errPitch) * 0.92);
+		double norm = Math.hypot(delta[0], delta[1]);
+		if (norm < 1.0e-6) {
 			return;
 		}
-
-		if (afterTrue > safeLimit) {
-			double[] errTrue = errorVector(yaw, pitch, eye, truePoint);
-			double[] fix = TrackingAim.pullInside(errTrue[0], errTrue[1], safeLimit);
-			double fixMag = Math.hypot(fix[0], fix[1]);
-			if (fixMag > 1.0e-9) {
-				double stepMag = Math.hypot(delta[0], delta[1]);
-				double k = Math.min(1.0, stepMag / fixMag);
-				float fixYaw = yaw + (float) (fix[0] * k);
-				float fixPitch = MathHelper.clamp(pitch + (float) (fix[1] * k), -90.0f, 90.0f);
-				if (errorTo(fixYaw, fixPitch, eye, truePoint) <= beforeTrue + 1.0e-6) {
-					nextYaw = fixYaw;
-					nextPitch = fixPitch;
-				}
-			}
-		}
-
-		player.setYaw(nextYaw);
-		player.setPitch(nextPitch);
+		player.setYaw(yaw + (float) (delta[0] / norm * stepMag));
+		player.setPitch(MathHelper.clamp(pitch + (float) (delta[1] / norm * stepMag),
+			-90.0f, 90.0f));
 	}
 
 	// ------------------------------------------------------------------

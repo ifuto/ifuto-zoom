@@ -80,22 +80,20 @@ public final class AimAssistSettingsScreen extends GlassScreen {
 		renderBackground(context, mouseX, mouseY, delta);
 		VapeWidgets.panel(context, panelX, panelY, PANEL_W, PANEL_H);
 
-		context.fill(panelX + 1, panelY + HEADER - 1, panelX + PANEL_W - 1, panelY + HEADER, VapeWidgets.BORDER);
-		VapeWidgets.text(context, textRenderer, "AIM ASSIST", panelX + PAD, panelY + 13, VapeWidgets.TEXT, 1.2f);
-		VapeWidgets.text(context, textRenderer, "クリックした先の相手に、人間の速度で寄る",
-			panelX + PAD, panelY + 29, VapeWidgets.DIM, 0.8f);
+		Ui.roundRect(context, panelX + PAD, panelY + HEADER - 1, PANEL_W - PAD * 2.0, 1, 0.5, Ui.BORDER);
+		VapeWidgets.title(context, textRenderer, panelX + PAD, panelY + 14,
+			"Aim Assist", "クリックした先の相手に、人間の速度で寄る");
 
 		for (Control control : controls) {
 			renderControl(context, control, mouseX, mouseY);
 		}
 
-		context.fill(panelX + 1, panelY + PANEL_H - FOOTER, panelX + PANEL_W - 1, panelY + PANEL_H - FOOTER + 1,
-			VapeWidgets.BORDER);
+		Ui.roundRect(context, panelX + PAD, panelY + PANEL_H - FOOTER, PANEL_W - PAD * 2.0, 1, 0.5,
+			Ui.BORDER);
 		VapeWidgets.text(context, textRenderer, "マウスは常に効きます（視点は奪いません）",
 			panelX + PAD, panelY + PANEL_H - FOOTER + 11, VapeWidgets.DIM, 0.8f);
-		VapeWidgets.text(context, textRenderer, "RShift / ESC で戻る",
-			panelX + PANEL_W - PAD - (int) (textRenderer.getWidth("RShift / ESC で戻る") * 0.8f),
-			panelY + PANEL_H - FOOTER + 11, VapeWidgets.DIM, 0.8f);
+		Ui.textRight(context, textRenderer, "RShift / ESC で戻る",
+			panelX + PANEL_W - PAD, panelY + PANEL_H - FOOTER + 11, VapeWidgets.DIM, 0.8f);
 	}
 
 	private void renderControl(DrawContext context, Control control, int mouseX, int mouseY) {
