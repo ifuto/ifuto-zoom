@@ -38,6 +38,7 @@ public final class FastPlaceMod implements ClientModInitializer {
 
 	private static int worldTicks;
 	private static boolean jumpHookWarned;
+	private static boolean interactionHookChecked;
 
 	private static KeyBinding modulesKey;
 	private static KeyBinding fastPlaceKey;
@@ -89,6 +90,7 @@ public final class FastPlaceMod implements ClientModInitializer {
 			AutoSafeAnchorModule.tick(client);
 			ScaffoldModule.tick(client);
 			warnIfJumpHookMissing(client);
+			warnIfInteractionHookMissing(client);
 		});
 
 		ClientTickEvents.END_CLIENT_TICK.register(FastPlaceModule::onTick);
@@ -100,6 +102,37 @@ public final class FastPlaceMod implements ClientModInitializer {
 		// 視点を 20Hz で書くと 50ms ごとの段差が出るので、全部ここから動かす
 		HudElementRegistry.attachElementAfter(VanillaHudElements.HOTBAR,
 			Identifier.of(MOD_ID, "frame_driver"), new FrameDriver());
+	}
+
+	/**
+	 * 攻撃・ブロック使用の mixin が本当に当たっているかを、変換後のクラスを見て確かめる。
+	 *
+	 * <p>{@code require = 0} にしてあるので、メソッド名が変わった環境でも起動は壊れない
+	 * 代わりに<b>黙って効かなくなる</b>。Auto Stun Slam / Auto Safe Anchor が
+	 * 「動かない」と気づけるように、ハンドラのメソッドが生えているかを 1 回だけ見る。</p>
+	 */
+	private static void warnIfInteractionHookMissing(MinecraftClient client) {
+		if (interactionHookChecked || client.player == null) {
+			return;
+		}
+		interactionHookChecked = true;
+		boolean found = false;
+		try {
+			for (var method : net.minecraft.client.network.ClientPlayerInteractionManager.class
+					.getDeclaredMethods()) {
+				if (method.getName().contains("ifutoFastplace$")) {
+					found = true;
+					break;
+				}
+			}
+		} catch (Throwable ignored) {
+			return;
+		}
+		if (!found) {
+			LOGGER.warn("[ifuto-fastplace] interaction mixin is not applied; "
+				+ "Auto Stun Slam / Auto Safe Anchor will do nothing. "
+				+ "Mixin config is non-fatal (required=false).");
+		}
 	}
 
 	/**

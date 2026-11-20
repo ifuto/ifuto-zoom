@@ -88,3 +88,4 @@ artifact_path: ifuto-fastplace/build/libs/*.jar
 - tput r164a: 0.6.0 compile fix (getPos/withY)
 - tput r164b: CI annotations include self-test failures
 - tput r164c: self-tests throw on failure (CI annotation)
+- tput r164d: fixplace UI docs + interaction-hook warning

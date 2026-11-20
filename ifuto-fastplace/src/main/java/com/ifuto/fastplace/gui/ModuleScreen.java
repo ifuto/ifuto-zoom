@@ -126,7 +126,7 @@ public final class ModuleScreen extends GlassScreen {
 	}
 
 	private int catY(int index) {
-		return winY + HEADER + 18 + index * CAT_ROW;
+		return winY + HEADER + 14 + index * CAT_ROW;
 	}
 
 	private int dividerY() {
