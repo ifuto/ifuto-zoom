@@ -89,3 +89,4 @@ artifact_path: ifuto-fastplace/build/libs/*.jar
 - tput r164b: CI annotations include self-test failures
 - tput r164c: self-tests throw on failure (CI annotation)
 - tput r164d: fixplace UI docs + interaction-hook warning
+- tput r164e: gui dots drawn with shapes (no glyph dependency)

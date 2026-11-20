@@ -222,8 +222,13 @@ public final class ModuleScreen extends GlassScreen {
 				Ui.roundRect(context, lx, ry, LIST_W, MOD_ROW - 4, 8,
 					a(Ui.withAlpha(Ui.HOVER, (int) (0x12 * hv))));
 			}
-			String dot = on ? "●" : "○";
-			Ui.text(context, textRenderer, dot, lx + 10, ry + 8, a(on ? Ui.ACCENT : Ui.DIM), 1.0f);
+			// ON はアクセントの丸、OFF は輪郭だけ（フォントの記号に頼らない）
+			double dotY = ry + (MOD_ROW - 4) * 0.5;
+			Ui.circle(context, lx + 13, dotY, 3.0, a(on ? Ui.ACCENT : 0x00000000));
+			if (!on) {
+				Ui.circle(context, lx + 13, dotY, 3.0, a(Ui.DIM));
+				Ui.circle(context, lx + 13, dotY, 1.8, a(Ui.SURFACE));
+			}
 			Ui.text(context, textRenderer, module.name(), lx + 24, ry + 8,
 				a(on ? Ui.TEXT : Ui.MUTED), 1.0f);
 			Ui.text(context, textRenderer, module.description(), lx + 24, ry + 21,
